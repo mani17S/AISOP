@@ -13,6 +13,16 @@ from app.schemas.entities import (
 )
 from app.schemas.ingest import IngestError, IngestRequest, IngestResponse
 from app.schemas.normalized_event import CanonicalEvent
+from app.schemas.query import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    ExtractedEntityItem,
+    NormalizedEventDetail,
+    NormalizedEventSummary,
+    PaginatedResponse,
+    RawEvidenceDetailResponse,
+    RawEvidenceEventSummary,
+)
 
 __all__ = [
     "ProcessEntity",
@@ -26,4 +36,12 @@ __all__ = [
     "IngestRequest",
     "IngestResponse",
     "IngestError",
+    "DEFAULT_PAGE_SIZE",
+    "MAX_PAGE_SIZE",
+    "PaginatedResponse",
+    "NormalizedEventSummary",
+    "NormalizedEventDetail",
+    "ExtractedEntityItem",
+    "RawEvidenceDetailResponse",
+    "RawEvidenceEventSummary",
 ]

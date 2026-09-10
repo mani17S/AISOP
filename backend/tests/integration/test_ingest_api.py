@@ -94,17 +94,19 @@ async def test_ingest_telemetry_endpoint(test_app):
         # Query back via GET /api/v1/evidence/events - must strictly remain 2 events
         query_res = await client.get("/api/v1/evidence/events?limit=10")
         assert query_res.status_code == 200
-        events_list = query_res.json()
-        assert len(events_list) == 2
+        query_data = query_res.json()
+        assert query_data["total"] == 2
+        assert len(query_data["items"]) == 2
 
         # Check filter by event_type
         filter_res = await client.get(
             "/api/v1/evidence/events?event_type=process_creation"
         )
         assert filter_res.status_code == 200
-        filtered_list = filter_res.json()
-        assert len(filtered_list) == 1
-        assert filtered_list[0]["event_type"] == "process_creation"
+        filtered_data = filter_res.json()
+        assert filtered_data["total"] == 1
+        assert len(filtered_data["items"]) == 1
+        assert filtered_data["items"][0]["event_type"] == "process_creation"
 
 
 @pytest.mark.anyio
