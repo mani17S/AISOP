@@ -3,36 +3,44 @@ AISOP Telemetry Ingestion Service.
 
 Orchestrates the Evidence-First ingestion workflow:
 1. Validates and hashes raw telemetry payloads (SHA-256).
-2. Selects appropriate parser from ParserRegistry.
-3. Normalizes telemetry into CanonicalEvents.
-4. Extracts atomic entities (IP, host, user, process, file_hash, domain).
-5. Atomically persists RawEvidence, NormalizedEvents, and ExtractedEntities.
+2. Performs batched/chunked database existence lookup for all unique hashes.
+3. Classifies events into existing duplicates vs new unique events in memory.
+4. Normalizes new telemetry into CanonicalEvents.
+5. Extracts atomic entities (IP, host, user, process, file_hash, domain).
+6. Atomically persists RawEvidence, NormalizedEvents, and ExtractedEntities.
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any
 import uuid
+from typing import Any
 
-from sqlalchemy import select
-
+from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
 from app.modules.evidence.entity_extractor import extract_entities
 from app.modules.evidence.hasher import compute_sha256
 from app.modules.evidence.parser_protocol import ParserRegistry
 from app.modules.evidence.sysmon_parser import SysmonParser
-from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
 from app.schemas.ingest import IngestError, IngestRequest, IngestResponse
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+
+DEFAULT_CHUNK_SIZE: int = 1000
 
 
 class IngestionService:
     """Service handling evidence ingestion and normalization."""
 
-    def __init__(self, registry: ParserRegistry | None = None) -> None:
+    def __init__(
+        self,
+        registry: ParserRegistry | None = None,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+    ) -> None:
         if registry is None:
             registry = ParserRegistry()
             registry.register(SysmonParser())
         self.registry = registry
+        self.chunk_size = chunk_size
 
     async def ingest_batch(
         self,
@@ -41,18 +49,70 @@ class IngestionService:
     ) -> IngestResponse:
         """
         Process and atomically persist a batch of raw telemetry events.
+        Enforces Option A idempotent deduplication with batched existence lookup:
+        - Hashes for all incoming events are computed.
+        - Existing records are queried in chunks of size `self.chunk_size`.
+        - Incoming events are classified in memory.
+        - Intra-batch duplicates are deduplicated in memory upon insertion of the
+          first occurrence.
+        - Concurrency races are guarded via nested SAVEPOINT rollback and recovery.
         """
         batch_id = uuid.uuid4()
         total_normalized = 0
         total_entities = 0
+        total_skipped_duplicates = 0
+        existing_evidence_ids: list[uuid.UUID] = []
         errors: list[IngestError] = []
+
+        if not request.events:
+            return IngestResponse(
+                batch_id=batch_id,
+                source_type=request.source_type,
+                total_received=0,
+                total_normalized=0,
+                total_entities_extracted=0,
+                total_skipped_duplicates=0,
+                existing_evidence_ids=[],
+                errors=[],
+            )
 
         parser = self.registry.get(request.source_type)
 
+        # 1. Precompute cryptographic integrity hashes for all incoming events
+        event_hashes: list[str | None] = []
+        for raw_event in request.events:
+            try:
+                event_hashes.append(compute_sha256(raw_event))
+            except Exception:
+                event_hashes.append(None)
+
+        # 2. Extract unique hashes preserving insertion order
+        unique_hashes = list(dict.fromkeys(h for h in event_hashes if h is not None))
+
+        # 3. Batched existence query in chunks
+        existing_records: dict[str, RawEvidence] = {}
+        if unique_hashes:
+            for i in range(0, len(unique_hashes), self.chunk_size):
+                chunk = unique_hashes[i : i + self.chunk_size]
+                stmt = select(RawEvidence).where(RawEvidence.sha256_hash.in_(chunk))
+                result = await session.execute(stmt)
+                for record in result.scalars().all():
+                    existing_records[record.sha256_hash] = record
+
+        # 4. Process each event
         for idx, raw_event in enumerate(request.events):
             try:
-                # Compute cryptographic integrity hash
-                sha256_hash = compute_sha256(raw_event)
+                sha256_hash = event_hashes[idx]
+                if sha256_hash is None:
+                    # Retry hashing if precomputation failed to capture exact error
+                    sha256_hash = compute_sha256(raw_event)
+
+                # Check if raw evidence already exists (from batched DB query or intra-batch previous event)
+                existing_raw = existing_records.get(sha256_hash)
+                if existing_raw:
+                    total_skipped_duplicates += 1
+                    existing_evidence_ids.append(existing_raw.id)
+                    continue
 
                 # Select parser
                 event_parser = parser or self.registry.find_matching_parser(raw_event)
@@ -78,23 +138,49 @@ class IngestionService:
                     )
                     continue
 
-                # Check if raw evidence already exists (deduplication)
-                stmt = select(RawEvidence).where(RawEvidence.sha256_hash == sha256_hash)
-                result = await session.execute(stmt)
-                existing_raw = result.scalars().first()
+                # Prepare raw evidence record
+                raw_record = RawEvidence(
+                    id=uuid.uuid4(),
+                    source_type=request.source_type,
+                    source_identifier=request.source_identifier,
+                    sha256_hash=sha256_hash,
+                    raw_payload=(
+                        raw_event
+                        if isinstance(raw_event, dict)
+                        else {"raw": str(raw_event)}
+                    ),
+                )
 
-                if existing_raw:
-                    raw_record = existing_raw
-                else:
-                    raw_record = RawEvidence(
-                        id=uuid.uuid4(),
-                        source_type=request.source_type,
-                        source_identifier=request.source_identifier,
-                        sha256_hash=sha256_hash,
-                        raw_payload=raw_event if isinstance(raw_event, dict) else {"raw": str(raw_event)},
-                    )
-                    session.add(raw_record)
-                    await session.flush()
+                # Concurrency-safe insert using SAVEPOINT (nested transaction)
+                is_duplicate_race = False
+                try:
+                    async with session.begin_nested():
+                        session.add(raw_record)
+                        await session.flush()
+                        existing_records[sha256_hash] = raw_record
+                except IntegrityError as exc:
+                    err_str = str(exc).lower()
+                    # Distinguish SHA-256 uniqueness conflict from unrelated database integrity errors
+                    if "sha256_hash" in err_str or (
+                        "unique" in err_str and "raw_evidence" in err_str
+                    ):
+                        re_stmt = select(RawEvidence).where(
+                            RawEvidence.sha256_hash == sha256_hash
+                        )
+                        re_res = await session.execute(re_stmt)
+                        winner_raw = re_res.scalars().first()
+                        if winner_raw:
+                            existing_records[sha256_hash] = winner_raw
+                            total_skipped_duplicates += 1
+                            existing_evidence_ids.append(winner_raw.id)
+                            is_duplicate_race = True
+                        else:
+                            raise
+                    else:
+                        raise
+
+                if is_duplicate_race:
+                    continue
 
                 # Process each normalized event
                 for canonical in canonical_events:
@@ -145,5 +231,7 @@ class IngestionService:
             total_received=len(request.events),
             total_normalized=total_normalized,
             total_entities_extracted=total_entities,
+            total_skipped_duplicates=total_skipped_duplicates,
+            existing_evidence_ids=existing_evidence_ids,
             errors=errors,
         )

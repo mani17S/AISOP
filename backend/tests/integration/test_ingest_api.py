@@ -4,7 +4,6 @@ Integration tests for Evidence Ingestion & Health API endpoints.
 
 import httpx
 import pytest
-
 from app.db.session import get_db_session
 from app.main import app
 
@@ -12,6 +11,7 @@ from app.main import app
 @pytest.fixture
 def test_app(db_session):
     """Override database dependency to use isolated in-memory SQLite session."""
+
     async def override_get_db():
         yield db_session
 
@@ -78,17 +78,29 @@ async def test_ingest_telemetry_endpoint(test_app):
         data = response.json()
         assert data["total_received"] == 2
         assert data["total_normalized"] == 2
+        assert data["total_skipped_duplicates"] == 0
         assert data["total_entities_extracted"] > 0
         assert len(data["errors"]) == 0
 
-        # Query back via GET /api/v1/evidence/events
+        # Ingest exact same payload again to verify API-level deduplication
+        dup_res = await client.post("/api/v1/evidence/ingest", json=payload)
+        assert dup_res.status_code == 200
+        dup_data = dup_res.json()
+        assert dup_data["total_received"] == 2
+        assert dup_data["total_normalized"] == 0
+        assert dup_data["total_skipped_duplicates"] == 2
+        assert len(dup_data["existing_evidence_ids"]) == 2
+
+        # Query back via GET /api/v1/evidence/events - must strictly remain 2 events
         query_res = await client.get("/api/v1/evidence/events?limit=10")
         assert query_res.status_code == 200
         events_list = query_res.json()
         assert len(events_list) == 2
 
         # Check filter by event_type
-        filter_res = await client.get("/api/v1/evidence/events?event_type=process_creation")
+        filter_res = await client.get(
+            "/api/v1/evidence/events?event_type=process_creation"
+        )
         assert filter_res.status_code == 200
         filtered_list = filter_res.json()
         assert len(filtered_list) == 1

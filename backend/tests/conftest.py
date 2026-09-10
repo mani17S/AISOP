@@ -8,13 +8,18 @@ Requires zero external database daemons to run test suites.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
+
 import pytest
+from app.db.base import Base
+from app.models.evidence import (  # noqa: F401
+    ExtractedEntityModel,
+    NormalizedEventModel,
+    RawEvidence,
+)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-
-from app.db.base import Base
-from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence  # noqa: F401
 
 
 class AsyncSessionAdapter:
@@ -50,6 +55,17 @@ class AsyncSessionAdapter:
     async def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
         return self._sync.execute(statement, *args, **kwargs)
 
+    @asynccontextmanager
+    async def begin_nested(self) -> AsyncGenerator[Any, None]:
+        """Provide nested transaction (SAVEPOINT) support for concurrency testing."""
+        nested = self._sync.begin_nested()
+        try:
+            yield nested
+            nested.commit()
+        except Exception:
+            nested.rollback()
+            raise
+
 
 @pytest.fixture(scope="session")
 def sqlite_engine():
@@ -68,7 +84,6 @@ def sqlite_engine():
 def db_session(sqlite_engine) -> AsyncGenerator[AsyncSessionAdapter, None]:
     """Provide an isolated test database session per test function."""
     connection = sqlite_engine.connect()
-    transaction = connection.begin()
     session_factory = sessionmaker(bind=connection)
     sync_session = session_factory()
     async_adapter = AsyncSessionAdapter(sync_session)
@@ -77,5 +92,7 @@ def db_session(sqlite_engine) -> AsyncGenerator[AsyncSessionAdapter, None]:
         yield async_adapter
     finally:
         sync_session.close()
-        transaction.rollback()
+        for table in reversed(Base.metadata.sorted_tables):
+            connection.execute(table.delete())
+        connection.commit()
         connection.close()
