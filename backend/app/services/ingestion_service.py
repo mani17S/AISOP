@@ -28,6 +28,16 @@ from sqlalchemy.exc import IntegrityError
 DEFAULT_CHUNK_SIZE: int = 1000
 
 
+def _safe_sample(data: Any, max_len: int = 100) -> str:
+    """Safely produce a truncated string representation of a raw payload without raising exceptions."""
+    try:
+        if isinstance(data, (dict, list)):
+            return json.dumps(data, default=str)[:max_len]
+        return str(data)[:max_len]
+    except Exception:
+        return "<unserializable payload>"
+
+
 class IngestionService:
     """Service handling evidence ingestion and normalization."""
 
@@ -55,7 +65,8 @@ class IngestionService:
         - Incoming events are classified in memory.
         - Intra-batch duplicates are deduplicated in memory upon insertion of the
           first occurrence.
-        - Concurrency races are guarded via nested SAVEPOINT rollback and recovery.
+        - Concurrency races and per-event failures are guarded via nested SAVEPOINT
+          rollback and recovery, ensuring zero orphaned raw records.
         """
         batch_id = uuid.uuid4()
         total_normalized = 0
@@ -99,7 +110,7 @@ class IngestionService:
                 for record in result.scalars().all():
                     existing_records[record.sha256_hash] = record
 
-        # 4. Process each event
+        # 4. Process each event with full atomic savepoint isolation
         for idx, raw_event in enumerate(request.events):
             try:
                 sha256_hash = event_hashes[idx]
@@ -121,7 +132,7 @@ class IngestionService:
                         IngestError(
                             event_index=idx,
                             error=f"No parser available for source_type '{request.source_type}'",
-                            raw_sample=json.dumps(raw_event)[:100],
+                            raw_sample=_safe_sample(raw_event),
                         )
                     )
                     continue
@@ -133,7 +144,7 @@ class IngestionService:
                         IngestError(
                             event_index=idx,
                             error="Parser produced zero events for this payload",
-                            raw_sample=json.dumps(raw_event)[:100],
+                            raw_sample=_safe_sample(raw_event),
                         )
                     )
                     continue
@@ -151,14 +162,57 @@ class IngestionService:
                     ),
                 )
 
-                # Concurrency-safe insert using SAVEPOINT (nested transaction)
+                # Atomic per-event transaction isolation via SAVEPOINT
                 is_duplicate_race = False
+                event_norm_count = 0
+                event_entity_count = 0
+
                 try:
                     async with session.begin_nested():
+                        # 1. Insert and flush raw evidence record
                         session.add(raw_record)
                         await session.flush()
                         existing_records[sha256_hash] = raw_record
+
+                        # 2. Process each normalized event and extracted entities
+                        for canonical in canonical_events:
+                            norm_model = NormalizedEventModel(
+                                id=canonical.id,
+                                raw_evidence_id=raw_record.id,
+                                event_id=canonical.event_id,
+                                event_type=canonical.event_type,
+                                event_timestamp=canonical.timestamp,
+                                provider=canonical.provider,
+                                action=canonical.action,
+                                outcome=canonical.outcome,
+                                severity=canonical.severity,
+                                normalized_payload=canonical.model_dump(mode="json"),
+                            )
+                            session.add(norm_model)
+                            event_norm_count += 1
+
+                            # Extract and persist atomic entities
+                            entities = extract_entities(canonical)
+                            for entity in entities:
+                                ent_model = ExtractedEntityModel(
+                                    id=uuid.uuid4(),
+                                    event_id=canonical.id,
+                                    raw_evidence_id=raw_record.id,
+                                    entity_type=entity.entity_type,
+                                    entity_value=entity.entity_value,
+                                    role=entity.role,
+                                    attributes=entity.attributes,
+                                )
+                                session.add(ent_model)
+                                event_entity_count += 1
                 except IntegrityError as exc:
+                    # Clean up optimistic in-memory registration on insert conflict
+                    if (
+                        sha256_hash in existing_records
+                        and existing_records[sha256_hash] is raw_record
+                    ):
+                        del existing_records[sha256_hash]
+
                     err_str = str(exc).lower()
                     # Distinguish SHA-256 uniqueness conflict from unrelated database integrity errors
                     if "sha256_hash" in err_str or (
@@ -178,48 +232,28 @@ class IngestionService:
                             raise
                     else:
                         raise
+                except Exception:
+                    # Clean up in-memory registration if child processing threw an error
+                    if (
+                        sha256_hash in existing_records
+                        and existing_records[sha256_hash] is raw_record
+                    ):
+                        del existing_records[sha256_hash]
+                    raise
 
                 if is_duplicate_race:
                     continue
 
-                # Process each normalized event
-                for canonical in canonical_events:
-                    norm_model = NormalizedEventModel(
-                        id=canonical.id,
-                        raw_evidence_id=raw_record.id,
-                        event_id=canonical.event_id,
-                        event_type=canonical.event_type,
-                        event_timestamp=canonical.timestamp,
-                        provider=canonical.provider,
-                        action=canonical.action,
-                        outcome=canonical.outcome,
-                        severity=canonical.severity,
-                        normalized_payload=canonical.model_dump(mode="json"),
-                    )
-                    session.add(norm_model)
-                    total_normalized += 1
-
-                    # Extract and persist atomic entities
-                    entities = extract_entities(canonical)
-                    for entity in entities:
-                        ent_model = ExtractedEntityModel(
-                            id=uuid.uuid4(),
-                            event_id=canonical.id,
-                            raw_evidence_id=raw_record.id,
-                            entity_type=entity.entity_type,
-                            entity_value=entity.entity_value,
-                            role=entity.role,
-                            attributes=entity.attributes,
-                        )
-                        session.add(ent_model)
-                        total_entities += 1
+                # Event completed successfully: apply counters
+                total_normalized += event_norm_count
+                total_entities += event_entity_count
 
             except Exception as exc:
                 errors.append(
                     IngestError(
                         event_index=idx,
                         error=f"Ingestion failed: {str(exc)}",
-                        raw_sample=str(raw_event)[:100],
+                        raw_sample=_safe_sample(raw_event),
                     )
                 )
 

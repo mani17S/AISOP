@@ -660,3 +660,158 @@ async def test_chunking_boundary_1001_unique_events(db_session, sqlite_engine):
     assert len(chunk_queries) == 2
     assert len(chunk_queries[0][1]) == 1000
     assert len(chunk_queries[1][1]) == 1
+
+
+def test_batch_size_boundary_validation():
+    """P1-H4: Batch size up to MAX_BATCH_SIZE=2000 is accepted; 2001 is rejected."""
+    from pydantic import ValidationError
+
+    # 2000 events is accepted
+    events_2000 = [{"EventID": 1, "Image": "test.exe"} for _ in range(2000)]
+    req_valid = IngestRequest(events=events_2000)
+    assert len(req_valid.events) == 2000
+
+    # 2001 events is rejected
+    events_2001 = [{"EventID": 1, "Image": "test.exe"} for _ in range(2001)]
+    with pytest.raises(ValidationError) as exc_info:
+        IngestRequest(events=events_2001)
+    assert "List should have at most 2000 items" in str(exc_info.value)
+
+
+def test_event_payload_max_bytes_validation():
+    """P1-H4: Raw event payload exceeding MAX_EVENT_PAYLOAD_BYTES (64 KB) is rejected."""
+    from pydantic import ValidationError
+
+    oversized_event = {"EventID": 1, "LargeData": "A" * 70000}
+    with pytest.raises(ValidationError) as exc_info:
+        IngestRequest(events=[oversized_event])
+    assert "exceeds maximum allowed payload size of 65536 bytes" in str(exc_info.value)
+
+    # Valid size (e.g. 10 KB) succeeds
+    valid_event = {"EventID": 1, "Data": "A" * 10000}
+    req = IngestRequest(events=[valid_event])
+    assert len(req.events) == 1
+
+
+def test_source_type_and_identifier_validation():
+    """P1-H4: source_type and source_identifier enforce length and character bounds."""
+    from pydantic import ValidationError
+
+    # Empty source_type rejected
+    with pytest.raises(ValidationError):
+        IngestRequest(source_type="", events=[])
+
+    # Special characters / SQL injection syntax in source_type rejected
+    with pytest.raises(ValidationError):
+        IngestRequest(source_type="sysmon; DROP TABLE raw_evidence;", events=[])
+
+    # Overly long source_type (> 50 chars) rejected
+    with pytest.raises(ValidationError):
+        IngestRequest(source_type="a" * 51, events=[])
+
+    # Valid source_type characters accepted
+    valid_req = IngestRequest(source_type="windows_event-2.0", events=[])
+    assert valid_req.source_type == "windows_event-2.0"
+
+    # Empty source_identifier rejected
+    with pytest.raises(ValidationError):
+        IngestRequest(source_identifier="", events=[])
+
+    # Overly long source_identifier (> 255 chars) rejected
+    with pytest.raises(ValidationError):
+        IngestRequest(source_identifier="b" * 256, events=[])
+
+
+@pytest.mark.anyio
+async def test_atomic_savepoint_rollback_on_child_processing_error(db_session):
+    """
+    P1-H4: If an unexpected error occurs during child model creation (Event 1),
+    the nested savepoint cleanly rolls back that event's RawEvidence insert,
+    preventing orphaned raw records, while allowing Event 0 and Event 2 to commit.
+    """
+    from unittest.mock import patch
+
+    from app.modules.evidence.sysmon_parser import SysmonParser
+
+    service = IngestionService()
+    event_0 = {
+        "EventID": 1,
+        "Image": "good0.exe",
+        "Computer": "HOST-ATOM",
+        "ProcessId": 100,
+    }
+    event_1_bad = {
+        "EventID": 1,
+        "Image": "bad1.exe",
+        "Computer": "HOST-ATOM",
+        "ProcessId": 200,
+    }
+    event_2 = {
+        "EventID": 1,
+        "Image": "good2.exe",
+        "Computer": "HOST-ATOM",
+        "ProcessId": 300,
+    }
+
+    request = IngestRequest(
+        source_type="sysmon",
+        source_identifier="HOST-ATOM",
+        events=[event_0, event_1_bad, event_2],
+    )
+
+    # Intercept extract_entities on event_1_bad to simulate an unexpected child processing crash
+    from app.services import ingestion_service as ing_module
+
+    orig_extract = ing_module.extract_entities
+
+    def failing_extract(canonical):
+        if canonical.process and canonical.process.process_name == "bad1.exe":
+            raise RuntimeError("Simulated entity extraction crash")
+        return orig_extract(canonical)
+
+    with patch.object(ing_module, "extract_entities", failing_extract):
+        response = await service.ingest_batch(db_session, request)
+
+    # IngestResponse must show 3 received, 2 normalized, 1 error
+    assert response.total_received == 3
+    assert response.total_normalized == 2
+    assert response.total_skipped_duplicates == 0
+    assert len(response.errors) == 1
+    assert response.errors[0].event_index == 1
+    assert "Simulated entity extraction crash" in response.errors[0].error
+
+    # CRITICAL ATOMICITY CHECK:
+    # Database MUST contain exactly 2 RawEvidence rows (for good0.exe and good2.exe).
+    # bad1.exe's RawEvidence must have been completely rolled back by the savepoint!
+    raw_rows = (await db_session.execute(select(RawEvidence))).scalars().all()
+    assert len(raw_rows) == 2
+    raw_payloads = [str(r.raw_payload) for r in raw_rows]
+    assert any("good0.exe" in p for p in raw_payloads)
+    assert any("good2.exe" in p for p in raw_payloads)
+    assert not any("bad1.exe" in p for p in raw_payloads)
+
+    # NormalizedEventModel rows must strictly be 2
+    norm_rows = (await db_session.execute(select(NormalizedEventModel))).scalars().all()
+    assert len(norm_rows) == 2
+
+
+def test_safe_sample_truncation():
+    """P1-H4: _safe_sample safely formats dicts, strings, and non-serializable objects without crashing."""
+    from app.services.ingestion_service import _safe_sample
+
+    sample_dict = {"key": "value", "nested": {"a": 1}}
+    assert "key" in _safe_sample(sample_dict)
+
+    sample_str = "A" * 200
+    res_str = _safe_sample(sample_str, max_len=50)
+    assert len(res_str) == 50
+
+    # Object with failing str/repr
+    class BrokenObject:
+        def __repr__(self):
+            raise Exception("Cannot repr")
+
+        def __str__(self):
+            raise Exception("Cannot str")
+
+    assert _safe_sample(BrokenObject()) == "<unserializable payload>"
