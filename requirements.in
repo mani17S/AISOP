@@ -1,0 +1,42 @@
+# AISOP — Direct Dependencies
+# Install: pip install -r requirements.in
+# Freeze:  pip freeze > requirements.txt
+#
+# Governance:
+#   ADR-001: No LangChain/LangGraph — direct LLM abstraction via httpx.
+#   ADR-002: No ChromaDB — pgvector in PostgreSQL.
+#   ADR-003: Python >= 3.12.
+#   P0.3:    No torch/sentence-transformers — Ollama embeddings.
+
+# ── Backend Framework ──────────────────────────
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+pydantic>=2.9,<3.0
+pydantic-settings>=2.5
+
+# ── Database ───────────────────────────────────
+sqlalchemy>=2.0.30,<3.0
+psycopg[binary]>=3.2
+pgvector>=0.3
+
+# ── AI / LLM (Direct HTTP — ADR-001) ──────────
+httpx>=0.27
+httpx-sse>=0.4
+tenacity>=9.0
+jinja2>=3.1
+
+# ── Security ───────────────────────────────────
+bcrypt>=4.0
+
+# ── Logging ────────────────────────────────────
+loguru>=0.7
+
+# ── Utilities ──────────────────────────────────
+python-dotenv>=1.0
+pyyaml>=6.0
+rich>=13.0
+
+# ── Development ────────────────────────────────
+pytest>=8.0
+black>=24.0
+isort>=5.13

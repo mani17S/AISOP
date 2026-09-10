@@ -1,0 +1,42 @@
+[
+  {
+    "EventID": 1,
+    "UtcTime": "2026-09-09 14:15:20.123",
+    "ProcessId": 5412,
+    "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "CommandLine": "powershell.exe -NoP -NonI -W Hidden -Enc SUVY...",
+    "ParentImage": "C:\\Windows\\explorer.exe",
+    "User": "CORP\\victim_user",
+    "Hashes": "SHA256=A697368B25A0B7EC9AEBEE3FECE92CE9D0E76F4B84BBDA5701FEA28A6635A33D",
+    "Computer": "CORP-FIN-WS01"
+  },
+  {
+    "EventID": 22,
+    "UtcTime": "2026-09-09 14:15:21.500",
+    "ProcessId": 5412,
+    "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "QueryName": "c2.apt-simulated.org",
+    "QueryResults": "198.51.100.45",
+    "Computer": "CORP-FIN-WS01"
+  },
+  {
+    "EventID": 3,
+    "UtcTime": "2026-09-09 14:15:22.800",
+    "ProcessId": 5412,
+    "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "SourceIp": "192.168.10.105",
+    "DestinationIp": "198.51.100.45",
+    "DestinationPort": 443,
+    "Protocol": "tcp",
+    "Computer": "CORP-FIN-WS01"
+  },
+  {
+    "EventID": 11,
+    "UtcTime": "2026-09-09 14:15:25.000",
+    "ProcessId": 5412,
+    "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "TargetFilename": "C:\\Users\\Public\\mimikatz.exe",
+    "Hashes": "SHA256=17565FE8A1553835B19FA865BEFA0DF85FA3EC04B9741D8B4D445F0F5CC054D6",
+    "Computer": "CORP-FIN-WS01"
+  }
+]

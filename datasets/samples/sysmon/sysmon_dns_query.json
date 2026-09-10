@@ -1,0 +1,12 @@
+{
+  "EventID": 22,
+  "UtcTime": "2026-09-09 14:15:21.000",
+  "ProcessGuid": "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}",
+  "ProcessId": 5412,
+  "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+  "QueryName": "c2.apt-simulated.org",
+  "QueryStatus": "0",
+  "QueryResults": "198.51.100.45",
+  "User": "CORP\\victim_user",
+  "Computer": "CORP-FIN-WS01"
+}

@@ -1,0 +1,30 @@
+# AISOP Docker Compose Architecture
+# Runs containerized PostgreSQL + pgvector alongside host services
+#
+# Ports:
+#   Host 5432 -> Windows Native PostgreSQL 17 (untouched)
+#   Host 5433 -> AISOP Docker PostgreSQL 17 + pgvector (container 5432)
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: aisop-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aisop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aisop}
+      POSTGRES_DB: ${POSTGRES_DB:-aisop_dev}
+    volumes:
+      - aisop_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aisop -d aisop_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  aisop_postgres_data:
+    name: aisop_postgres_data
+    driver: local
