@@ -11,8 +11,9 @@
 | **P1-H5** | SOC Investigation Query API Expansion | COMPLETE | `2228764` | Deterministic SOC investigation retrieval layer: normalized events, entity/IOC queries, time bounding, raw evidence retrieval, and bounded pagination. |
 | **P1-H6** | Structured Logging & Observability | COMPLETE | `bbc34dd` | Loguru structured JSON/text logging, request correlation IDs (`X-Request-ID`), sensitive data redaction, and ingestion/query telemetry. |
 | **P1-H7** | Database Migrations & Schema Lifecycle | COMPLETE | `164a65e` | Alembic async migrations setup, initial revision (`0001_initial_evidence_schema`), deterministic DDL, schema parity verification, and migration lifecycle tests. |
-| **P1-H8** | Sysmon Parser & Dataset Expansion | COMPLETE | Ready for Checkpoint | Expanded deterministic Sysmon parser for Event IDs 8 (CreateRemoteThread), 10 (ProcessAccess), 15 (FileCreateStreamHash), and 23 (FileDelete) with entity extraction and zero schema migrations. |
-| **P1-H9** | PostgreSQL Integration Test Suite | PENDING | — | Real PostgreSQL automated testing harness. |
+| **P1-H8** | Sysmon Parser & Dataset Expansion | COMPLETE | `e5ffff8` | Expanded deterministic Sysmon parser for Event IDs 8 (CreateRemoteThread), 10 (ProcessAccess), 15 (FileCreateStreamHash), and 23 (FileDelete) with entity extraction and zero schema migrations. |
+| **P1-H9** | PostgreSQL Integration Test Suite | COMPLETE | `7998be8` | Real PostgreSQL 17 automated integration testing harness with zero SQLite fallback and isolated test database. |
+| **P1-H10** | Phase 1 Hardening Capstone & Closeout | READY FOR REVIEW | Pending Checkpoint | Phase 1 architecture consolidation, milestone synchronization, test baseline certification (114 tests), and Phase 1 closeout report. |
 
 
 ---
@@ -193,3 +194,24 @@
     * PostgreSQL integration tests: `pytest -v -m postgres` (6 passed in ~1.8s)
     * Fast unit tests: `pytest -v -m "not postgres"` (108 passed in ~3.1s)
     * Complete test suite: `pytest -v` (114 passed in ~4.0s)
+
+#### P1-H10: Phase 1 Hardening Capstone, Documentation Consolidation & Baseline Closeout
+* **Objective:**
+  * Formally close and consolidate Phase 1 (Ingestion Pipeline & Canonical Data Model Hardening) following completion of P1-H1 through P1-H9.
+  * Ensure the implemented system architecture, milestone records, test baseline, and known operational boundaries are consistent, auditable, and certified for a controlled transition to Phase 2.
+* **Scope of Deliverables:**
+  * Synchronized milestone table with exact commit hashes for all completed Phase 1 milestones.
+  * Populated `docs/03_System_Design/Architecture.md` reflecting the code-verified technical architecture of the Phase 1 implementation (Hasher, SysmonParser, EntityExtractor, IngestionService, InvestigationQueryService, SQLAlchemy 2.0 Async, Alembic migrations, and PostgreSQL integration suite).
+  * Authored `docs/00_Project_Management/Phase_1_Closeout_Report.md` providing formal audit records, test baseline metrics, and explicit Phase 2 boundaries.
+  * Regression verification confirming full suite pass rate (114 tests) with zero failures and zero regressions.
+* **Strictly Out-of-Scope Items:**
+  * Zero new application features, zero schema modifications, zero new dependencies, and zero changes to existing application behavior.
+  * AI/LLM integrations, RAG, pgvector vector search, and embeddings deferred to Phase 2 (ADR-001, ADR-002).
+  * Frontend, UI, and dashboard development deferred to Phase 4 (ADR-005).
+  * Alternate telemetry parsers (EVTX, Windows Security Events, Zeek, Suricata) deferred to future milestones (ADR-004).
+* **Verification Criteria & Baseline:**
+  * Unit test suite: 108 passed.
+  * PostgreSQL integration test suite: 6 passed.
+  * Combined regression suite: 114 passed.
+  * Formatting & linting: Black and isort checks pass on all codebase components.
+  * Architectural documentation parity: 100% verified against source code and ADRs.
