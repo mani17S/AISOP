@@ -1,27 +1,33 @@
 """
 AISOP Database Initialization Script.
 
-Initializes database extensions (e.g. pgvector) and creates tables for local deployment.
+Applies version-controlled Alembic migrations to establish the database schema.
 """
 
 from __future__ import annotations
 
-import asyncio
-from sqlalchemy import text
-from app.db.base import Base
-from app.db.session import get_engine
-from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence  # noqa: F401
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+from loguru import logger
 
 
-async def init_database() -> None:
-    """Initialize database extensions and create tables."""
-    engine = get_engine()
-    async with engine.begin() as conn:
-        # Check dialect: if postgresql, ensure vector extension exists
-        if engine.dialect.name == "postgresql":
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        await conn.run_sync(Base.metadata.create_all)
+def init_database() -> None:
+    """Run Alembic migrations to bring the database schema to head."""
+    backend_dir = Path(__file__).resolve().parents[2]
+    alembic_ini_path = backend_dir / "alembic.ini"
+    if not alembic_ini_path.exists():
+        alembic_ini_path = backend_dir.parent / "alembic.ini"
+
+    logger.info(
+        "Applying Alembic database migrations",
+        config_path=str(alembic_ini_path),
+    )
+    alembic_cfg = Config(str(alembic_ini_path))
+    command.upgrade(alembic_cfg, "head")
+    logger.info("Database schema successfully migrated to head")
 
 
 if __name__ == "__main__":
-    asyncio.run(init_database())
+    init_database()

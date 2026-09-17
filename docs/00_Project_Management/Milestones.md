@@ -9,9 +9,9 @@
 | **P1-H3** | Batch Query Optimization | COMPLETE | `e1af0c9` | Replaced $O(N)$ sequential lookups with batched chunked existence queries (`IN (...)`) and in-memory classification map. |
 | **P1-H4** | Ingestion Security & Bounds Hardening | COMPLETE | `2cbe6a8` | Enforced `MAX_BATCH_SIZE=2000`, `MAX_EVENT_PAYLOAD_BYTES=65536`, `source_type`/`identifier` bounds, per-event atomic savepoint isolation, safe sample serialization. |
 | **P1-H5** | SOC Investigation Query API Expansion | COMPLETE | `2228764` | Deterministic SOC investigation retrieval layer: normalized events, entity/IOC queries, time bounding, raw evidence retrieval, and bounded pagination. |
-| **P1-H6** | Structured Logging & Observability | COMPLETE | Ready for Checkpoint | Loguru structured JSON/text logging, request correlation IDs (`X-Request-ID`), sensitive data redaction, and ingestion/query telemetry. |
-| **P1-H7** | Sysmon Parser & Dataset Expansion | PENDING | — | Event IDs 8 (RemoteThread), 10 (ProcessAccess), 15 (ADS), 23 (FileDelete). |
-| **P1-H8** | Database Migrations (Alembic Setup) | PENDING | — | Versioned schema migration management. |
+| **P1-H6** | Structured Logging & Observability | COMPLETE | `bbc34dd` | Loguru structured JSON/text logging, request correlation IDs (`X-Request-ID`), sensitive data redaction, and ingestion/query telemetry. |
+| **P1-H7** | Database Migrations & Schema Lifecycle | COMPLETE | Ready for Checkpoint | Alembic async migrations setup, initial revision (`0001_initial_evidence_schema`), deterministic DDL, schema parity verification, and migration lifecycle tests. |
+| **P1-H8** | Sysmon Parser & Dataset Expansion | PENDING | — | Event IDs 8 (RemoteThread), 10 (ProcessAccess), 15 (ADS), 23 (FileDelete). |
 | **P1-H9** | PostgreSQL Integration Test Suite | PENDING | — | Real PostgreSQL automated testing harness. |
 
 
@@ -94,6 +94,25 @@
   * **No per-event INFO logging overhead:** Ingestion intentionally emits batch-level lifecycle summaries rather than one INFO record per event (e.g. 2,000 events emit 1 batch-start log and 1 batch-completion log, with failures emitted at WARNING/ERROR). This prevents per-event logging overhead in ingestion loops without claiming literal zero runtime overhead.
   * **Lazy Context Evaluation:** Evaluates structured context dictionaries only when log levels are enabled, avoiding expensive serialization overhead during high-throughput operations.
   * **Regression Baseline:** The current test suite completes in 2.43s with structured logging enabled. This provides a basic regression signal but does not constitute a production throughput benchmark.
+
+#### P1-H7: Database Migrations & Schema Lifecycle
+* **Objective:**
+  * Establish a reproducible, version-controlled database schema lifecycle using Alembic for the canonical AISOP ORM schema without manual schema mutations, unversioned DDL, or production startup alterations.
+* **Architecture & Standards:**
+  * **Core Tooling:** `alembic>=1.13,<2.0` with `Mako` configured in root `alembic.ini` and `backend/alembic.ini`.
+  * **Async Execution:** `env.py` coordinates async migration execution via SQLAlchemy 2.0 AsyncEngine and dynamic database connection resolution from `app.core.config.get_settings().DATABASE_URL`.
+  * **Initial Schema Revision (`0001_initial_evidence_schema`):**
+    * Encapsulates all Phase 1 data models: `raw_evidence`, `normalized_events`, `extracted_entities`.
+    * Codifies primary keys (UUID), foreign keys with cascading delete (`ON DELETE CASCADE`), indexes, and compound indexes (`ix_normalized_events_type_time`, `ix_normalized_events_time_id`, `ix_extracted_entities_type_value`).
+    * Full bidirectional reversibility (`upgrade()` and `downgrade()`).
+  * **PostgreSQL / pgvector Policy:**
+    * No current model utilizes vector columns; hence `CREATE EXTENSION IF NOT EXISTS vector;` is omitted from the initial migration. Extension handling is strictly deferred until vector models (ADR-002 / Phase 2) are introduced.
+  * **Safety Guarantees:**
+    * Application startup (`lifespan` in `app/main.py`) performs zero automatic schema mutations.
+    * All generated migrations execute inside explicit database transactions (`BEGIN ... COMMIT`).
+* **Verification & Testing Scope:**
+  * Added `backend/tests/unit/test_migrations.py` validating Alembic script discovery, exact target metadata parity (`diffs == []`), offline PostgreSQL SQL DDL generation, and isolated migration lifecycle (upgrade/downgrade) on in-memory SQLite test engines.
+  * Live PostgreSQL containerized integration testing is strictly scoped and deferred to Milestone P1-H9.
 
 
 
