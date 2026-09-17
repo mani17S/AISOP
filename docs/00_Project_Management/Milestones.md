@@ -165,7 +165,31 @@
     * `sysmon_file_create_stream_hash.json`
     * `sysmon_file_delete.json`
   * Added 14 unit and integration tests across `test_sysmon_parser.py`, `test_entity_extractor.py`, and `test_sample_dataset_ingestion.py`.
-  * Full test suite verification: 106/106 tests passing.
+  * Full test suite verification: 108/108 tests passing.
 
-
-
+#### P1-H9: PostgreSQL Integration Test Suite
+* **Objective:**
+  * Introduce a reliable, automated PostgreSQL integration-test layer for AISOP's existing persistence lifecycle, validating real PostgreSQL behavior (SQLAlchemy 2.0 async engine, ORM models, Alembic migrations) without regression or silent fallback.
+* **Architecture & Environment Strategy:**
+  * **Zero SQLite Fallback:** Enforces strict dialect validation (`dialect == "postgresql"`). If PostgreSQL is unreachable or non-PostgreSQL dialect is used, tests fail immediately with actionable diagnostic errors.
+  * **Port & Database Isolation:**
+    * Operates strictly against isolated containerized PostgreSQL on host port `5433` (`pgvector/pgvector:pg17`), completely avoiding and isolating the host's native PostgreSQL service on port `5432`.
+    * Uses a dedicated `aisop_test` database (auto-provisioned by session fixtures) to prevent any contamination of development data (`aisop_dev`).
+  * **Windows Event Loop Compatibility:**
+    * Configured `WindowsSelectorEventLoopPolicy` in both `env.py` and `conftest.py` to resolve psycopg 3 async compatibility with Windows asyncio event loops.
+  * **Dual Engine Architecture:**
+    * `postgres_sync_engine` (synchronous `create_engine`): Coordinates schema provisioning, Alembic migrations, and SQLAlchemy inspection (`inspect()`).
+    * `postgres_engine` (asynchronous `create_async_engine`): Coordinates `AsyncSession` interactions, data persistence, and pipeline testing.
+* **Test Suite Verification (`backend/tests/integration/test_postgres_lifecycle.py`):**
+  * `test_postgres_connectivity_and_dialect`: Confirms live TCP connection, dialect validation (`postgresql`), and server version check (`SELECT version()`).
+  * `test_postgres_alembic_upgrade_lifecycle`: Runs online `alembic upgrade head`, inspects native table creation, UUID primary keys, JSON payloads, TIMESTAMPTZ columns, unique indices, cascading foreign keys, and metadata parity (`diffs == []`).
+  * `test_postgres_orm_crud_and_datatype_fidelity`: Inserts and retrieves `RawEvidence`, `NormalizedEventModel`, and `ExtractedEntityModel`. Validates native UUID object preservation, complex nested JSON preservation, and timezone offset instant equality.
+  * `test_postgres_ingestion_service_deduplication`: Validates idempotent deduplication, `UniqueViolation` constraint enforcement on `raw_evidence.sha256_hash`, nested `SAVEPOINT` rollback recovery, and session reuse after rollback.
+  * `test_postgres_foreign_key_cascades`: Validates `ON DELETE CASCADE` semantics by deleting parent `RawEvidence` and confirming automatic deletion of children `NormalizedEventModel` and `ExtractedEntityModel`.
+  * `test_postgres_alembic_downgrade_lifecycle`: Runs online `alembic downgrade base`, verifies removal of all application tables and revision records, then re-applies `head` to preserve clean canonical schema state.
+* **Documentation & Governance:**
+  * Created `docs/04_Database/Database_Testing.md` specifying setup, port isolation, environment variables, and execution commands.
+  * Test suite execution:
+    * PostgreSQL integration tests: `pytest -v -m postgres` (6 passed in ~1.8s)
+    * Fast unit tests: `pytest -v -m "not postgres"` (108 passed in ~3.1s)
+    * Complete test suite: `pytest -v` (114 passed in ~4.0s)

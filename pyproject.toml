@@ -9,6 +9,9 @@ requires-python = ">=3.12"
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 pythonpath = ["backend"]
+markers = [
+    "postgres: marks tests requiring live PostgreSQL (deselect with '-m \"not postgres\"')",
+]
 
 [tool.black]
 line-length = 88

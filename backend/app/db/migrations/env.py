@@ -122,6 +122,10 @@ def run_migrations_online() -> None:
         do_run_migrations(injected_conn)
         return
 
+    # Psycopg async on Windows requires SelectorEventLoop instead of ProactorEventLoop
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     asyncio.run(run_async_migrations())
 
 
