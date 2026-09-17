@@ -1,0 +1,15 @@
+{
+  "EventID": 10,
+  "UtcTime": "2026-09-09 14:15:32.456",
+  "SourceProcessGUID": "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}",
+  "SourceProcessId": 5412,
+  "SourceThreadId": 6780,
+  "SourceImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+  "TargetProcessGUID": "{E5F6A1B2-C3D4-7890-5678-9ABCDEF01234}",
+  "TargetProcessId": 648,
+  "TargetImage": "C:\\Windows\\System32\\lsass.exe",
+  "GrantedAccess": "0x1010",
+  "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+9d494|C:\\Windows\\System32\\KERNELBASE.dll+2c2ce|UNKNOWN(00007FFB34121050)",
+  "User": "CORP\\victim_user",
+  "Computer": "CORP-FIN-WS01"
+}

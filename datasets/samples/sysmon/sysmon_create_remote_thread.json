@@ -1,0 +1,16 @@
+{
+  "EventID": 8,
+  "UtcTime": "2026-09-09 14:15:30.123",
+  "SourceProcessGuid": "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}",
+  "SourceProcessId": 5412,
+  "SourceImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+  "TargetProcessGuid": "{F0E1D2C3-B4A5-6789-0123-456789ABCDEF}",
+  "TargetProcessId": 1024,
+  "TargetImage": "C:\\Windows\\System32\\notepad.exe",
+  "NewThreadId": 8920,
+  "StartAddress": "0x00007FFB34121000",
+  "StartModule": "C:\\Windows\\System32\\kernel32.dll",
+  "StartFunction": "LoadLibraryA",
+  "User": "CORP\\victim_user",
+  "Computer": "CORP-FIN-WS01"
+}

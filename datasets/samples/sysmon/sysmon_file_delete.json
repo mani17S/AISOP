@@ -1,0 +1,13 @@
+{
+  "EventID": 23,
+  "UtcTime": "2026-09-09 14:15:40.012",
+  "ProcessGuid": "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}",
+  "ProcessId": 5412,
+  "User": "CORP\\victim_user",
+  "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+  "TargetFilename": "C:\\Users\\Public\\mimikatz.exe",
+  "Hashes": "SHA256=17565FE8A1553835B19FA865BEFA0DF85FA3EC04B9741D8B4D445F0F5CC054D6",
+  "IsExecutable": "true",
+  "Archived": "false",
+  "Computer": "CORP-FIN-WS01"
+}

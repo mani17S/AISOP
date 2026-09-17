@@ -8,19 +8,28 @@ correlation, entity graph generation, and threat intelligence lookups.
 from __future__ import annotations
 
 from typing import Any
-from pydantic import BaseModel, Field
 
 from app.schemas.normalized_event import CanonicalEvent
+from pydantic import BaseModel, Field
 
 
 class ExtractedEntityRecord(BaseModel):
     """
     Flat representation of an atomic entity extracted from a CanonicalEvent.
     """
-    entity_type: str = Field(description="ip, host, user, process, file_hash, domain, file, registry")
-    entity_value: str = Field(description="The normalized identifier value for this entity")
-    role: str = Field(description="source, destination, parent, child, target, subject, actor")
-    attributes: dict[str, Any] = Field(default_factory=dict, description="Contextual attributes")
+
+    entity_type: str = Field(
+        description="ip, host, user, process, file_hash, domain, file, registry"
+    )
+    entity_value: str = Field(
+        description="The normalized identifier value for this entity"
+    )
+    role: str = Field(
+        description="source, destination, parent, child, target, subject, actor"
+    )
+    attributes: dict[str, Any] = Field(
+        default_factory=dict, description="Contextual attributes"
+    )
 
 
 def extract_entities(event: CanonicalEvent) -> list[ExtractedEntityRecord]:
@@ -61,20 +70,31 @@ def extract_entities(event: CanonicalEvent) -> list[ExtractedEntityRecord]:
             )
         )
 
-    # 3. Process Entities (Child / Executed Process)
+    # 3. Process Entities (Child / Executed / Source Process)
     if event.process:
         if event.process.process_name:
+            if event.event_id in ("8", "10"):
+                proc_role = "source"
+            elif event.process.parent_image:
+                proc_role = "child"
+            else:
+                proc_role = "executed"
+
+            proc_attrs: dict[str, Any] = {
+                "image_path": event.process.image_path,
+                "command_line": event.process.command_line,
+                "pid": event.process.pid,
+                "ppid": event.process.ppid,
+            }
+            if event.process.process_guid:
+                proc_attrs["process_guid"] = event.process.process_guid
+
             entities.append(
                 ExtractedEntityRecord(
                     entity_type="process",
                     entity_value=event.process.process_name.lower(),
-                    role="child" if event.process.parent_image else "executed",
-                    attributes={
-                        "image_path": event.process.image_path,
-                        "command_line": event.process.command_line,
-                        "pid": event.process.pid,
-                        "ppid": event.process.ppid,
-                    },
+                    role=proc_role,
+                    attributes=proc_attrs,
                 )
             )
 
@@ -102,9 +122,46 @@ def extract_entities(event: CanonicalEvent) -> list[ExtractedEntityRecord]:
                         entity_type="file_hash",
                         entity_value=hash_val.lower(),
                         role="process_hash",
-                        attributes={"algorithm": algo.upper(), "process": event.process.process_name},
+                        attributes={
+                            "algorithm": algo.upper(),
+                            "process": event.process.process_name,
+                        },
                     )
                 )
+
+    # 3b. Target Process Entity (e.g. from Event 8 CreateRemoteThread or Event 10 ProcessAccess)
+    target_proc_name = event.custom_fields.get("target_process_name")
+    if target_proc_name and isinstance(target_proc_name, str):
+        target_attrs: dict[str, Any] = {}
+        if event.custom_fields.get("target_image"):
+            target_attrs["image_path"] = str(event.custom_fields["target_image"])
+        if event.custom_fields.get("target_process_id") is not None:
+            target_attrs["pid"] = event.custom_fields["target_process_id"]
+        if event.custom_fields.get("target_process_guid"):
+            target_attrs["process_guid"] = str(
+                event.custom_fields["target_process_guid"]
+            )
+        if event.custom_fields.get("granted_access"):
+            target_attrs["granted_access"] = str(event.custom_fields["granted_access"])
+        if event.custom_fields.get("call_trace"):
+            target_attrs["call_trace"] = str(event.custom_fields["call_trace"])
+        if event.custom_fields.get("new_thread_id") is not None:
+            target_attrs["new_thread_id"] = event.custom_fields["new_thread_id"]
+        if event.custom_fields.get("start_address"):
+            target_attrs["start_address"] = str(event.custom_fields["start_address"])
+        if event.custom_fields.get("start_module"):
+            target_attrs["start_module"] = str(event.custom_fields["start_module"])
+        if event.custom_fields.get("start_function"):
+            target_attrs["start_function"] = str(event.custom_fields["start_function"])
+
+        entities.append(
+            ExtractedEntityRecord(
+                entity_type="process",
+                entity_value=target_proc_name.lower(),
+                role="target",
+                attributes=target_attrs,
+            )
+        )
 
     # 4. Network Entities
     if event.network:
@@ -114,7 +171,10 @@ def extract_entities(event: CanonicalEvent) -> list[ExtractedEntityRecord]:
                     entity_type="ip",
                     entity_value=event.network.source_ip,
                     role="source",
-                    attributes={"port": event.network.source_port, "protocol": event.network.protocol},
+                    attributes={
+                        "port": event.network.source_port,
+                        "protocol": event.network.protocol,
+                    },
                 )
             )
         if event.network.destination_ip:
@@ -123,7 +183,10 @@ def extract_entities(event: CanonicalEvent) -> list[ExtractedEntityRecord]:
                     entity_type="ip",
                     entity_value=event.network.destination_ip,
                     role="destination",
-                    attributes={"port": event.network.destination_port, "protocol": event.network.protocol},
+                    attributes={
+                        "port": event.network.destination_port,
+                        "protocol": event.network.protocol,
+                    },
                 )
             )
         if event.network.destination_hostname:
@@ -144,7 +207,10 @@ def extract_entities(event: CanonicalEvent) -> list[ExtractedEntityRecord]:
                     entity_type="file",
                     entity_value=event.file.filename.lower(),
                     role="target",
-                    attributes={"path": event.file.path, "size_bytes": event.file.size_bytes},
+                    attributes={
+                        "path": event.file.path,
+                        "size_bytes": event.file.size_bytes,
+                    },
                 )
             )
         for algo, hash_val in event.file.hashes.items():
@@ -154,7 +220,10 @@ def extract_entities(event: CanonicalEvent) -> list[ExtractedEntityRecord]:
                         entity_type="file_hash",
                         entity_value=hash_val.lower(),
                         role="file_hash",
-                        attributes={"algorithm": algo.upper(), "filename": event.file.filename},
+                        attributes={
+                            "algorithm": algo.upper(),
+                            "filename": event.file.filename,
+                        },
                     )
                 )
 

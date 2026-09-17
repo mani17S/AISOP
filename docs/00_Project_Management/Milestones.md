@@ -10,8 +10,8 @@
 | **P1-H4** | Ingestion Security & Bounds Hardening | COMPLETE | `2cbe6a8` | Enforced `MAX_BATCH_SIZE=2000`, `MAX_EVENT_PAYLOAD_BYTES=65536`, `source_type`/`identifier` bounds, per-event atomic savepoint isolation, safe sample serialization. |
 | **P1-H5** | SOC Investigation Query API Expansion | COMPLETE | `2228764` | Deterministic SOC investigation retrieval layer: normalized events, entity/IOC queries, time bounding, raw evidence retrieval, and bounded pagination. |
 | **P1-H6** | Structured Logging & Observability | COMPLETE | `bbc34dd` | Loguru structured JSON/text logging, request correlation IDs (`X-Request-ID`), sensitive data redaction, and ingestion/query telemetry. |
-| **P1-H7** | Database Migrations & Schema Lifecycle | COMPLETE | Ready for Checkpoint | Alembic async migrations setup, initial revision (`0001_initial_evidence_schema`), deterministic DDL, schema parity verification, and migration lifecycle tests. |
-| **P1-H8** | Sysmon Parser & Dataset Expansion | PENDING | — | Event IDs 8 (RemoteThread), 10 (ProcessAccess), 15 (ADS), 23 (FileDelete). |
+| **P1-H7** | Database Migrations & Schema Lifecycle | COMPLETE | `164a65e` | Alembic async migrations setup, initial revision (`0001_initial_evidence_schema`), deterministic DDL, schema parity verification, and migration lifecycle tests. |
+| **P1-H8** | Sysmon Parser & Dataset Expansion | COMPLETE | Ready for Checkpoint | Expanded deterministic Sysmon parser for Event IDs 8 (CreateRemoteThread), 10 (ProcessAccess), 15 (FileCreateStreamHash), and 23 (FileDelete) with entity extraction and zero schema migrations. |
 | **P1-H9** | PostgreSQL Integration Test Suite | PENDING | — | Real PostgreSQL automated testing harness. |
 
 
@@ -113,6 +113,59 @@
 * **Verification & Testing Scope:**
   * Added `backend/tests/unit/test_migrations.py` validating Alembic script discovery, exact target metadata parity (`diffs == []`), offline PostgreSQL SQL DDL generation, and isolated migration lifecycle (upgrade/downgrade) on in-memory SQLite test engines.
   * Live PostgreSQL containerized integration testing is strictly scoped and deferred to Milestone P1-H9.
+
+#### P1-H8: Sysmon Parser Coverage Expansion
+* **Objective:**
+  * Expand the deterministic Sysmon JSON parser and entity extraction engine to support advanced endpoint attack techniques:
+    * Event ID 8: `CreateRemoteThread` (Process Injection / Thread Injection)
+    * Event ID 10: `ProcessAccess` (Credential Dumping / Process Inspection / LSASS access)
+    * Event ID 15: `FileCreateStreamHash` (Alternate Data Streams / Web Downloads / Zone.Identifier)
+    * Event ID 23: `FileDelete` (Anti-Forensics / Dropper Cleanup / Ransomware file removal)
+* **Canonical Schema & Architecture Integration:**
+  * **Zero Schema Alterations:** Adheres strictly to the existing `CanonicalEvent` contract and relational schema. No database migrations, ORM column changes, or Alembic revisions required.
+  * **Event Mapping & Action Verbs:**
+    * Event 8: `event_type="create_remote_thread"`, `action="created"`, `severity="informational"`.
+    * Event 10: `event_type="process_access"`, `action="accessed"`, `severity="informational"`.
+    * Event 15: `event_type="file_create_stream_hash"`, `action="created"`, `severity="informational"`.
+    * Event 23: `event_type="file_delete"`, `action="deleted"`, `severity="informational"`.
+* **Field Normalization & Preservation:**
+  * **Source vs. Target Process Separation (Events 8 & 10):**
+    * The acting/initiating process populates `CanonicalEvent.process` (`ProcessEntity`) with `pid`, `process_name`, `image_path`, `process_guid`, and `user`.
+    * Target process attributes are stored in `custom_fields` with normalized keys: `target_process_id`, `target_image`, `target_process_name`, and `target_process_guid`.
+    * Injection and memory access attributes are preserved in `custom_fields`:
+      * Event 8: `new_thread_id`, `start_address`, `start_module`, `start_function`.
+      * Event 10: `source_thread_id`, `granted_access`, `call_trace`.
+  * **GrantedAccess & CallTrace Handling:**
+    * `GrantedAccess` is preserved verbatim as an exact string (e.g. `"0x1010"`), avoiding error-prone or lossy bitmask reinterpretation.
+    * `CallTrace` is preserved verbatim as a string stack trace without unsafe heuristics.
+  * **Filesystem & Alternate Data Stream Handling (Events 15 & 23):**
+    * `TargetFilename` is normalized into `FileEntity.path`, with file basename extracted to `FileEntity.filename`. For Event 15 ADS streams (`invoice.pdf:Zone.Identifier`), stream naming syntax is preserved.
+    * Event 15 `CreationUtcTime` is captured in `custom_fields["creation_utc_time"]`.
+  * **Hash Normalization (`_parse_hashes`):**
+    * Supports standard Sysmon key-value format (`"SHA256=...,MD5=..."`), case-insensitive key discovery (`Hashes`, `Hash`), and bare hex digests (detecting algorithm by digest length: 32 -> MD5, 40 -> SHA1, 64 -> SHA256, 128 -> SHA512).
+  * **Boolean Field Normalization (`_parse_bool`):**
+    * Normalizes boolean-like representations (`"true"`, `"1"`, `"yes"`, `True` -> `True`; `"false"`, `"0"`, `"no"`, `False` -> `False`; others -> `None`) for `IsExecutable` and `Archived` in Event 23.
+  * **Secondary Process Context:**
+    * Updated `_parse_process_context` to capture `process_guid` and `user` alongside `pid`, `image_path`, and `command_line` across secondary events.
+* **Atomic Entity & Graph Extraction:**
+  * **Process Role Differentiation:**
+    * Initiating process in Events 8 and 10 is extracted with `role="source"`.
+    * Target process in Events 8 and 10 is extracted with `role="target"` including attributes for `pid`, `image_path`, `process_guid`, `granted_access`, and thread info.
+  * **File & Hash Extraction:**
+    * Target filenames extracted with `role="target"`.
+    * Hashes extracted with `role="file_hash"`.
+* **Security & Non-Destructive Principles:**
+  * Parsed data is treated strictly as untrusted evidence. No commands are executed, no paths evaluated, and no network/threat-intel queries initiated.
+  * File deletion (Event 23) is preserved as neutral telemetry without assuming maliciousness or triggering automated containment or file-deletion actions.
+  * Binary EVTX parsing is intentionally out of scope; telemetry must be supplied in JSON representation.
+* **Fixtures & Testing Coverage:**
+  * Added 4 realistic synthetic fixtures in `datasets/samples/sysmon/`:
+    * `sysmon_create_remote_thread.json`
+    * `sysmon_process_access.json`
+    * `sysmon_file_create_stream_hash.json`
+    * `sysmon_file_delete.json`
+  * Added 14 unit and integration tests across `test_sysmon_parser.py`, `test_entity_extractor.py`, and `test_sample_dataset_ingestion.py`.
+  * Full test suite verification: 106/106 tests passing.
 
 
 
