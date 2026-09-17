@@ -13,15 +13,18 @@ Orchestrates the Evidence-First ingestion workflow:
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from typing import Any
 
+from app.core.logging import redact_sensitive_data
 from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
 from app.modules.evidence.entity_extractor import extract_entities
 from app.modules.evidence.hasher import compute_sha256
 from app.modules.evidence.parser_protocol import ParserRegistry
 from app.modules.evidence.sysmon_parser import SysmonParser
 from app.schemas.ingest import IngestError, IngestRequest, IngestResponse
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -29,11 +32,12 @@ DEFAULT_CHUNK_SIZE: int = 1000
 
 
 def _safe_sample(data: Any, max_len: int = 100) -> str:
-    """Safely produce a truncated string representation of a raw payload without raising exceptions."""
+    """Safely produce a truncated, sanitized string representation of a raw payload without raising exceptions."""
     try:
-        if isinstance(data, (dict, list)):
-            return json.dumps(data, default=str)[:max_len]
-        return str(data)[:max_len]
+        sanitized = redact_sensitive_data(data)
+        if isinstance(sanitized, (dict, list)):
+            return json.dumps(sanitized, default=str)[:max_len]
+        return str(sanitized)[:max_len]
     except Exception:
         return "<unserializable payload>"
 
@@ -69,6 +73,18 @@ class IngestionService:
           rollback and recovery, ensuring zero orphaned raw records.
         """
         batch_id = uuid.uuid4()
+        start_time = time.perf_counter()
+        b_logger = logger.bind(
+            component="ingestion_service",
+            batch_id=str(batch_id),
+            source_type=request.source_type,
+            source_identifier=request.source_identifier,
+        )
+        b_logger.info(
+            "Received ingestion batch",
+            total_events=len(request.events),
+        )
+
         total_normalized = 0
         total_entities = 0
         total_skipped_duplicates = 0
@@ -76,6 +92,12 @@ class IngestionService:
         errors: list[IngestError] = []
 
         if not request.events:
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            b_logger.info(
+                "Ingestion batch completed (empty batch)",
+                total_received=0,
+                duration_ms=duration_ms,
+            )
             return IngestResponse(
                 batch_id=batch_id,
                 source_type=request.source_type,
@@ -110,6 +132,12 @@ class IngestionService:
                 for record in result.scalars().all():
                     existing_records[record.sha256_hash] = record
 
+            b_logger.debug(
+                "Batched existence query completed",
+                unique_hashes_count=len(unique_hashes),
+                existing_records_count=len(existing_records),
+            )
+
         # 4. Process each event with full atomic savepoint isolation
         for idx, raw_event in enumerate(request.events):
             try:
@@ -128,10 +156,18 @@ class IngestionService:
                 # Select parser
                 event_parser = parser or self.registry.find_matching_parser(raw_event)
                 if not event_parser:
+                    err_msg = (
+                        f"No parser available for source_type '{request.source_type}'"
+                    )
+                    b_logger.warning(
+                        "Event parser unavailable",
+                        event_index=idx,
+                        error=err_msg,
+                    )
                     errors.append(
                         IngestError(
                             event_index=idx,
-                            error=f"No parser available for source_type '{request.source_type}'",
+                            error=err_msg,
                             raw_sample=_safe_sample(raw_event),
                         )
                     )
@@ -140,10 +176,15 @@ class IngestionService:
                 # Parse into canonical event(s)
                 canonical_events = event_parser.parse(raw_event, raw_ref=sha256_hash)
                 if not canonical_events:
+                    err_msg = "Parser produced zero events for this payload"
+                    b_logger.warning(
+                        "Parser produced zero events",
+                        event_index=idx,
+                    )
                     errors.append(
                         IngestError(
                             event_index=idx,
-                            error="Parser produced zero events for this payload",
+                            error=err_msg,
                             raw_sample=_safe_sample(raw_event),
                         )
                     )
@@ -249,6 +290,11 @@ class IngestionService:
                 total_entities += event_entity_count
 
             except Exception as exc:
+                b_logger.warning(
+                    "Event processing failed; savepoint rolled back",
+                    event_index=idx,
+                    error=str(exc),
+                )
                 errors.append(
                     IngestError(
                         event_index=idx,
@@ -258,6 +304,17 @@ class IngestionService:
                 )
 
         await session.commit()
+
+        duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        b_logger.info(
+            "Ingestion batch completed",
+            total_received=len(request.events),
+            total_normalized=total_normalized,
+            total_entities=total_entities,
+            total_skipped_duplicates=total_skipped_duplicates,
+            errors_count=len(errors),
+            duration_ms=duration_ms,
+        )
 
         return IngestResponse(
             batch_id=batch_id,

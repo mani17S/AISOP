@@ -8,19 +8,32 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import root_api_router
 from app.core.config import get_settings
+from app.core.logging import setup_logging
+from app.middleware.correlation import RequestCorrelationMiddleware
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown hooks."""
-    # Startup
+    settings = get_settings()
+    setup_logging(settings)
+    logger.info(
+        "Starting AISOP application",
+        app=settings.APP_NAME,
+        version=settings.APP_VERSION,
+        environment=settings.ENVIRONMENT,
+        debug=settings.DEBUG,
+        log_level=settings.LOG_LEVEL,
+        log_format=settings.LOG_FORMAT,
+    )
     yield
-    # Shutdown
+    logger.info("Shutting down AISOP application")
 
 
 def create_app() -> FastAPI:
@@ -36,6 +49,9 @@ def create_app() -> FastAPI:
         openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
         lifespan=lifespan,
     )
+
+    # Request correlation and observability middleware
+    app.add_middleware(RequestCorrelationMiddleware)
 
     # CORS Middleware
     app.add_middleware(

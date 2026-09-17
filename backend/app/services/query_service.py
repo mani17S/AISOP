@@ -23,8 +23,11 @@ from app.schemas.query import (
     RawEvidenceDetailResponse,
     RawEvidenceEventSummary,
 )
+from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
+
+q_logger = logger.bind(component="query_service")
 
 
 class InvestigationQueryService:
@@ -74,11 +77,31 @@ class InvestigationQueryService:
         Deterministic, paginated query for normalized security events with multi-field filtering.
         """
         if page < 1:
+            q_logger.warning("Event query rejected: invalid page", page=page)
             raise ValueError("page must be greater than or equal to 1")
         if limit < 1 or limit > MAX_PAGE_SIZE:
+            q_logger.warning("Event query rejected: invalid limit", limit=limit)
             raise ValueError(f"limit must be between 1 and {MAX_PAGE_SIZE}")
 
-        norm_start, norm_end = self.validate_time_range(start_time, end_time)
+        try:
+            norm_start, norm_end = self.validate_time_range(start_time, end_time)
+        except ValueError as exc:
+            q_logger.warning("Event query rejected: invalid time range", error=str(exc))
+            raise
+
+        q_logger.debug(
+            "Executing events query",
+            event_type=event_type,
+            source_type=source_type,
+            source_identifier=source_identifier,
+            severity=severity,
+            outcome=outcome,
+            entity_type=entity_type,
+            has_start_time=bool(norm_start),
+            has_end_time=bool(norm_end),
+            page=page,
+            limit=limit,
+        )
 
         conditions: list[Any] = []
         needs_raw_join = False
@@ -88,6 +111,7 @@ class InvestigationQueryService:
         if norm_end is not None:
             conditions.append(NormalizedEventModel.event_timestamp <= norm_end)
         if event_type is not None:
+
             conditions.append(NormalizedEventModel.event_type == event_type)
         if severity is not None:
             conditions.append(NormalizedEventModel.severity == severity)
@@ -201,6 +225,7 @@ class InvestigationQueryService:
         """
         Fetch a single normalized event by UUID, including extracted entities and provenance.
         """
+        q_logger.debug("Fetching normalized event by ID", event_id=str(event_id))
         stmt = (
             select(NormalizedEventModel)
             .options(
@@ -212,6 +237,7 @@ class InvestigationQueryService:
         res = await session.execute(stmt)
         event = res.scalars().unique().first()
         if not event:
+            q_logger.debug("Normalized event not found", event_id=str(event_id))
             return None
 
         entities = [
@@ -264,14 +290,25 @@ class InvestigationQueryService:
         Deterministic, paginated query for extracted entities / IOCs.
         """
         if page < 1:
+            q_logger.warning("Entity query rejected: invalid page", page=page)
             raise ValueError("page must be greater than or equal to 1")
         if limit < 1 or limit > MAX_PAGE_SIZE:
+            q_logger.warning("Entity query rejected: invalid limit", limit=limit)
             raise ValueError(f"limit must be between 1 and {MAX_PAGE_SIZE}")
+
+        q_logger.debug(
+            "Executing entities query",
+            entity_type=entity_type,
+            role=role,
+            page=page,
+            limit=limit,
+        )
 
         conditions: list[Any] = []
         if entity_type is not None:
             conditions.append(ExtractedEntityModel.entity_type == entity_type)
         if entity_value is not None:
+
             conditions.append(ExtractedEntityModel.entity_value == entity_value)
         if role is not None:
             conditions.append(ExtractedEntityModel.role == role)
@@ -371,6 +408,7 @@ class InvestigationQueryService:
         """
         Fetch a raw evidence record and its child normalized events by UUID.
         """
+        q_logger.debug("Fetching raw evidence by ID", evidence_id=str(evidence_id))
         stmt = (
             select(RawEvidence)
             .options(joinedload(RawEvidence.normalized_events))
@@ -379,6 +417,7 @@ class InvestigationQueryService:
         res = await session.execute(stmt)
         raw = res.scalars().unique().first()
         if not raw:
+            q_logger.debug("Raw evidence not found by ID", evidence_id=str(evidence_id))
             return None
         return self._build_raw_detail(raw)
 
@@ -390,6 +429,7 @@ class InvestigationQueryService:
         """
         Fetch a raw evidence record and its child normalized events by cryptographic SHA-256 hash.
         """
+        q_logger.debug("Fetching raw evidence by hash", sha256_hash=sha256_hash)
         stmt = (
             select(RawEvidence)
             .options(joinedload(RawEvidence.normalized_events))
@@ -398,5 +438,6 @@ class InvestigationQueryService:
         res = await session.execute(stmt)
         raw = res.scalars().unique().first()
         if not raw:
+            q_logger.debug("Raw evidence not found by hash", sha256_hash=sha256_hash)
             return None
         return self._build_raw_detail(raw)
