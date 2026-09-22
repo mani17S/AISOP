@@ -13,7 +13,15 @@
 | **P1-H7** | Database Migrations & Schema Lifecycle | COMPLETE | `164a65e` | Alembic async migrations setup, initial revision (`0001_initial_evidence_schema`), deterministic DDL, schema parity verification, and migration lifecycle tests. |
 | **P1-H8** | Sysmon Parser & Dataset Expansion | COMPLETE | `e5ffff8` | Expanded deterministic Sysmon parser for Event IDs 8 (CreateRemoteThread), 10 (ProcessAccess), 15 (FileCreateStreamHash), and 23 (FileDelete) with entity extraction and zero schema migrations. |
 | **P1-H9** | PostgreSQL Integration Test Suite | COMPLETE | `7998be8` | Real PostgreSQL 17 automated integration testing harness with zero SQLite fallback and isolated test database. |
-| **P1-H10** | Phase 1 Hardening Capstone & Closeout | READY FOR REVIEW | Pending Checkpoint | Phase 1 architecture consolidation, milestone synchronization, test baseline certification (114 tests), and Phase 1 closeout report. |
+| **P1-H10** | Phase 1 Hardening Capstone & Closeout | COMPLETE | `0764ea4` | Phase 1 architecture consolidation, milestone synchronization, test baseline certification (114 tests), and Phase 1 closeout report. |
+
+
+## Phase 2: AI Layer Abstraction, Semantic Retrieval & Threat Intelligence
+
+| Milestone | Title | Status | Checkpoint / Baseline | Key Deliverables |
+|:---|:---|:---:|:---|:---|
+| **P2-H1** | LLM Provider Protocol & Local Ollama Adapter | READY FOR REVIEW | Pending Checkpoint | Team-owned LLMProvider Protocol, Pydantic v2 schemas, async OllamaProvider via httpx with tenacity retry backoff, provider factory, and deterministic MockTransport unit tests. |
+
 
 
 ---
@@ -215,3 +223,24 @@
   * Combined regression suite: 114 passed.
   * Formatting & linting: Black and isort checks pass on all codebase components.
   * Architectural documentation parity: 100% verified against source code and ADRs.
+
+#### P2-H1: LLM Provider Protocol & Local Ollama Adapter
+* **Objective:**
+  * Establish the foundational AI provider abstraction layer for AISOP in strict accordance with ADR-001 (Direct Lightweight LLM Abstraction).
+  * Decouple all downstream AI services (SOC hypothesis generation, MITRE mapping, reporting) from specific model vendors and frameworks (prohibiting LangChain/LangGraph).
+* **Delivered Capabilities:**
+  * **AI Schemas & Data Contracts (`app/schemas/ai.py`):** Pydantic v2 models for `MessageRole`, `LLMMessage`, `LLMRequest`, `LLMResponse`, `TokenUsage`, and `ProviderHealthResponse`.
+  * **Domain Exception Hierarchy (`app/modules/ai/llm/exceptions.py`):** Typed exceptions for `LLMError`, `LLMConnectionError`, `LLMTimeoutError`, `LLMModelNotFoundError`, and `LLMResponseError`.
+  * **Runtime Protocol (`app/modules/ai/llm/protocol.py`):** `LLMProvider` Protocol defining `generate()`, `health()`, and `model_name`.
+  * **Ollama Provider Adapter (`app/modules/ai/providers/ollama/provider.py`):** Asynchronous HTTP client communicating directly with Ollama's `/api/chat` and `/api/tags` endpoints via `httpx`.
+  * **Resilience & Retries:** Integrated `tenacity` exponential backoff retry loop for transient connection failures and HTTP 502/503/504 errors; immediate fail-fast on non-retryable 4xx client errors.
+  * **Structured JSON Enforcement:** Automatically passes `"format": "json"` when `request.json_mode=True`.
+  * **Documentation:** Authored comprehensive provider contract specification in `docs/06_AI/LLM_Provider_Contract.md` and AI subsystem architecture in `docs/06_AI/AI_Architecture.md`.
+* **Testing & Verification:**
+  * Added 19 unit tests in `backend/tests/unit/test_llm_provider.py` using `httpx.MockTransport` covering success, parameter overrides, JSON mode, token usage parsing, fast-fail on 4xx/timeouts, transient 503 recovery, persistent 503 exhaustion, malformed JSON, missing message keys, and full health probe lifecycle (healthy, degraded, timeout, 500).
+  * Full test suite regression verification: 133 tests passing (112 unit + 21 integration).
+  * Code formatting & linting: 100% compliant with Black and isort.
+* **Preserved Invariants:**
+  * Zero database schema modifications, zero new ORM models, zero Alembic migrations.
+  * Zero new runtime dependencies (uses existing httpx, tenacity, pydantic).
+  * Streaming explicitly deferred to Phase 4 (Frontend Investigation Dashboard).

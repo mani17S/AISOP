@@ -2,6 +2,14 @@
 AISOP Schema Definitions.
 """
 
+from app.schemas.ai import (
+    LLMMessage,
+    LLMRequest,
+    LLMResponse,
+    MessageRole,
+    ProviderHealthResponse,
+    TokenUsage,
+)
 from app.schemas.entities import (
     DnsEntity,
     FileEntity,
@@ -44,4 +52,10 @@ __all__ = [
     "ExtractedEntityItem",
     "RawEvidenceDetailResponse",
     "RawEvidenceEventSummary",
+    "MessageRole",
+    "LLMMessage",
+    "LLMRequest",
+    "LLMResponse",
+    "TokenUsage",
+    "ProviderHealthResponse",
 ]

@@ -17,6 +17,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,15 +44,43 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # ── Database (PostgreSQL) ────────────────────────────────────
-    DATABASE_URL: str = (
-        "postgresql+psycopg://aisop:aisop@localhost:5432/aisop_dev"
-    )
+    DATABASE_URL: str = "postgresql+psycopg://aisop:aisop@localhost:5432/aisop_dev"
     DATABASE_ECHO: bool = False  # SQLAlchemy: echo SQL to stdout
 
-    # ── Ollama (Local LLM) ──────────────────────────────────────
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3.1:8b"
-    OLLAMA_TIMEOUT_SECONDS: int = 120
+    # ── Ollama (Local LLM — ADR-001) ────────────────────────────
+    OLLAMA_BASE_URL: str = Field(
+        default="http://localhost:11434",
+        description="Base URL for local Ollama HTTP API endpoint",
+    )
+    OLLAMA_MODEL: str = Field(
+        default="llama3.1:8b",
+        description="Default target model tag for local inference",
+    )
+    OLLAMA_TIMEOUT_SECONDS: int = Field(
+        default=120,
+        gt=0,
+        description="Timeout in seconds for inference operations",
+    )
+    OLLAMA_TEMPERATURE: float = Field(
+        default=0.2,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature for deterministic security reasoning (0.0-0.3 recommended)",
+    )
+    OLLAMA_MAX_RETRIES: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Maximum retry attempts for transient network/server failures",
+    )
+    OLLAMA_KEEP_ALIVE: str = Field(
+        default="5m",
+        description="Duration to keep model in Ollama memory after request",
+    )
+    LLM_PROVIDER: str = Field(
+        default="ollama",
+        description="Active LLM provider identifier ('ollama' in Phase 2)",
+    )
 
     # ── Embeddings (pgvector — ADR-002) ─────────────────────────
     EMBEDDING_DIMENSIONS: int = 768

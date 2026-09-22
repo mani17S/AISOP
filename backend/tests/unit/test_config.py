@@ -9,7 +9,6 @@ These tests verify that:
 """
 
 import pytest
-
 from app.core.config import Settings, get_settings
 
 
@@ -46,6 +45,10 @@ class TestSettingsDefaults:
         assert settings.OLLAMA_BASE_URL == "http://localhost:11434"
         assert settings.OLLAMA_MODEL == "llama3.1:8b"
         assert settings.OLLAMA_TIMEOUT_SECONDS == 120
+        assert settings.OLLAMA_TEMPERATURE == 0.2
+        assert settings.OLLAMA_MAX_RETRIES == 3
+        assert settings.OLLAMA_KEEP_ALIVE == "5m"
+        assert settings.LLM_PROVIDER == "ollama"
 
     def test_threat_intel_keys_default_to_empty(self) -> None:
         """TI keys are optional — empty string means 'not configured'."""
@@ -73,17 +76,23 @@ class TestSettingsOverrides:
         settings = Settings(_env_file=None)
         assert settings.DEBUG is True
 
-    def test_log_level_overridden_by_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_log_level_overridden_by_env_var(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("LOG_LEVEL", "DEBUG")
         settings = Settings(_env_file=None)
         assert settings.LOG_LEVEL == "DEBUG"
 
-    def test_environment_overridden_to_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_environment_overridden_to_production(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("ENVIRONMENT", "production")
         settings = Settings(_env_file=None)
         assert settings.ENVIRONMENT == "production"
 
-    def test_database_url_overridden_by_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_database_url_overridden_by_env_var(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         custom_url = "postgresql+psycopg://prod:secret@db.example.com:5432/aisop_prod"
         monkeypatch.setenv("DATABASE_URL", custom_url)
         settings = Settings(_env_file=None)
@@ -93,13 +102,17 @@ class TestSettingsOverrides:
 class TestSettingsValidation:
     """Verify that invalid values are rejected at construction time."""
 
-    def test_invalid_environment_is_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_invalid_environment_is_rejected(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """ENVIRONMENT must be one of: development, staging, production."""
         monkeypatch.setenv("ENVIRONMENT", "banana")
         with pytest.raises(Exception):
             Settings(_env_file=None)
 
-    def test_invalid_log_format_is_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_invalid_log_format_is_rejected(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """LOG_FORMAT must be 'json' or 'text'."""
         monkeypatch.setenv("LOG_FORMAT", "xml")
         with pytest.raises(Exception):
