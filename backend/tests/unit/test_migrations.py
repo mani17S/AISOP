@@ -1,13 +1,17 @@
 """
-Unit tests for AISOP Database Migrations & Schema Lifecycle (Milestone P1-H7).
+Unit tests for AISOP Database Migrations & Schema Lifecycle (Milestone P1-H7 & P2-H2).
 
 Tests:
 - Alembic configuration discovery and loading.
 - Target metadata table and constraint verification.
-- Migration revision discovery (0001_initial_evidence_schema as head).
+- Migration revision discovery (0002_pgvector_knowledge_schema as head).
 - Offline SQL DDL generation for both upgrade and downgrade.
 - Full upgrade and downgrade migration lifecycle execution on an isolated engine.
 - Schema parity: zero unmigrated differences between Base.metadata and migration.
+
+Testing note:
+SQLite migration tests validate Alembic execution flow, table creation, and DDL syntax.
+PostgreSQL + pgvector remains the authoritative production and verification environment.
 """
 
 from __future__ import annotations
@@ -28,6 +32,8 @@ from app.models.evidence import (  # noqa: F401
     NormalizedEventModel,
     RawEvidence,
 )
+from app.models.knowledge import KnowledgeEmbedding  # noqa: F401
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import create_engine, inspect
 
 
@@ -49,12 +55,17 @@ def test_alembic_config_discovery(alembic_config: Config):
 
     heads = script_dir.get_heads()
     assert len(heads) == 1
-    assert heads[0] == "0001_initial_evidence_schema"
+    assert heads[0] == "0002_pgvector_knowledge_schema"
 
 
 def test_target_metadata_tables():
     """Verify Base.metadata contains the complete canonical set of models."""
-    expected_tables = {"raw_evidence", "normalized_events", "extracted_entities"}
+    expected_tables = {
+        "raw_evidence",
+        "normalized_events",
+        "extracted_entities",
+        "knowledge_embeddings",
+    }
     actual_tables = set(Base.metadata.tables.keys())
     assert expected_tables.issubset(actual_tables)
 
@@ -90,6 +101,18 @@ def test_target_metadata_tables():
     assert "role" in ent_tbl.c
     assert "attributes" in ent_tbl.c
 
+    # Check knowledge_embeddings
+    know_tbl = Base.metadata.tables["knowledge_embeddings"]
+    assert "id" in know_tbl.c
+    assert "source_document" in know_tbl.c
+    assert "section_title" in know_tbl.c
+    assert "content" in know_tbl.c
+    assert "content_hash" in know_tbl.c
+    assert "embedding" in know_tbl.c
+    assert "chunk_metadata" in know_tbl.c
+    assert "created_at" in know_tbl.c
+    assert "updated_at" in know_tbl.c
+
 
 def test_offline_sql_upgrade(alembic_config: Config, capsys: pytest.CaptureFixture):
     """Verify offline SQL generation (--sql) produces valid DDL for all tables."""
@@ -100,19 +123,25 @@ def test_offline_sql_upgrade(alembic_config: Config, capsys: pytest.CaptureFixtu
     assert "CREATE TABLE raw_evidence" in sql
     assert "CREATE TABLE normalized_events" in sql
     assert "CREATE TABLE extracted_entities" in sql
+    assert "CREATE TABLE knowledge_embeddings" in sql
     assert "CREATE TABLE alembic_version" in sql
     assert "ix_raw_evidence_sha256_hash" in sql
     assert "ix_normalized_events_type_time" in sql
     assert "ix_extracted_entities_type_value" in sql
+    assert "ix_knowledge_embeddings_source_document" in sql
+    assert "ix_knowledge_embeddings_content_hash" in sql
     assert "COMMIT;" in sql
 
 
 def test_offline_sql_downgrade(alembic_config: Config, capsys: pytest.CaptureFixture):
     """Verify offline SQL downgrade produces reverse-order drop statements."""
-    command.downgrade(alembic_config, "0001_initial_evidence_schema:base", sql=True)
+    command.downgrade(
+        alembic_config, "0002_pgvector_knowledge_schema:base", sql=True
+    )
     captured = capsys.readouterr()
     sql = captured.out
 
+    assert "DROP TABLE knowledge_embeddings;" in sql
     assert "DROP TABLE extracted_entities;" in sql
     assert "DROP TABLE normalized_events;" in sql
     assert "DROP TABLE raw_evidence;" in sql
@@ -140,6 +169,7 @@ def test_isolated_migration_lifecycle(alembic_config: Config):
         assert "raw_evidence" in tables
         assert "normalized_events" in tables
         assert "extracted_entities" in tables
+        assert "knowledge_embeddings" in tables
         assert "alembic_version" in tables
 
         # 2. Check foreign keys
@@ -151,9 +181,34 @@ def test_isolated_migration_lifecycle(alembic_config: Config):
         assert any(fk["referred_table"] == "raw_evidence" for fk in fks_entities)
 
         # 3. Check schema parity with Base.metadata (zero unexpected diffs)
+        def sqlite_compare_type(
+            context,
+            inspected_column,
+            metadata_column,
+            inspected_type,
+            metadata_type,
+        ):
+            # SQLite reflects Vector columns as NUMERIC because SQLite lacks native vector types
+            if (
+                isinstance(metadata_type, Vector)
+                and inspected_type.__class__.__name__ == "NUMERIC"
+            ):
+                return False
+            return None
+
+        def sqlite_include_object(object, name, type_, reflected, compare_to):
+            # Exclude PostgreSQL-specific HNSW index from SQLite schema parity check
+            if type_ == "index" and getattr(object, "dialect_options", {}).get("postgresql", {}).get("using") == "hnsw":
+                return False
+            return True
+
         ctx = MigrationContext.configure(
             connection,
-            opts={"compare_type": True, "compare_server_default": True},
+            opts={
+                "compare_type": sqlite_compare_type,
+                "compare_server_default": True,
+                "include_object": sqlite_include_object,
+            },
         )
         diffs = compare_metadata(ctx, Base.metadata)
         assert diffs == []
@@ -163,6 +218,7 @@ def test_isolated_migration_lifecycle(alembic_config: Config):
 
         inspector = inspect(connection)
         remaining_tables = inspector.get_table_names()
+        assert "knowledge_embeddings" not in remaining_tables
         assert "raw_evidence" not in remaining_tables
         assert "normalized_events" not in remaining_tables
         assert "extracted_entities" not in remaining_tables

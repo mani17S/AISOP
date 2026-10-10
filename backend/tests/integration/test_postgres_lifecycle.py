@@ -36,10 +36,12 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from app.db.base import Base
 from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
+from app.models.knowledge import KnowledgeEmbedding
 from app.schemas.ingest import IngestRequest
 from app.services.ingestion_service import IngestionService
+import sqlalchemy as sa
 from sqlalchemy import delete, func, inspect, select
-from sqlalchemy.dialects.postgresql import JSON, TIMESTAMP, UUID
+from sqlalchemy.dialects.postgresql import JSON, JSONB, TIMESTAMP, UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -145,11 +147,19 @@ def test_postgres_alembic_upgrade_lifecycle(
         "raw_evidence",
         "normalized_events",
         "extracted_entities",
+        "knowledge_embeddings",
         "alembic_version",
     }
     assert expected_tables.issubset(
         table_names
     ), f"Missing tables in PostgreSQL: {expected_tables - table_names}"
+
+    # Verify pgvector extension is installed in PostgreSQL
+    with postgres_sync_engine.connect() as connection:
+        ext_result = connection.execute(
+            sa.text("SELECT extname FROM pg_extension WHERE extname = 'vector';")
+        ).scalar()
+        assert ext_result == "vector", "pgvector extension must be active in PostgreSQL"
 
     # 3. Check native column types in raw_evidence
     columns_raw = {c["name"]: c for c in inspector.get_columns("raw_evidence")}
@@ -166,6 +176,14 @@ def test_postgres_alembic_upgrade_lifecycle(
     assert isinstance(columns_raw["ingested_at"]["type"], TIMESTAMP)
     assert columns_raw["ingested_at"]["type"].timezone is True
 
+    # Check native column types in knowledge_embeddings
+    columns_know = {c["name"]: c for c in inspector.get_columns("knowledge_embeddings")}
+    assert isinstance(columns_know["id"]["type"], UUID)
+    assert isinstance(columns_know["chunk_metadata"]["type"], JSONB)
+    assert isinstance(columns_know["created_at"]["type"], TIMESTAMP)
+    assert columns_know["created_at"]["type"].timezone is True
+    assert "embedding" in columns_know
+
     # 4. Check unique indices
     indices_raw = inspector.get_indexes("raw_evidence")
     sha_index = next(
@@ -174,6 +192,16 @@ def test_postgres_alembic_upgrade_lifecycle(
     )
     assert sha_index is not None, "Missing index ix_raw_evidence_sha256_hash"
     assert sha_index["unique"] == 1 or sha_index["unique"] is True
+
+    # Check knowledge_embeddings indexes
+    indices_know = inspector.get_indexes("knowledge_embeddings")
+    assert any(idx["name"] == "ix_knowledge_embeddings_source_document" for idx in indices_know)
+    assert any(
+        idx["name"] == "ix_knowledge_embeddings_content_hash"
+        and (idx["unique"] == 1 or idx["unique"] is True)
+        for idx in indices_know
+    )
+    assert any(idx["name"] == "ix_knowledge_embeddings_embedding_hnsw" for idx in indices_know)
 
     # 5. Check foreign keys
     fks_events = inspector.get_foreign_keys("normalized_events")
@@ -570,6 +598,14 @@ def test_postgres_alembic_downgrade_lifecycle(
     assert "raw_evidence" not in remaining_tables
     assert "normalized_events" not in remaining_tables
     assert "extracted_entities" not in remaining_tables
+    assert "knowledge_embeddings" not in remaining_tables
+
+    # Verify pgvector extension is NOT dropped on downgrade
+    with postgres_sync_engine.connect() as conn:
+        ext_res = conn.execute(
+            sa.text("SELECT extname FROM pg_extension WHERE extname = 'vector';")
+        ).scalar()
+        assert ext_res == "vector", "pgvector extension must not be dropped during downgrade"
 
     # 3. Check alembic_version has no current head
     if "alembic_version" in remaining_tables:
@@ -586,6 +622,93 @@ def test_postgres_alembic_downgrade_lifecycle(
 
     inspector_after = inspect(postgres_sync_engine)
     restored_tables = set(inspector_after.get_table_names())
-    assert {"raw_evidence", "normalized_events", "extracted_entities"}.issubset(
-        restored_tables
+    assert {
+        "raw_evidence",
+        "normalized_events",
+        "extracted_entities",
+        "knowledge_embeddings",
+    }.issubset(restored_tables)
+
+
+# ==============================================================================
+# 7. pgvector Vector CRUD & Cosine Distance Search (Milestone P2-H2)
+# ==============================================================================
+
+
+@pytest.mark.anyio
+async def test_postgres_knowledge_embedding_vector_crud_and_cosine_similarity(
+    postgres_session: AsyncSession,
+):
+    """
+    Verify pgvector vector persistence, exact-content deduplication, and cosine
+    similarity query against live PostgreSQL with pgvector extension:
+    - Insert 768-dimensional vector chunks.
+    - Verify cosine distance ordering (<=> operator).
+    - Verify content_hash unique constraint raises UniqueViolation on PostgreSQL.
+    """
+    doc_source = "knowledge/mitre_attack_test.md"
+
+    # Orthogonal unit vectors for deterministic cosine distance calculation
+    vec_exact = [1.0] + [0.0] * 767
+    vec_orthogonal = [0.0, 1.0] + [0.0] * 766
+
+    content_1 = "Adversaries may use PowerShell to execute malicious commands."
+    content_2 = "Adversaries may abuse Windows Management Instrumentation (WMI)."
+
+    chunk_1 = KnowledgeEmbedding(
+        source_document=doc_source,
+        section_title="T1059.001 - PowerShell",
+        content=content_1,
+        content_hash=KnowledgeEmbedding.compute_hash(content_1),
+        embedding=vec_exact,
+        chunk_metadata={"technique_id": "T1059.001", "tactic": "Execution"},
     )
+    chunk_2 = KnowledgeEmbedding(
+        source_document=doc_source,
+        section_title="T1047 - WMI",
+        content=content_2,
+        content_hash=KnowledgeEmbedding.compute_hash(content_2),
+        embedding=vec_orthogonal,
+        chunk_metadata={"technique_id": "T1047", "tactic": "Execution"},
+    )
+    postgres_session.add_all([chunk_1, chunk_2])
+    await postgres_session.commit()
+
+    # 1. Cosine similarity query matching vec_exact
+    # Cosine distance to vec_exact: chunk_1 should have distance 0.0, chunk_2 should have distance 1.0
+    query_vec = [1.0] + [0.0] * 767
+    stmt = (
+        select(
+            KnowledgeEmbedding,
+            KnowledgeEmbedding.embedding.cosine_distance(query_vec).label("distance"),
+        )
+        .where(KnowledgeEmbedding.source_document == doc_source)
+        .order_by(KnowledgeEmbedding.embedding.cosine_distance(query_vec))
+    )
+    results = (await postgres_session.execute(stmt)).all()
+
+    assert len(results) == 2
+    top_chunk, top_distance = results[0]
+    second_chunk, second_distance = results[1]
+
+    assert top_chunk.section_title == "T1059.001 - PowerShell"
+    assert pytest.approx(top_distance, abs=1e-4) == 0.0
+    assert second_chunk.section_title == "T1047 - WMI"
+    assert pytest.approx(second_distance, abs=1e-4) == 1.0
+
+    # 2. Content hash deduplication enforcement
+    dup_chunk = KnowledgeEmbedding(
+        source_document="knowledge/other.md",
+        section_title="Duplicate PowerShell Chunk",
+        content=content_1,
+        content_hash=KnowledgeEmbedding.compute_hash(content_1),
+        embedding=[0.5] * 768,
+        chunk_metadata={"status": "duplicate"},
+    )
+    with pytest.raises(IntegrityError) as exc_info:
+        async with postgres_session.begin_nested():
+            postgres_session.add(dup_chunk)
+            await postgres_session.flush()
+
+    assert isinstance(exc_info.value.orig, psycopg.errors.UniqueViolation)
+    assert "ix_knowledge_embeddings_content_hash" in str(exc_info.value)

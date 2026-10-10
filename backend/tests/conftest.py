@@ -23,6 +23,7 @@ from app.models.evidence import (  # noqa: F401
     NormalizedEventModel,
     RawEvidence,
 )
+from app.models.knowledge import KnowledgeEmbedding  # noqa: F401
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -162,10 +163,6 @@ def postgres_sync_engine():
             f"Expected PostgreSQL dialect, got '{engine.dialect.name}'. "
             "Silent fallback is prohibited."
         )
-
-    # Ensure canonical tables are initialized
-    with engine.begin() as conn:
-        Base.metadata.create_all(conn)
 
     yield engine
 
