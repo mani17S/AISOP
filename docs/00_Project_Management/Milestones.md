@@ -20,7 +20,9 @@
 
 | Milestone | Title | Status | Checkpoint / Baseline | Key Deliverables |
 |:---|:---|:---:|:---|:---|
-| **P2-H1** | LLM Provider Protocol & Local Ollama Adapter | READY FOR REVIEW | Pending Checkpoint | Team-owned LLMProvider Protocol, Pydantic v2 schemas, async OllamaProvider via httpx with tenacity retry backoff, provider factory, and deterministic MockTransport unit tests. |
+| **P2-H1** | LLM Provider Protocol & Local Ollama Adapter | COMPLETE | `7f27d69` | Team-owned LLMProvider Protocol, Pydantic v2 schemas, async OllamaProvider via httpx with tenacity retry backoff, provider factory, and deterministic MockTransport unit tests. |
+| **P2-H2** | pgvector Knowledge Schema & Health Readiness Foundation | COMPLETE | `32c3903` | pgvector knowledge foundation: Alembic migration 0002_add_pgvector_and_knowledge_schema, KnowledgeEmbedding ORM (768-dim vector, JSONB metadata, content_hash deduplication), HNSW cosine index, and health readiness integration. |
+| **P2-H3** | Knowledge Base Ingestion Pipeline & Semantic Retrieval | IN PROGRESS | Pending Checkpoint | Direct OllamaEmbedder (768-dim), KnowledgeSourceLoader, DocumentChunker, KnowledgeIngestionService with atomic document replacement lifecycle, and KnowledgeRetriever with threshold-bounded cosine similarity search. |
 
 
 
@@ -244,3 +246,26 @@
   * Zero database schema modifications, zero new ORM models, zero Alembic migrations.
   * Zero new runtime dependencies (uses existing httpx, tenacity, pydantic).
   * Streaming explicitly deferred to Phase 4 (Frontend Investigation Dashboard).
+
+#### P2-H2: pgvector Knowledge Schema & Health Readiness Foundation
+* **Objective:**
+  * Establish the foundational pgvector vector storage schema and health readiness probing for AISOP in strict accordance with ADR-002 (PostgreSQL/pgvector as Primary Vector Store).
+  * Enable persistent, indexable storage of 768-dimensional text embeddings alongside structured chunk metadata without introducing secondary vector databases (Chroma, Pinecone, Qdrant).
+* **Delivered Capabilities:**
+  * **Knowledge Embedding ORM Model (`app/models/knowledge.py`):** `KnowledgeEmbedding` model with UUID PK, `source_document`, `section_title`, `content` (untrusted reference text), `content_hash` (unique SHA-256 digest), `embedding` (`Vector(768)`), and `chunk_metadata` (`JSONB` with SQLite JSON variant fallback).
+  * **Alembic Migration (`20261005_0002_add_pgvector_and_knowledge_schema.py`):**
+    * Enables `vector` extension idempotently (`CREATE EXTENSION IF NOT EXISTS vector`).
+    * Creates `knowledge_embeddings` table with UUID primary key, content hash uniqueness constraint, and source document index.
+    * Provisions HNSW cosine distance index `ix_knowledge_embeddings_embedding_hnsw` (`vector_cosine_ops`, `m=16`, `ef_construction=64`).
+    * Implements fully reversible `downgrade()` removing table and extension.
+  * **Health Readiness Integration (`app/api/v1/endpoints/health.py`):**
+    * Refactored `/health/ready` probe to evaluate both database connectivity and LLM provider readiness.
+    * Returns HTTP 200 `status="ready"` when both components pass; HTTP 503 `status="unready"` with structured diagnostic dictionary if either component is unhealthy.
+* **Testing & Verification:**
+  * Added 12 new tests (145 total passing across unit and integration suites):
+    * Unit tests (`test_knowledge_models.py`, `test_migrations.py`): Validates model instantiation, exact content hash computation, JSON fallback, Alembic migration discovery, and target metadata parity (`diffs == []`).
+    * Integration tests (`test_postgres_lifecycle.py`, `test_health_api.py`): Real PostgreSQL 17 + pgvector integration verifying vector insertion, exact round-trip retrieval, cosine distance ordering (`<=>`), HNSW index usage, UniqueViolation on duplicate hashes, and `/health/ready` probe semantics.
+* **Preserved Invariants:**
+  * Fixed 768-dimensional vector contract matching `nomic-embed-text`.
+  * Zero third-party vector databases or wrapper frameworks (LangChain, LangGraph prohibited).
+
