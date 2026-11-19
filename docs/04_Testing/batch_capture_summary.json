@@ -1,0 +1,49 @@
+{
+  "harness_version": "1.1.1",
+  "execution_timestamp_utc": "2026-11-09T12:49:43.844433+00:00",
+  "completion_timestamp_utc": "2026-11-09T12:53:02.814963+00:00",
+  "total_duration_seconds": 198.97,
+  "configuration": {
+    "model_tag": "llama3.1:8b",
+    "host": "http://127.0.0.1:11434",
+    "timeout_seconds": 120.0,
+    "temperature": 0.0,
+    "num_predict": 1024,
+    "force": false,
+    "verify_blobs": false,
+    "dry_run": false,
+    "allow_draft": false
+  },
+  "model_provenance": {
+    "model_tag": "llama3.1:8b",
+    "manifest_digest": "sha256:667b0c1932bc6ffc593ed1d03f895bf2dc8dc6df21db3042284a6f4416b06a29",
+    "manifest_path": "D:\\OllamaModels\\models\\manifests\\registry.ollama.ai\\library\\llama3.1\\8b",
+    "model_blob_verified": false
+  },
+  "summary_counts": {
+    "total_scenarios_evaluated": 2,
+    "captured_count": 2,
+    "skipped_cache_hit_count": 0,
+    "dry_run_verified_count": 0,
+    "transport_failures_count": 0,
+    "error_count": 0
+  },
+  "scenario_results": [
+    {
+      "scenario_id": "SCN-ATO-004",
+      "status": "captured",
+      "prompt_sha256": "1fe2fc5663d745658b3babeaff0b8839904c85f94686ab14143be646d8a2905b",
+      "raw_response_sha256": "80eadc566c85b2615b615ffae326d5114b771c91ebe62a7eb9c29a089be89377",
+      "duration_seconds": 97.406,
+      "fixture_path": "D:\\AISOP\\datasets\\ground_truth\\fixtures\\SCN-ATO-004-captured.json"
+    },
+    {
+      "scenario_id": "SCN-ATO-005",
+      "status": "captured",
+      "prompt_sha256": "95b844754fc3f083fa8086aa606eb503878bacd3ed4a553ef775ee0192c8b14f",
+      "raw_response_sha256": "f16027e453fc05c43f8740d0393cdb510ce7cf9d254e7af0caf37fb2deddd7c9",
+      "duration_seconds": 101.016,
+      "fixture_path": "D:\\AISOP\\datasets\\ground_truth\\fixtures\\SCN-ATO-005-captured.json"
+    }
+  ]
+}

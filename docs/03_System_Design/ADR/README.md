@@ -43,3 +43,11 @@ Each ADR follows a standard structure:
 | [ADR-003](ADR-003_Python_Version.md) | Python Version Selection | APPROVED | 2026-09-09 |
 | [ADR-004](ADR-004_Initial_Ingestion_Scope.md) | Initial Telemetry Ingestion Scope | APPROVED | 2026-09-09 |
 | [ADR-005](ADR-005_Frontend_Stack.md) | Frontend Technology Stack | APPROVED | 2026-09-09 |
+| [ADR-006](ADR-006_SDLC_and_DevSecOps_Strategy.md) | Software Development Life Cycle (SDLC) & DevSecOps Strategy | APPROVED | 2026-10-16 |
+| [ADR-007](ADR-007_Vendor_Neutral_Alert_Ingestion.md) | Vendor-Neutral Security Alert Ingestion Architecture & Adapter Registry | APPROVED | 2026-10-31 |
+| [ADR-008](ADR-008_Evidence_Sufficiency_Gate.md) | Deterministic Evidence-Sufficiency Gate before LLM Invocation | PROPOSED (revised 2026-11-12, suff-v3; approval pending) | 2026-11-11 |
+| [ADR-009](ADR-009_Multi_Source_Correlation_and_Deterministic_ATTACK_Mapping.md) | Multi-Source Evidence Correlation, Timeline and Deterministic ATT&CK Mapping | PROPOSED (implemented 2026-11-12; approval pending) | 2026-11-12 |
+| [ADR-010](ADR-010_Case_Scoped_Multi_Source_Investigation_Integration.md) | Case-Scoped Multi-Source Investigation Integration (API, audit-row persistence, analyst UI) | PROPOSED (implemented 2026-11-12; offline-tested only; approval pending) | 2026-11-12 |
+| [ADR-011](ADR-011_Source_Agnostic_Evidence_Domain_Architecture.md) | Source-Agnostic Evidence-Domain Architecture (canonical observations, investigation graph, domain adapters) | PROPOSED (implemented 2026-11-12; offline-tested only; approval pending) | 2026-11-12 |
+| [ADR-012](ADR-012_Detection_Engineering_Capability.md) | Detection Engineering Capability (investigation findings to reviewed Sigma rules) | PROPOSED (design only; not implemented) | 2026-11-12 |
+| [ADR-013](ADR-013_Contradiction_Aware_Sufficiency.md) | Contradiction-Aware Evidence Sufficiency (revision proposal for the ADR-008 rule table) | APPROVED for implementation 2026-11-12 (Revision 2); implemented: ordering, outcome, identity, temporal (STATE not declared); case_service integrated | 2026-11-12 |

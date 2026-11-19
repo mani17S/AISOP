@@ -243,7 +243,8 @@ The database schema is defined using SQLAlchemy 2.0 mapped declarative models in
 | `GET /api/v1/evidence/entities` | Paginated IOC/entity exploration. | `entity_type`, `entity_value`, `role`, `page`, `limit` | `ORDER BY entity_type ASC, entity_value ASC, id DESC` |
 | `GET /api/v1/evidence/by-hash/{sha256_hash}` | Direct point lookup by cryptographic digest. | `sha256_hash` (64-char hex) | Direct B-tree index point lookup. |
 | `GET /api/v1/evidence/{evidence_id}` | Direct point lookup of raw evidence record. | `evidence_id` (UUID) | Single eager round-trip with child events. |
-| `GET /api/v1/health` | System liveness and health endpoint. | None | Verifies service availability. |
+| `GET /api/v1/health` | Process liveness endpoint. | None | Verifies service availability (zero-dependency). |
+| `GET /api/v1/health/ready` | Deep subsystem readiness endpoint. | None | Verifies PostgreSQL connectivity, `pgvector` extension, schema presence, and LLM daemon availability (see [Health_and_Readiness_Architecture.md](Health_and_Readiness_Architecture.md)). |
 
 ### 4.3 Deterministic Pagination & Ordering Rules
 * **Safe Defaults:** `DEFAULT_PAGE_SIZE = 50`.
@@ -351,3 +352,22 @@ In accordance with [ADR-001](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_
 * **Single-Worker Concurrency:** Ingestion is bounded by database connection pool size and SQLite/PostgreSQL transaction serialization.
 * **Offset Pagination Overhead:** Deep page navigation exhibits $O(K + M)$ traversal latency. Keyset/cursor pagination will replace offset pagination for large-scale export workflows.
 * **Untrusted Data Isolation:** Telemetry payloads are treated as untrusted input. Parsers do not execute code, spawn child processes, evaluate paths, or perform active network queries.
+
+---
+
+## 9. Evidence-Sufficiency Gate and Multi-Source Investigation Workflow (Stage 3C / 3C-R)
+
+> This section describes code that exists (2026-11-12). Sections 1-8 describe the Phase 1 pipeline; where section 8.2 lists "Automated MITRE ATT&CK technique mapping" and similar items as out of scope, a limited, deterministic implementation now exists (IMPLEMENTED, six rules; see below). Authoritative detail: [Multi_Source_Investigation_Workflow.md](../05_Backend/Multi_Source_Investigation_Workflow.md), ADR-008 and ADR-009.
+
+* **Pre-model evidence-sufficiency gate (IMPLEMENTED, ADR-008 `suff-v2`)** - `backend/app/modules/ai/guardrails/sufficiency_gate.py: evaluate_sufficiency` runs before every production model invocation in `investigation_service.py` and `case_service.py`; INSUFFICIENT means no model call; exceptions fail closed; `GatedGenerator.generate` is the only production caller of `provider.generate`. The verdict is audited in `case_audit_events.details` (no migration) and disclosed in the final output.
+* **Independence (IMPLEMENTED)** - `backend/app/modules/evidence/independence.py`: evidence clusters (duplicates, same raw record, near-duplicates) and link strengths shared by the gate, the claim validator and the correlator.
+* **Multi-source workflow (IMPLEMENTED; integrated into the case workflow by Stage 4, see next bullet)** - `backend/app/modules/correlation/`: normalization through the ADR-007 adapters with raw-record digests, explainable correlation, timeline, deterministic ATT&CK mapping, hash-chained ledger, analyst report, optional gated LLM investigation. Not yet exposed through an API route or persisted in the database.
+* **Trust boundaries** - raw records are untrusted data; everything before the gate is deterministic; the model is optional, untrusted and reachable only through the gate; reports and ledgers carry hashes for tamper evidence.
+* **Integrated into the product (IMPLEMENTED offline, Stage 4, ADR-010)** - `POST /api/v1/cases/{case_id}/investigations/multisource` and `GET .../multisource/{section}` (`api/v1/endpoints/cases.py`) call `services/multisource_investigation_service.py`, which loads only the case's linked evidence, re-normalizes preserved raw payloads through the ADR-007 adapters (stored SHA-256 kept as provenance, persisted evidence id kept as `event_key`), runs `correlation.workflow.run_workflow`, and stores one `case_audit_events` row (`case_multisource_investigation`; PARTIAL persistence, no migration). Idempotent by evidence fingerprint; `stale_evidence` flag on reads; 409 on closed case or evidence changed mid-run; an audit failure returns no result. Frontend: `MultiSourcePanel` tab in `InvestigationWorkspace`. API: `docs/05_Backend/Multi_Source_Investigation_API.md`.
+* **Not implemented / unverified** - live-model behaviour, accuracy of sufficiency classification (owner labels pending), PostgreSQL validation of the new audit test, additional adapters/rules, streaming operation.
+
+## 10. Source-Agnostic Evidence Domains and Investigation Graph (Stage 6, ADR-011)
+
+Vendor, source and event ids are inputs, not architecture. Evidence enters as `aisop.evidence/1` envelopes (identity, cloud audit, network, e-mail, forensic artefacts, analyst statements; unknown but valid types are preserved as unclassified), is validated by per-domain adapters (`backend/app/modules/evidence_domains/adapters.py`) into canonical `Observation`s (`model.py`), and is projected (`bridge.py`) onto the existing correlation engine (Section 9), so the sufficiency gate, gated LLM step, claim verifier and report are the same code for SIEM/Sysmon alerts and for source-agnostic evidence.
+
+Data flow: `POST /api/v1/cases/{id}/evidence/domain` (validate, quarantine, store raw unchanged + SHA-256, dedupe, link, audit) -> `POST /api/v1/cases/{id}/investigations/multisource` -> `normalize_records` (domain records bypass the alert adapters) -> `correlate` -> per incident: `build_timeline`, `map_techniques` + `map_domain_techniques`, `build_graph`, `enrich` (TI context), `evaluate_sufficiency` -> optional `GatedGenerator` -> report. Sections `graph` and `evidence` expose the graph, correlation rationale, TI context, analyst statements and per-record classification and provenance. No migration; no graph database. Limits and known gaps: ADR-011 Section 3.
