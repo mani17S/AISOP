@@ -1,0 +1,74 @@
+{
+  "scenario_id": "SCN-ADV-004",
+  "dataset_version": "1.0.0",
+  "category": "adversarial_ambiguous",
+  "title": "High-Entropy Obfuscated Command with Benign Hash Verification",
+  "description": "Execution of a complex Base64-encoded PowerShell command that unpacks into a routine cryptographic hash verification.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-12 15:10:00.000",
+      "ProcessId": 4432,
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "CommandLine": "powershell.exe -Command \"$h = Get-FileHash -Algorithm SHA256 C:\\Drivers\\nic.sys; if ($h.Hash -eq 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855') { Write-Output 'Driver OK' }\"",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "User": "CORP\\it_admin",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "inconclusive",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "powershell.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "sha256",
+      "observable_value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1059.001",
+      "technique_name": "PowerShell",
+      "tactic": "Execution",
+      "is_mandatory": true,
+      "is_uncertain": false
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-ADV-04",
+      "statement": "powershell.exe executed Get-FileHash against C:\\Drivers\\nic.sys under user CORP\\it_admin",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-ADV-04",
+      "prohibited_assertion": "C:\\Drivers\\nic.sys is a verified rootkit payload planted by an advanced persistent threat",
+      "reason": "Telemetry captures read-only hash checking; no file modification, registry modification, or malicious behavior is established"
+    }
+  ],
+  "known_uncertainty": [
+    "Whether nic.sys driver was subsequently loaded into kernel memory."
+  ],
+  "expected_limitations": [
+    "Ambiguous administrative utility evaluation."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "adversarial_ambiguous_corpus",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Validated ambiguous command-line scenario"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate model restraint against over-interpreting read-only hash verification as malicious"
+}
+

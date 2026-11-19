@@ -1,0 +1,76 @@
+{
+  "scenario_id": "SCN-BEN-003",
+  "dataset_version": "1.0.0",
+  "category": "benign_baseline",
+  "title": "Administrative Network Connectivity Troubleshooting",
+  "description": "Legitimate local network connectivity check: pinging default gateway followed by DNS query for internal domain controller.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-11 11:20:00.000",
+      "ProcessId": 5212,
+      "Image": "C:\\Windows\\System32\\PING.EXE",
+      "CommandLine": "ping.exe 192.168.10.1 -n 4",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "User": "CORP\\it_admin",
+      "Computer": "CORP-FIN-WS01"
+    },
+    {
+      "EventID": 22,
+      "UtcTime": "2026-09-11 11:20:05.100",
+      "ProcessId": 5220,
+      "Image": "C:\\Windows\\System32\\nslookup.exe",
+      "QueryName": "dc01.corp.internal",
+      "QueryResults": "192.168.10.10",
+      "User": "CORP\\it_admin",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "benign",
+  "expected_observables": [
+    {
+      "observable_type": "ipv4",
+      "observable_value": "192.168.10.1",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "domain",
+      "observable_value": "dc01.corp.internal",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-BEN-03",
+      "statement": "IT admin executed ping.exe against gateway 192.168.10.1 and nslookup for dc01.corp.internal",
+      "category": "behavioral",
+      "required_evidence_indices": [0, 1],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-BEN-04",
+      "prohibited_assertion": "Adversary is performing automated network sweep and port scan",
+      "reason": "Single host ping with 4 ICMP echo requests is standard diagnostic troubleshooting"
+    }
+  ],
+  "known_uncertainty": [
+    "ICMP response packet latency is not recorded in Sysmon Event ID 1."
+  ],
+  "expected_limitations": [
+    "Benign diagnostic baseline."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "benign_baseline_corpus_network",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Ground-truth verified benign baseline"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate handling of routine administrative network utilities"
+}
+

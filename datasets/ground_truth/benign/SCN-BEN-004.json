@@ -1,0 +1,67 @@
+{
+  "scenario_id": "SCN-BEN-004",
+  "dataset_version": "1.0.0",
+  "category": "benign_baseline",
+  "title": "Software Developer Local Python Test Execution",
+  "description": "Developer executing automated pytest unit test suite from command prompt in developer workstation directory.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-11 14:40:00.000",
+      "ProcessId": 4120,
+      "Image": "C:\\Users\\dev_user\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "CommandLine": "python.exe -m pytest tests/unit -v",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "CurrentDirectory": "C:\\Projects\\my_app\\",
+      "User": "CORP\\dev_user",
+      "Computer": "CORP-DEV-WS03"
+    }
+  ],
+  "expected_interpretation": "benign",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "python.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "user",
+      "observable_value": "CORP\\dev_user",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-BEN-04",
+      "statement": "python.exe was executed by dev_user to run pytest unit tests under C:\\Projects\\my_app\\",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-BEN-05",
+      "prohibited_assertion": "python.exe execution is an unapproved malicious script execution attack",
+      "reason": "Developer running pytest in local project folder is routine engineering development activity"
+    }
+  ],
+  "known_uncertainty": [
+    "Specific test cases executed inside pytest are not recorded in process creation telemetry."
+  ],
+  "expected_limitations": [
+    "Developer environment baseline."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "benign_baseline_corpus_dev",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Ground-truth verified benign baseline"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate handling of developer tooling (Python/pytest)"
+}
+

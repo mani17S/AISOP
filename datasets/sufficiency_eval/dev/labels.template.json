@@ -1,0 +1,276 @@
+{
+  "instructions": "Owner: copy to labels.json and fill in label + justification. Do not run the gate first.",
+  "labeller": null,
+  "second_reviewer": null,
+  "date": null,
+  "labels": {
+    "SUFC-006960ecf5": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-0241b1d0fd": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-0576545beb": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-0712739cbd": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-09824c2a89": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-13f2ae0235": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1437506b0b": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-157d0fec00": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1c89c886fa": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-206ba61c47": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-2c3ca7c3c7": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-2c7ef7675d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-2d2fe37af2": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-2f028995a8": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-2fb3867b5d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-3048c5b46e": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-30d5a3e322": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-36d35bf57a": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-3834784bc6": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-38bf376efe": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-398f3010e2": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-45160cf9c4": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-45c25ec835": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-4970f3c8aa": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-49fcb6c8bd": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-506d8fc6ca": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-5870b9cbf8": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-5b69c786d3": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-5e862d4628": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-6759a6a9b6": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-67f01593e6": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-6bd63742ef": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-765130a1c5": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-7f992045d2": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-7feb929d4d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-935af28672": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-9495b34f31": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a00f225d01": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a20bc722aa": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a269adb6d8": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a3f399f110": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a6793d6112": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a877a8710e": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-ac403c3007": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-ad1b4ff7bc": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-af8f4db446": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-b31ada1d28": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-bdf1248619": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-c2961fe492": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-cba9e6bf5f": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-cc23535d9c": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-cd3c853867": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-d0fb7123ad": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-d6f621ca0d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-d96a050599": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-d9dbfe7f95": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-da01e0c585": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-dee617f80d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-e2b19f7a9d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-e33da38910": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-e85191c495": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-e8de72ca3a": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-ebc6e27f8e": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-ee72347d7b": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-f3ec4eee5f": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-fc4d9b179d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-fed0d31c7b": {
+      "label": null,
+      "justification": ""
+    }
+  }
+}

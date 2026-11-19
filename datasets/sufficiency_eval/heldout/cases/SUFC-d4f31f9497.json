@@ -1,0 +1,94 @@
+{
+  "base_scenario_id": "SCN-ADV-003",
+  "base_time_utc": "2026-09-12T13:40:00+00:00",
+  "case_id": "SUFC-d4f31f9497",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "lsass.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "nt authority\\system",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-afff1720.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Windows\\System32\\lsass.exe",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\lsass.exe",
+        "ProcessId": "512",
+        "User": "NT AUTHORITY\\SYSTEM",
+        "UtcTime": "2026-09-12 13:40:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "402c85b68fa3e19953e821beb952dbb8b229c9580c59eade2f6ee9016e83c61f",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "3ddb5bf06541930b35910a28baf08aa03f3e4572e2035ab5788e5960638d3857",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 30.0
+    }
+  ],
+  "family": "adversarial_ambiguous",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 31.0,
+    "start_offset_s": -1.0
+  }
+}

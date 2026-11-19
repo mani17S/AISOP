@@ -1,0 +1,101 @@
+{
+  "base_scenario_id": "SCN-ATO-005",
+  "base_time_utc": "2026-09-09T14:15:30.100000+00:00",
+  "case_id": "SUFC-a6793d6112",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "lsass.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-c6bdab21.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "accessed",
+      "attributes": {
+        "EventID": "10",
+        "SourceImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "SourceProcessId": "5412",
+        "TargetImage": "C:\\Windows\\System32\\lsass.exe",
+        "TargetProcessId": "648",
+        "UtcTime": "2026-09-09 14:15:30.100"
+      },
+      "event_id": "10",
+      "event_type": "process_access",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "d314ba2ec6349da0604503f07d26822ecc35e73e5d5ce16205dadab58461d668",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_access accessed",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "45c4a03b53e591fc711c5592578120c750a4183e71d55dc3b0d07809ab20f7e8",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 30.0
+    }
+  ],
+  "family": "atomic_technique",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 31.0,
+    "start_offset_s": -1.0
+  }
+}

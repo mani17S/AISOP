@@ -1,0 +1,71 @@
+{
+  "base_scenario_id": "SCN-CHN-003",
+  "base_time_utc": "2026-09-10T11:30:10+00:00",
+  "case_id": "SUFC-b31ada1d28",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "dropper.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "notepad.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "created",
+      "attributes": {
+        "EventID": "8",
+        "SourceImage": "C:\\Users\\victim_user\\AppData\\Local\\Temp\\dropper.exe",
+        "SourceProcessId": "4812",
+        "TargetImage": "C:\\Windows\\System32\\notepad.exe",
+        "TargetProcessId": "2940",
+        "UtcTime": "2026-09-10 11:30:10.000"
+      },
+      "event_id": "8",
+      "event_type": "create_remote_thread",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "cdd54cd5baf4c5a4c899617bd7ce4e86c6153a73867223760e33fecec346eca3",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "create_remote_thread created",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "multi_stage_chain",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "sparse_root_only",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

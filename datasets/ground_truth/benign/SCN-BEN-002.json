@@ -1,0 +1,66 @@
+{
+  "scenario_id": "SCN-BEN-002",
+  "dataset_version": "1.0.0",
+  "category": "benign_baseline",
+  "title": "Corporate Endpoint Management Software Inventory",
+  "description": "Legitimate enterprise asset management agent executing WMI command to query installed hotfixes.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-11 09:15:00.000",
+      "ProcessId": 3840,
+      "Image": "C:\\Windows\\System32\\wbem\\WMIC.exe",
+      "CommandLine": "wmic.exe qfe list brief /format:csv",
+      "ParentImage": "C:\\Program Files\\Microsoft Endpoint Manager\\agent.exe",
+      "User": "NT AUTHORITY\\SYSTEM",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "benign",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "WMIC.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "agent.exe",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-BEN-02",
+      "statement": "WMIC.exe was executed by Endpoint Manager agent to enumerate installed quick-fix engineering updates",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-BEN-03",
+      "prohibited_assertion": "Adversary is executing malicious WMI persistence or lateral movement",
+      "reason": "Execution parent is legitimate management software querying benign hotfix information"
+    }
+  ],
+  "known_uncertainty": [
+    "WMI query return data is not captured in Sysmon Event ID 1."
+  ],
+  "expected_limitations": [
+    "Benign inventory baseline."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "benign_baseline_corpus_sccm",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Ground-truth verified benign baseline"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate handling of dual-use administrative utilities (WMIC)"
+}
+

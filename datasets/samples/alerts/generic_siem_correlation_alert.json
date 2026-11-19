@@ -1,0 +1,39 @@
+{
+  "source_type": "generic_siem",
+  "source_identifier": "splunk-es-notable",
+  "provider": "Splunk Enterprise Security",
+  "rule_id": "rule-es-notable-90214",
+  "rule_name": "Multiple Failed Logins Followed by Successful Admin Logon",
+  "description": "Correlation engine detected 15 failed authentication attempts against endpoint SRV-PROD-SQL01 followed immediately by a successful interactive logon as DOMAIN\\SQLAdmin.",
+  "severity": "critical",
+  "urgency": "critical",
+  "category": "credential_access",
+  "timestamp": "2026-10-31T09:55:12.000000Z",
+  "host": "SRV-PROD-SQL01.corp.local",
+  "user": "DOMAIN\\SQLAdmin",
+  "src_ip": "198.51.100.201",
+  "dest_ip": "10.0.2.50",
+  "sha256": "3b769213efb345678901234567890abcdef1234567890abcdef1234567890abc",
+  "mitre_tactics": ["Credential Access", "Initial Access"],
+  "mitre_techniques": ["T1110.003", "T1078.002"],
+  "search_name": "Correlation - Credential Stuffing Success",
+  "evidence_count": 16,
+  "entities": [
+    {
+      "type": "host",
+      "value": "SRV-PROD-SQL01.corp.local",
+      "role": "victim"
+    },
+    {
+      "type": "user",
+      "value": "DOMAIN\\SQLAdmin",
+      "role": "compromised_account"
+    },
+    {
+      "type": "ip",
+      "value": "198.51.100.201",
+      "role": "attacker"
+    }
+  ]
+}
+

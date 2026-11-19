@@ -23,6 +23,17 @@ from app.schemas.query import (
     RawEvidenceDetailResponse,
     RawEvidenceEventSummary,
 )
+from app.modules.threatintel.exceptions import InvalidObservableError
+from app.modules.threatintel.local_engine import LocalThreatIntelEngine
+from app.modules.threatintel.models import (
+    ObservableType,
+    ThreatIntelLookupStatus,
+    ThreatIntelRequest,
+    ThreatVerdict,
+)
+from app.modules.threatintel.validation import from_extracted_entity
+from app.schemas.threatintel import InvestigationFindingState, ThreatIntelFindingItem
+
 from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
@@ -32,6 +43,9 @@ q_logger = logger.bind(component="query_service")
 
 class InvestigationQueryService:
     """Service providing deterministic querying across evidence, events, and entities."""
+
+    def __init__(self, threat_intel_engine: Any | None = None) -> None:
+        self.threat_intel_engine = threat_intel_engine
 
     @staticmethod
     def _normalize_datetime(dt: datetime | None) -> datetime | None:
@@ -221,11 +235,14 @@ class InvestigationQueryService:
         self,
         session: Any,
         event_id: uuid.UUID,
+        enrich_threat_intel: bool = False,
+        engine: Any | None = None,
     ) -> NormalizedEventDetail | None:
         """
-        Fetch a single normalized event by UUID, including extracted entities and provenance.
+        Fetch a single normalized event by UUID, including extracted entities, provenance,
+        and optional local threat intelligence enrichment.
         """
-        q_logger.debug("Fetching normalized event by ID", event_id=str(event_id))
+        q_logger.debug("Fetching normalized event by ID", event_id=str(event_id), enrich_threat_intel=enrich_threat_intel)
         stmt = (
             select(NormalizedEventModel)
             .options(
@@ -253,6 +270,12 @@ class InvestigationQueryService:
             for ent in (event.entities or [])
         ]
 
+        threat_intel_findings: list[ThreatIntelFindingItem] = []
+        if enrich_threat_intel:
+            threat_intel_findings = await self.enrich_entities_with_threat_intel(
+                event.entities or [], engine=engine
+            )
+
         return NormalizedEventDetail(
             id=event.id,
             raw_evidence_id=event.raw_evidence_id,
@@ -275,7 +298,161 @@ class InvestigationQueryService:
                 event.raw_evidence.ingested_at if event.raw_evidence else None
             ),
             entities=entities,
+            threat_intel=threat_intel_findings,
         )
+
+    async def enrich_entities_with_threat_intel(
+        self,
+        entities: list[Any],
+        engine: Any | None = None,
+    ) -> list[ThreatIntelFindingItem]:
+        """
+        Enrich extracted entities with deterministic threat intelligence findings.
+
+        Guarantees:
+        - Non-IOC entities (host, user, process) are safely ignored.
+        - Invalid observables produce an INVALID_OBSERVABLE item without aborting the batch.
+        - Provenance (entity_id, event_id, raw_evidence_id, source attribution) is fully preserved.
+        - Distinct operational states are categorized: FRESH_MATCH, STALE_MATCH,
+          VALID_UNMATCHED, ENGINE_UNAVAILABLE, INVALID_OBSERVABLE, LOOKUP_ERROR.
+        - Per-observable failures do not abort remaining lookups.
+        """
+        ti_engine = engine or self.threat_intel_engine
+        findings: list[ThreatIntelFindingItem] = []
+        ioc_types = {"ip", "domain", "file_hash"}
+
+        for ent in entities:
+            ent_type = getattr(ent, "entity_type", None) or (ent.get("entity_type") if isinstance(ent, dict) else None)
+            if not ent_type or ent_type not in ioc_types:
+                continue
+
+            ent_id = getattr(ent, "id", None) or (ent.get("id") if isinstance(ent, dict) else None)
+            event_id = getattr(ent, "event_id", None) or (ent.get("event_id") if isinstance(ent, dict) else None)
+            raw_ev_id = getattr(ent, "raw_evidence_id", None) or (ent.get("raw_evidence_id") if isinstance(ent, dict) else None)
+            raw_val = str(getattr(ent, "entity_value", None) or (ent.get("entity_value") if isinstance(ent, dict) else ""))
+
+            # 1. Parse and validate observable using from_extracted_entity bridge
+            try:
+                obs = from_extracted_entity(ent)
+            except InvalidObservableError as val_err:
+                findings.append(
+                    ThreatIntelFindingItem(
+                        entity_id=ent_id,
+                        event_id=event_id,
+                        raw_evidence_id=raw_ev_id,
+                        observable_type=ObservableType.DOMAIN,
+                        raw_observable=raw_val,
+                        normalized_observable=raw_val,
+                        status=ThreatIntelLookupStatus.UNSUPPORTED_OBSERVABLE,
+                        verdict=ThreatVerdict.UNKNOWN,
+                        integration_state=InvestigationFindingState.INVALID_OBSERVABLE,
+                        error_message=f"Observable validation rejected: {val_err.message}",
+                    )
+                )
+                continue
+            except Exception as exc:
+                findings.append(
+                    ThreatIntelFindingItem(
+                        entity_id=ent_id,
+                        event_id=event_id,
+                        raw_evidence_id=raw_ev_id,
+                        observable_type=ObservableType.DOMAIN,
+                        raw_observable=raw_val,
+                        normalized_observable=raw_val,
+                        status=ThreatIntelLookupStatus.UNSUPPORTED_OBSERVABLE,
+                        verdict=ThreatVerdict.UNKNOWN,
+                        integration_state=InvestigationFindingState.INVALID_OBSERVABLE,
+                        error_message=f"Observable parsing failure: {exc}",
+                    )
+                )
+                continue
+
+            # 2. Check engine availability
+            if ti_engine is None:
+                findings.append(
+                    ThreatIntelFindingItem(
+                        entity_id=ent_id,
+                        event_id=event_id,
+                        raw_evidence_id=raw_ev_id,
+                        observable_type=obs.type,
+                        raw_observable=obs.raw_value,
+                        normalized_observable=obs.normalized_value,
+                        status=ThreatIntelLookupStatus.PROVIDER_FAILURE,
+                        verdict=ThreatVerdict.UNKNOWN,
+                        integration_state=InvestigationFindingState.ENGINE_UNAVAILABLE,
+                        error_message="Threat intelligence engine is not initialized or unavailable",
+                    )
+                )
+                continue
+
+            # 3. Query threat intelligence engine
+            try:
+                res = await ti_engine.lookup(
+                    ThreatIntelRequest(
+                        observable=obs.normalized_value,
+                        observable_type=obs.type,
+                    )
+                )
+            except Exception as exc:
+                findings.append(
+                    ThreatIntelFindingItem(
+                        entity_id=ent_id,
+                        event_id=event_id,
+                        raw_evidence_id=raw_ev_id,
+                        observable_type=obs.type,
+                        raw_observable=obs.raw_value,
+                        normalized_observable=obs.normalized_value,
+                        status=ThreatIntelLookupStatus.PROVIDER_FAILURE,
+                        verdict=ThreatVerdict.UNKNOWN,
+                        integration_state=InvestigationFindingState.LOOKUP_ERROR,
+                        error_message=f"Engine execution error: {exc}",
+                    )
+                )
+                continue
+
+            # 3. Categorize operational integration state
+            raw_data = res.raw_data or {}
+            is_stale = bool(raw_data.get("is_stale", False) or "stale_feed" in res.tags)
+            stale_feeds = raw_data.get("stale_feeds", [])
+            sources = raw_data.get("sources", [])
+
+            if res.status == ThreatIntelLookupStatus.SUCCESS:
+                state = (
+                    InvestigationFindingState.STALE_MATCH
+                    if is_stale
+                    else InvestigationFindingState.FRESH_MATCH
+                )
+            elif res.status == ThreatIntelLookupStatus.NOT_FOUND:
+                state = InvestigationFindingState.VALID_UNMATCHED
+            elif res.status == ThreatIntelLookupStatus.PROVIDER_FAILURE:
+                state = InvestigationFindingState.ENGINE_UNAVAILABLE
+            elif res.status == ThreatIntelLookupStatus.UNSUPPORTED_OBSERVABLE:
+                state = InvestigationFindingState.INVALID_OBSERVABLE
+            else:
+                state = InvestigationFindingState.LOOKUP_ERROR
+
+            findings.append(
+                ThreatIntelFindingItem(
+                    entity_id=ent_id,
+                    event_id=event_id,
+                    raw_evidence_id=raw_ev_id,
+                    observable_type=obs.type,
+                    raw_observable=obs.raw_value,
+                    normalized_observable=obs.normalized_value,
+                    status=res.status,
+                    verdict=res.verdict,
+                    integration_state=state,
+                    is_stale=is_stale,
+                    stale_feeds=stale_feeds,
+                    tags=res.tags,
+                    sources=sources,
+                    error_message=res.error_message,
+                    timestamp=res.timestamp,
+                )
+            )
+
+        return findings
+
 
     async def query_entities(
         self,

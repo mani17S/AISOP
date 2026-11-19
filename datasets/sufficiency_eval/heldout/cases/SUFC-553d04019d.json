@@ -1,0 +1,100 @@
+{
+  "base_scenario_id": "SCN-BEN-003",
+  "base_time_utc": "2026-09-11T11:20:00+00:00",
+  "case_id": "SUFC-553d04019d",
+  "entities": [
+    {
+      "entity_type": "domain",
+      "entity_value": "dc01.corp.internal",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "192.168.10.10",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "nslookup.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\it_admin",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "ping.exe 192.168.10.1 -n 4",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\PING.EXE",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "ProcessId": "5212",
+        "UtcTime": "2026-09-11 11:20:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "aa320bf7497443d8cf23e534a1f252c99586c25d489393eb2e068bee3d55ab84",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "queried",
+      "attributes": {
+        "EventID": "22",
+        "Image": "C:\\Windows\\System32\\nslookup.exe",
+        "ProcessId": "5220",
+        "QueryName": "dc01.corp.internal",
+        "QueryResults": "192.168.10.10",
+        "UtcTime": "2026-09-11 11:20:05.100"
+      },
+      "event_id": "22",
+      "event_type": "dns_query",
+      "key": "e1",
+      "outcome": "success",
+      "raw_evidence_sha256": "2d512762844d7398b023fab021951664bbc74b20ce2423a4416ff0d431392a4c",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "dns_query queried",
+      "timestamp_offset_s": 5.1
+    }
+  ],
+  "family": "benign_baseline",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "missing_required",
+  "window": {
+    "end_offset_s": 6.1,
+    "start_offset_s": -1.0
+  }
+}

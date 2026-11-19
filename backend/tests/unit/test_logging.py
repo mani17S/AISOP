@@ -241,11 +241,12 @@ async def test_request_correlation_middleware_header_and_logging(capture_logs):
         assert req_id1 is not None
         assert res1.json()["request_id"] == req_id1
 
-        # 2. With client request ID -> propagates it
+        # 2. With a client request ID -> NOT trusted: the server still issues its own (Phase 2.2 error contract)
         client_id = "custom-trace-uuid-12345"
         res2 = await client.get("/test-endpoint", headers={"X-Request-ID": client_id})
         assert res2.status_code == 200
-        assert res2.headers.get("X-Request-ID") == client_id
+        assert res2.headers.get("X-Request-ID") != client_id
+        assert res2.headers.get("X-Request-ID") == res2.json()["request_id"]
 
     # Verify HTTP request log was recorded
     http_logs = [c for c in capture_logs if c["message"] == "HTTP request completed"]

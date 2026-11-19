@@ -25,12 +25,12 @@ class RequestCorrelationMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # 1. Resolve or generate correlation request_id
+        # 1. The authoritative request_id is ALWAYS server generated (Phase 2.2 error contract: a client-supplied
+        #    value must not become the reference shown to users or trusted in logs). A well-formed client value is kept
+        #    only as a separate, clearly labelled log field.
         client_req_id = request.headers.get("X-Request-ID")
-        if client_req_id and SAFE_REQUEST_ID_REGEX.match(client_req_id):
-            request_id = client_req_id
-        else:
-            request_id = uuid.uuid4().hex
+        client_request_id = client_req_id if client_req_id and SAFE_REQUEST_ID_REGEX.match(client_req_id) else None
+        request_id = uuid.uuid4().hex
 
         request.state.request_id = request_id
 
@@ -43,6 +43,7 @@ class RequestCorrelationMiddleware(BaseHTTPMiddleware):
         req_logger = logger.bind(
             component="http",
             request_id=request_id,
+            client_request_id=client_request_id,
             method=method,
             path=path,
         )
@@ -72,7 +73,7 @@ class RequestCorrelationMiddleware(BaseHTTPMiddleware):
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             req_logger.error(
                 "Unhandled error during HTTP request processing",
-                error=str(exc),
+                error_type=type(exc).__name__,
                 duration_ms=duration_ms,
             )
             raise

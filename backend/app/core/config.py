@@ -15,10 +15,11 @@ Usage:
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal, Self
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 
 class Settings(BaseSettings):
@@ -26,8 +27,9 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables.
 
     Each field maps to an environment variable of the same name.
-    For example, setting ``OLLAMA_BASE_URL=http://gpu-server:11434``
-    in your .env file overrides the default.
+    For example, setting ``OLLAMA_MODEL=qwen3:4b`` in your .env file overrides the default.
+    A non-local ``OLLAMA_BASE_URL`` (for example ``http://gpu-server:11434``) is refused unless ``LLM_ALLOW_NON_LOCAL_ENDPOINT=true``
+    is also set (local-first policy); AI assistance can be switched off with ``LLM_ENABLED=false``.
 
     Groups are organized by subsystem. Fields that default to empty
     strings indicate optional values that the operator provides when
@@ -42,6 +44,44 @@ class Settings(BaseSettings):
 
     # ── API ──────────────────────────────────────────────────────
     API_V1_PREFIX: str = "/api/v1"
+    API_AUTH_ENABLED: bool = Field(
+        default=True,
+        description="Whether API ingress authentication is enforced on protected /api/v1/* routes",
+    )
+    API_AUTH_KEYS: list[str] = Field(
+        default_factory=list,
+        description="Configured valid API keys/tokens for machine/client authentication",
+    )
+    API_AUTH_ALLOW_LEGACY_KEYS: bool = Field(
+        default=False,
+        description="Whether legacy static API keys in API_AUTH_KEYS are permitted when database token lookup fails or before migration",
+    )
+
+    # ── Rate Limiting & Abuse Prevention (P3-H4) ────────────────
+    RATE_LIMIT_ENABLED: bool = Field(
+        default=True,
+        description="Whether API ingress rate limiting is enforced on API endpoints",
+    )
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(
+        default=120,
+        gt=0,
+        description="Standard request allowance per minute per client key/IP",
+    )
+    RATE_LIMIT_BURST_CAPACITY: int = Field(
+        default=60,
+        gt=0,
+        description="Maximum burst bucket token capacity per client",
+    )
+    RATE_LIMIT_TRUSTED_PROXIES: list[str] = Field(
+        default=["127.0.0.1", "::1"],
+        description="List of reverse proxy IP addresses allowed to provide X-Forwarded-For headers",
+    )
+
+    # ── Security Headers ─────────────────────────────────────────
+    SECURITY_HEADERS_ENABLED: bool = Field(
+        default=True,
+        description="Whether strict security response headers (CSP, HSTS, X-Content-Type, etc.) are injected",
+    )
 
     # ── Database (PostgreSQL) ────────────────────────────────────
     DATABASE_URL: str = "postgresql+psycopg://aisop:aisop@localhost:5432/aisop_dev"
@@ -79,17 +119,97 @@ class Settings(BaseSettings):
     )
     LLM_PROVIDER: str = Field(
         default="ollama",
-        description="Active LLM provider identifier ('ollama' in Phase 2)",
+        description="Active LLM provider identifier. Only 'ollama' (local) is implemented; any other value fails closed. Never inferred from API keys.",
+    )
+    LLM_ENABLED: bool = Field(
+        default=True,
+        description=(
+            "Global AI-assistance switch. False = AI disabled: no provider client is built, no model/health/embedding call is made, "
+            "and every deterministic path keeps working with AI results reported as 'disabled'."
+        ),
+    )
+    LLM_ALLOW_NON_LOCAL_ENDPOINT: bool = Field(
+        default=False,
+        description=(
+            "Local-first guard: OLLAMA_BASE_URL must point at this machine (localhost, 127.0.0.0/8, ::1) unless the operator sets this to true. "
+            "Sending prompts and evidence to another host is an explicit, opt-in decision."
+        ),
+    )
+
+    # ── ATT&CK reference (optional, local, offline) ─────────────
+    ATTACK_REFERENCE_PATH: str | None = Field(
+        default=None,
+        description=(
+            "Optional local path to the pinned MITRE ATT&CK Enterprise STIX file. Unset = not configured (no taxonomy "
+            "validation, behaviour unchanged). Loaded lazily at most once per process; no network, never a startup requirement."
+        ),
     )
 
     # ── Embeddings (pgvector — ADR-002) ─────────────────────────
     EMBEDDING_DIMENSIONS: int = 768
     EMBEDDING_MODEL: str = "nomic-embed-text"
 
+    # ── Knowledge Ingestion & RAG (P2-H3) ───────────────────────
+    KNOWLEDGE_BASE_PATH: str = Field(
+        default="knowledge_base",
+        description="Path to knowledge_base/ directory relative to the project root",
+    )
+    KNOWLEDGE_CHUNK_SIZE: int = Field(
+        default=512,
+        gt=0,
+        description="Target chunk size in words for sliding-window document splitting",
+    )
+    KNOWLEDGE_CHUNK_OVERLAP: int = Field(
+        default=64,
+        ge=0,
+        description="Word overlap between consecutive chunks for context continuity",
+    )
+    EMBEDDING_TIMEOUT_SECONDS: int = Field(
+        default=30,
+        gt=0,
+        description="Timeout in seconds for Ollama /api/embeddings HTTP calls",
+    )
+    RETRIEVAL_TOP_K: int = Field(
+        default=5,
+        gt=0,
+        le=20,
+        description="Default number of chunks returned by cosine similarity retrieval",
+    )
+
     # ── Threat Intelligence ──────────────────────────────────────
     VIRUSTOTAL_API_KEY: str = ""
     ABUSEIPDB_API_KEY: str = ""
     ALIENVAULT_OTX_API_KEY: str = ""
+    LOCAL_TI_FEED_DIR: str = Field(
+        default="data/feeds",
+        description="Path to local threat intelligence feed directory relative to project root",
+    )
+    LOCAL_TI_MAX_FEED_AGE_HOURS: float = Field(
+        default=24.0,
+        gt=0.0,
+        description="Threshold in hours after which local feed indicators are treated as stale",
+    )
+    # Phase 4A: external threat-intelligence controls. Everything here is OFF/closed by default, and no API key above enables a source.
+    TI_EXTERNAL_ENABLED: bool = Field(
+        default=False,
+        description="Global switch for external (remote) threat-intelligence lookups. Off by default; a per-query opt-in is also required",
+    )
+    TI_ENABLED_SOURCES: list[str] = Field(
+        default_factory=list,
+        description="Allowlist of external source IDs the operator enables (comma-separated or JSON list). Unknown IDs never enable anything",
+    )
+    TI_INTERNAL_DOMAIN_SUFFIXES: list[str] = Field(
+        default_factory=list,
+        description="Operator-maintained internal domain suffixes (for example .corp.example-company.com) that must never be sent externally",
+    )
+    TI_INTERNAL_NETWORKS: list[str] = Field(
+        default_factory=list,
+        description="Operator-maintained internal CIDR ranges beyond the built-in private ranges that must never be sent externally",
+    )
+    TI_ALLOW_PUBLIC_DOMAIN_LOOKUPS: bool = Field(
+        default=False,
+        description="Whether domains that pass the internal-name checks may be sent to an enabled external source. Closed by default because a domain cannot be proven public without DNS",
+    )
 
     # ── Logging ──────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
@@ -98,8 +218,78 @@ class Settings(BaseSettings):
     LOG_ROTATION: str = "10 MB"
     LOG_RETENTION: str = "30 days"
 
+    # Restricted diagnostic record for server errors (Phase 2.4). Baseline fields are allowlisted and contain no exception text.
+    DIAGNOSTIC_LOG_PATH: str = ""  # when set, diagnostic records go to this file only (not the general sink); empty = general sink with component=diagnostic
+    DIAGNOSTIC_LOG_MESSAGE_SHAPE: bool = False  # opt-in masked exception-message shape; see app/core/diagnostics.py for limits
+
     # ── CORS ─────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+
+    @field_validator("API_AUTH_KEYS", mode="before")
+    @classmethod
+    def _parse_api_auth_keys(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            cleaned = v.strip()
+            if not cleaned:
+                return []
+            if cleaned.startswith("[") and cleaned.endswith("]"):
+                import json
+                try:
+                    loaded = json.loads(cleaned)
+                    if isinstance(loaded, list):
+                        return [str(k).strip() for k in loaded if str(k).strip()]
+                except Exception:
+                    pass
+            return [k.strip() for k in cleaned.split(",") if k.strip()]
+        if isinstance(v, (list, tuple, set)):
+            return [str(k).strip() for k in v if str(k).strip()]
+        return []
+
+    @field_validator("TI_ENABLED_SOURCES", "TI_INTERNAL_DOMAIN_SUFFIXES", "TI_INTERNAL_NETWORKS", mode="before")
+    @classmethod
+    def _parse_ti_lists(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            cleaned = v.strip()
+            if not cleaned:
+                return []
+            if cleaned.startswith("[") and cleaned.endswith("]"):
+                import json
+                try:
+                    loaded = json.loads(cleaned)
+                    if isinstance(loaded, list):
+                        return [str(k).strip() for k in loaded if str(k).strip()]
+                except Exception:
+                    pass
+            return [k.strip() for k in cleaned.split(",") if k.strip()]
+        if isinstance(v, (list, tuple, set)):
+            return [str(k).strip() for k in v if str(k).strip()]
+        return []
+
+    @field_validator("RATE_LIMIT_TRUSTED_PROXIES", mode="before")
+    @classmethod
+    def _parse_trusted_proxies(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            cleaned = v.strip()
+            if not cleaned:
+                return ["127.0.0.1", "::1"]
+            if cleaned.startswith("[") and cleaned.endswith("]"):
+                import json
+                try:
+                    loaded = json.loads(cleaned)
+                    if isinstance(loaded, list):
+                        return [str(k).strip() for k in loaded if str(k).strip()]
+                except Exception:
+                    pass
+            return [k.strip() for k in cleaned.split(",") if k.strip()]
+        if isinstance(v, (list, tuple, set)):
+            return [str(k).strip() for k in v if str(k).strip()]
+        return ["127.0.0.1", "::1"]
+
+    @model_validator(mode="after")
+    def _validate_auth_invariants(self) -> Self:
+        if self.ENVIRONMENT == "production" and not self.API_AUTH_ENABLED:
+            raise ValueError("API_AUTH_ENABLED cannot be False in production environment")
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",

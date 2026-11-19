@@ -8,6 +8,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from app.core.auth import AuthenticatedClient, verify_api_key
+from app.core.errors import CodedHTTPException, QUERY_PARAMETER_INVALID, ApiError, safe_exception_text
+from app.core.rbac import (
+    can_access_global_entity_search,
+    can_access_global_event_triage,
+    can_ingest_telemetry,
+)
 from app.db.session import get_db_session
 from app.schemas.ingest import IngestRequest, IngestResponse
 from app.schemas.query import (
@@ -18,33 +25,44 @@ from app.schemas.query import (
     NormalizedEventSummary,
     PaginatedResponse,
     RawEvidenceDetailResponse,
+    SanitizedExtractedEntityItem,
+    SanitizedNormalizedEventSummary,
 )
 from app.services.ingestion_service import IngestionService
 from app.services.query_service import InvestigationQueryService
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 router = APIRouter(prefix="/evidence", tags=["Evidence & Telemetry"])
 
 
 @router.post(
-    "/ingest", response_model=IngestResponse, summary="Ingest raw telemetry batch"
+    "/ingest",
+    response_model=IngestResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Ingest raw telemetry batch",
 )
 async def ingest_telemetry(
     request: IngestRequest,
     session: Any = Depends(get_db_session),
+    client: AuthenticatedClient = Depends(verify_api_key),
 ) -> IngestResponse:
     """
     Ingest a batch of raw telemetry events (e.g. Sysmon JSON).
     Cryptographically hashes raw payloads, normalizes into canonical schemas,
     extracts atomic entities, and stores atomically with deduplication.
     """
+    if client.analyst is not None and not can_ingest_telemetry(client.analyst.global_role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient global role to ingest telemetry. Ingest identity required.",
+        )
     service = IngestionService()
     return await service.ingest_batch(session, request)
 
 
 @router.get(
     "/events",
-    response_model=PaginatedResponse[NormalizedEventSummary],
+    response_model=PaginatedResponse[SanitizedNormalizedEventSummary],
     summary="Query normalized events",
 )
 async def list_events(
@@ -102,14 +120,30 @@ async def list_events(
         le=MAX_PAGE_SIZE,
         description=f"Number of events per page (1 to {MAX_PAGE_SIZE}, default: {DEFAULT_PAGE_SIZE})",
     ),
+    client: AuthenticatedClient = Depends(verify_api_key),
     session: Any = Depends(get_db_session),
-) -> PaginatedResponse[NormalizedEventSummary]:
+) -> PaginatedResponse[SanitizedNormalizedEventSummary]:
     """
     Retrieve normalized events with multi-field filtering, time bounding, and deterministic pagination.
+    Decision 1A & Gate D.2.3.2: Triage receives sanitized summaries only (excludes raw_evidence_id and normalized_payload).
+    Machine clients without human analyst identity are strictly rejected with 403.
     """
+    if client.analyst is None:
+        raise CodedHTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Machine credentials without analyst identity cannot access evidence query endpoints.",
+            code="MACHINE_CREDENTIAL_NOT_PERMITTED",
+        )
+
+    if not can_access_global_event_triage(client.analyst.global_role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient global role to access global event triage.",
+        )
+
     service = InvestigationQueryService()
     try:
-        return await service.query_events(
+        paginated = await service.query_events(
             session=session,
             start_time=start_time,
             end_time=end_time,
@@ -124,7 +158,22 @@ async def list_events(
             limit=limit,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise ApiError(400, QUERY_PARAMETER_INVALID, safe_exception_text(exc, "A query parameter is invalid."))
+
+    # Apply Decision 1A sanitization (excludes raw_evidence_id and normalized_payload)
+    sanitized_items = [
+        SanitizedNormalizedEventSummary.from_event_summary(item)
+        for item in paginated.items
+    ]
+    return PaginatedResponse[SanitizedNormalizedEventSummary](
+        items=sanitized_items,
+        total=paginated.total,
+        page=paginated.page,
+        limit=paginated.limit,
+        total_pages=paginated.total_pages,
+        has_next=paginated.has_next,
+        has_previous=paginated.has_previous,
+    )
 
 
 @router.get(
@@ -134,21 +183,30 @@ async def list_events(
 )
 async def get_event(
     event_id: uuid.UUID = Path(..., description="Normalized event UUID"),
+    client: AuthenticatedClient = Depends(verify_api_key),
     session: Any = Depends(get_db_session),
 ) -> NormalizedEventDetail:
     """
-    Fetch a single normalized event by UUID, including its extracted entities and provenance.
+    Unscoped event detail retrieval is deprecated and disabled (Gate D.2.3.2).
+    Evidence must be linked to a case and retrieved through case-scoped authorization path.
     """
-    service = InvestigationQueryService()
-    event = await service.get_event_by_id(session, event_id)
-    if not event:
-        raise HTTPException(status_code=404, detail="Normalized event not found")
-    return event
+    if client.analyst is None:
+        raise CodedHTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Machine credentials without analyst identity cannot access evidence query endpoints.",
+            code="MACHINE_CREDENTIAL_NOT_PERMITTED",
+        )
+
+    raise CodedHTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Direct unscoped evidence retrieval is disabled. Case-scoped evidence retrieval via /api/v1/cases/{case_id}/evidence is required.",
+        code="UNSCOPED_ENDPOINT_DISABLED",
+    )
 
 
 @router.get(
     "/entities",
-    response_model=PaginatedResponse[ExtractedEntityItem],
+    response_model=PaginatedResponse[SanitizedExtractedEntityItem],
     summary="Query extracted entities / IOCs",
 )
 async def list_entities(
@@ -178,14 +236,30 @@ async def list_entities(
         le=MAX_PAGE_SIZE,
         description=f"Number of items per page (1 to {MAX_PAGE_SIZE}, default: {DEFAULT_PAGE_SIZE})",
     ),
+    client: AuthenticatedClient = Depends(verify_api_key),
     session: Any = Depends(get_db_session),
-) -> PaginatedResponse[ExtractedEntityItem]:
+) -> PaginatedResponse[SanitizedExtractedEntityItem]:
     """
     Retrieve extracted atomic entities with filtering and deterministic pagination.
+    Decision 1A & Gate D.2.3.2: Triage receives sanitized entities only (excludes event_id, raw_evidence_id, and attributes).
+    Machine clients without human analyst identity are strictly rejected with 403.
     """
+    if client.analyst is None:
+        raise CodedHTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Machine credentials without analyst identity cannot access evidence query endpoints.",
+            code="MACHINE_CREDENTIAL_NOT_PERMITTED",
+        )
+
+    if not can_access_global_entity_search(client.analyst.global_role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient global role to access global entity search.",
+        )
+
     service = InvestigationQueryService()
     try:
-        return await service.query_entities(
+        paginated = await service.query_entities(
             session=session,
             entity_type=entity_type,
             entity_value=entity_value,
@@ -194,7 +268,22 @@ async def list_entities(
             limit=limit,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise ApiError(400, QUERY_PARAMETER_INVALID, safe_exception_text(exc, "A query parameter is invalid."))
+
+    # Apply Decision 1A sanitization (excludes event_id, raw_evidence_id, and attributes)
+    sanitized_items = [
+        SanitizedExtractedEntityItem.from_entity_item(item)
+        for item in paginated.items
+    ]
+    return PaginatedResponse[SanitizedExtractedEntityItem](
+        items=sanitized_items,
+        total=paginated.total,
+        page=paginated.page,
+        limit=paginated.limit,
+        total_pages=paginated.total_pages,
+        has_next=paginated.has_next,
+        has_previous=paginated.has_previous,
+    )
 
 
 @router.get(
@@ -210,16 +299,25 @@ async def get_evidence_by_hash(
         pattern=r"^[a-fA-F0-9]{64}$",
         description="64-character hexadecimal SHA-256 integrity hash",
     ),
+    client: AuthenticatedClient = Depends(verify_api_key),
     session: Any = Depends(get_db_session),
 ) -> RawEvidenceDetailResponse:
     """
-    Fetch a raw evidence record and its child normalized events by cryptographic SHA-256 digest.
+    Unscoped raw evidence retrieval by hash is deprecated and disabled (Gate D.2.3.2).
+    Evidence must be linked to a case and retrieved through case-scoped authorization path.
     """
-    service = InvestigationQueryService()
-    evidence = await service.get_evidence_by_hash(session, sha256_hash)
-    if not evidence:
-        raise HTTPException(status_code=404, detail="Evidence not found for hash")
-    return evidence
+    if client.analyst is None:
+        raise CodedHTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Machine credentials without analyst identity cannot access evidence query endpoints.",
+            code="MACHINE_CREDENTIAL_NOT_PERMITTED",
+        )
+
+    raise CodedHTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Direct unscoped raw evidence retrieval is disabled. Case-scoped evidence retrieval via /api/v1/cases/{case_id}/evidence is required.",
+        code="UNSCOPED_ENDPOINT_DISABLED",
+    )
 
 
 @router.get(
@@ -229,13 +327,22 @@ async def get_evidence_by_hash(
 )
 async def get_evidence(
     evidence_id: uuid.UUID = Path(..., description="Raw evidence UUID"),
+    client: AuthenticatedClient = Depends(verify_api_key),
     session: Any = Depends(get_db_session),
 ) -> RawEvidenceDetailResponse:
     """
-    Fetch a raw evidence record and its child normalized events by UUID.
+    Unscoped raw evidence retrieval by UUID is deprecated and disabled (Gate D.2.3.2).
+    Evidence must be linked to a case and retrieved through case-scoped authorization path.
     """
-    service = InvestigationQueryService()
-    evidence = await service.get_evidence_by_id(session, evidence_id)
-    if not evidence:
-        raise HTTPException(status_code=404, detail="Evidence not found")
-    return evidence
+    if client.analyst is None:
+        raise CodedHTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Machine credentials without analyst identity cannot access evidence query endpoints.",
+            code="MACHINE_CREDENTIAL_NOT_PERMITTED",
+        )
+
+    raise CodedHTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Direct unscoped raw evidence retrieval is disabled. Case-scoped evidence retrieval via /api/v1/cases/{case_id}/evidence is required.",
+        code="UNSCOPED_ENDPOINT_DISABLED",
+    )

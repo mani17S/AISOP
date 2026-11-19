@@ -1,0 +1,103 @@
+{
+  "scenario_id": "SCN-CHN-004",
+  "dataset_version": "1.0.0",
+  "category": "multi_stage_chain",
+  "title": "Internal Domain Reconnaissance and Privilege Discovery",
+  "description": "Synthetic multi-stage chain: Command prompt executing sequential discovery commands to enumerate local privileges and Domain Admins.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-10 13:00:00.000",
+      "ProcessId": 6120,
+      "Image": "C:\\Windows\\System32\\whoami.exe",
+      "CommandLine": "whoami /priv",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "User": "CORP\\compromised_user",
+      "Computer": "CORP-FIN-WS01"
+    },
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-10 13:00:04.200",
+      "ProcessId": 6128,
+      "Image": "C:\\Windows\\System32\\net.exe",
+      "CommandLine": "net group \"Domain Admins\" /domain",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "User": "CORP\\compromised_user",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "suspicious",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "whoami.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "net.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "user",
+      "observable_value": "CORP\\compromised_user",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1033",
+      "technique_name": "System Owner/User Discovery",
+      "tactic": "Discovery",
+      "is_mandatory": true,
+      "is_uncertain": false
+    },
+    {
+      "technique_id": "T1069.002",
+      "technique_name": "Permission Groups Discovery: Domain Groups",
+      "tactic": "Discovery",
+      "is_mandatory": true,
+      "is_uncertain": false
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-CHN-06",
+      "statement": "whoami.exe was executed with /priv to inspect user token privileges",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    },
+    {
+      "claim_id": "EXP-CHN-07",
+      "statement": "net.exe was executed to query members of the Domain Admins group",
+      "category": "behavioral",
+      "required_evidence_indices": [1],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-CHN-04",
+      "prohibited_assertion": "The attacker successfully added a new user to the Domain Admins group",
+      "reason": "The command executed was a read-only query (/domain), not an add operation (/add)"
+    }
+  ],
+  "known_uncertainty": [
+    "Command line output returned to the interactive console is not captured by Sysmon Event ID 1."
+  ],
+  "expected_limitations": [
+    "Discovery activity alone does not prove compromise of Domain Controller."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "synthetic_discovery_t1033_t1069",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Validated against discovery pattern telemetry"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate detection and classification of early-stage discovery and enumeration"
+}
+

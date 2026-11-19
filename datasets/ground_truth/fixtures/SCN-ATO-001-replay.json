@@ -1,0 +1,52 @@
+{
+  "investigation_id": "00112233-4455-6677-8899-aabbccddeeff",
+  "generated_at": "2026-10-30T12:00:00Z",
+  "model_identifier": "llama3.1:8b",
+  "investigation_summary": "powershell.exe was executed with hidden window and base64 encoded arguments on CORP-FIN-WS01.",
+  "claims": [
+    {
+      "claim_id": "11223344-5566-7788-99aa-bbccddeeff00",
+      "claim_text": "powershell.exe was launched with hidden window flags and base64 encoded arguments by victim_user",
+      "category": "observed_fact",
+      "confidence": 0.95,
+      "supporting_evidence_ids": [
+        "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+      ],
+      "references_exist": true,
+      "grounding_status": "validated_reference",
+      "analyst_notes": "Observed in Sysmon Event ID 1"
+    },
+    {
+      "claim_id": "22334455-6677-8899-aabb-ccddeeff0011",
+      "claim_text": "Process was initiated by user CORP\\victim_user on host CORP-FIN-WS01",
+      "category": "observed_fact",
+      "confidence": 0.95,
+      "supporting_evidence_ids": [
+        "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+      ],
+      "references_exist": true,
+      "grounding_status": "validated_reference",
+      "analyst_notes": "Attributed from process token"
+    }
+  ],
+  "mitre_attack_hypotheses": [
+    {
+      "technique_id": "T1059.001",
+      "technique_name": "Command and Scripting Interpreter: PowerShell",
+      "tactics": [
+        "Execution"
+      ],
+      "confidence": 0.95,
+      "reasoning": "powershell.exe invoked with encoded command",
+      "supporting_event_uuids": [
+        "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+      ]
+    }
+  ],
+  "alternative_explanations": [],
+  "recommended_analyst_actions": [
+    "Isolate host CORP-FIN-WS01 and inspect decoded PowerShell script"
+  ],
+  "uncertainty_and_data_gaps": [],
+  "overall_grounding_score": 1.0
+}

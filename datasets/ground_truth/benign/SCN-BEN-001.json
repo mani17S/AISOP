@@ -1,0 +1,81 @@
+{
+  "scenario_id": "SCN-BEN-001",
+  "dataset_version": "1.0.0",
+  "category": "benign_baseline",
+  "title": "Legitimate Windows Update Maintenance Servicing",
+  "description": "Routine execution of TrustedInstaller.exe and TiWorker.exe applying official Windows quality updates.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-11 03:00:15.000",
+      "ProcessId": 1420,
+      "Image": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+      "CommandLine": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+      "ParentImage": "C:\\Windows\\System32\\services.exe",
+      "User": "NT AUTHORITY\\SYSTEM",
+      "Computer": "CORP-FIN-WS01"
+    },
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-11 03:00:18.200",
+      "ProcessId": 1844,
+      "Image": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.19041.1_none_de123\\TiWorker.exe",
+      "CommandLine": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.19041.1_none_de123\\TiWorker.exe -Embedding",
+      "ParentImage": "C:\\Windows\\System32\\svchost.exe",
+      "User": "NT AUTHORITY\\SYSTEM",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "benign",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "TrustedInstaller.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "TiWorker.exe",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-BEN-01",
+      "statement": "TrustedInstaller.exe and TiWorker.exe executed under NT AUTHORITY\\SYSTEM for routine OS servicing",
+      "category": "behavioral",
+      "required_evidence_indices": [0, 1],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-BEN-01",
+      "prohibited_assertion": "The execution of TrustedInstaller.exe represents an active privilege escalation attack",
+      "reason": "Standard Windows Component Based Servicing (CBS) executed from expected system path with expected parent services.exe"
+    },
+    {
+      "prohibited_claim_id": "PRO-BEN-02",
+      "prohibited_assertion": "Endpoint must be immediately isolated from corporate network",
+      "reason": "Routine update maintenance does not warrant emergency incident response containment"
+    }
+  ],
+  "known_uncertainty": [
+    "Specific KB update package numbers are not recorded in process creation command line."
+  ],
+  "expected_limitations": [
+    "Benign activity baseline test."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "benign_baseline_corpus_win10",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Ground-truth verified benign baseline"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed from benign baseline telemetry to test false-positive resistance"
+}
+

@@ -30,3 +30,8 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+# Local secret material, never commit or publish
+viva-credentials.txt
+opencode.json
+frontend/tests/*.test.mjs
+frontend/vite.config.ts.timestamp-*.mjs

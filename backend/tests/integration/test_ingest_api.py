@@ -2,22 +2,35 @@
 Integration tests for Evidence Ingestion & Health API endpoints.
 """
 
+import uuid
 import httpx
 import pytest
+from app.api.dependencies import AuthenticatedAnalyst, AuthenticatedClient, verify_api_key
+from app.core.rbac import GlobalRole
 from app.db.session import get_db_session
 from app.main import app
 
 
 @pytest.fixture
 def test_app(db_session):
-    """Override database dependency to use isolated in-memory SQLite session."""
+    """Override database and auth dependency to use isolated in-memory SQLite session and test client."""
 
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db_session] = override_get_db
+    app.dependency_overrides[verify_api_key] = lambda: AuthenticatedClient(
+        client_id="test-ingest",
+        analyst=AuthenticatedAnalyst(
+            analyst_id=uuid.uuid4(),
+            username="ingest-tester",
+            global_role=GlobalRole.INGEST,
+            is_active=True,
+        ),
+    )
     yield app
     app.dependency_overrides.clear()
+
 
 
 @pytest.mark.anyio
@@ -90,6 +103,17 @@ async def test_ingest_telemetry_endpoint(test_app):
         assert dup_data["total_normalized"] == 0
         assert dup_data["total_skipped_duplicates"] == 2
         assert len(dup_data["existing_evidence_ids"]) == 2
+
+        # Switch to analyst identity to query events (enforcing ingest vs triage boundary)
+        test_app.dependency_overrides[verify_api_key] = lambda: AuthenticatedClient(
+            client_id="test-analyst",
+            analyst=AuthenticatedAnalyst(
+                analyst_id=uuid.uuid4(),
+                username="analyst-tester",
+                global_role=GlobalRole.ANALYST_TIER_1,
+                is_active=True,
+            ),
+        )
 
         # Query back via GET /api/v1/evidence/events - must strictly remain 2 events
         query_res = await client.get("/api/v1/evidence/events?limit=10")

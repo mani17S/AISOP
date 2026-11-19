@@ -1,0 +1,115 @@
+{
+  "base_scenario_id": "SCN-BEN-002",
+  "base_time_utc": "2026-09-11T09:15:00+00:00",
+  "case_id": "SUFC-67f01593e6",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "agent.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "wmic.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "nt authority\\system",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "unrelated0.exe",
+      "event_keys": [
+        "x0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "unrelated1.exe",
+      "event_keys": [
+        "x1"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "wmic.exe qfe list brief /format:csv",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\wbem\\WMIC.exe",
+        "ParentImage": "C:\\Program Files\\Microsoft Endpoint Manager\\agent.exe",
+        "ProcessId": "3840",
+        "UtcTime": "2026-09-11 09:15:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "317adf84bd0f96fcf8d551d9c236b29dc834364413c3680cf41f376c313f77d6",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "start",
+      "attributes": {
+        "note": "synthetic filler 0"
+      },
+      "event_id": "9001",
+      "event_type": "process_creation",
+      "key": "x0",
+      "outcome": "success",
+      "raw_evidence_sha256": "cc8a8c4bdfe91d241c9a94e321b0207d82af27754870135b0a6a139085fa7d55",
+      "severity": "informational",
+      "source_identifier": "UNRELATED-HOST-99",
+      "summary": "unrelated activity 0",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "start",
+      "attributes": {
+        "note": "synthetic filler 1"
+      },
+      "event_id": "9002",
+      "event_type": "process_creation",
+      "key": "x1",
+      "outcome": "success",
+      "raw_evidence_sha256": "ea01ca53cd2e15c0a1b399ffc653b1b3c12d81a8d61419c91b03d20f2b2870cc",
+      "severity": "informational",
+      "source_identifier": "UNRELATED-HOST-99",
+      "summary": "unrelated activity 1",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "benign_baseline",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "irrelevant_added",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

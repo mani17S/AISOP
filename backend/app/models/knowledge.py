@@ -15,7 +15,7 @@ from typing import Any
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, Index, String, Text, Uuid
+from sqlalchemy import JSON, Index, Integer, String, Text, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -43,11 +43,14 @@ class KnowledgeEmbedding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     section_title: Mapped[str] = mapped_column(
         String(255), nullable=False
     )
+    chunk_index: Mapped[int] = mapped_column(
+        Integer, nullable=False
+    )
     content: Mapped[str] = mapped_column(
         Text, nullable=False
     )
     content_hash: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True, index=True
+        String(64), nullable=False, unique=False, index=True
     )
     embedding: Mapped[list[float]] = mapped_column(
         Vector(768), nullable=False
@@ -55,6 +58,15 @@ class KnowledgeEmbedding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # Uses PostgreSQL JSONB natively; falls back to standard JSON for SQLite unit tests
     chunk_metadata: Mapped[dict[str, Any]] = mapped_column(
         JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_knowledge_embeddings_source_document_chunk_index",
+            "source_document",
+            "chunk_index",
+            unique=True,
+        ),
     )
 
     @staticmethod

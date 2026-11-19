@@ -1,0 +1,78 @@
+{
+  "base_scenario_id": "SCN-ATO-002",
+  "base_time_utc": "2026-09-09T14:15:22.800000+00:00",
+  "case_id": "SUFC-0520c26d10",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "192.168.10.105",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "198.51.100.45",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "connected",
+      "attributes": {
+        "EventID": "3",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessId": "5412",
+        "Protocol": "tcp",
+        "User": "CORP\\victim_user",
+        "UtcTime": "2026-09-09 14:15:22.800"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "5f7f50ab7c428c0cf5044033f4fffc4979d7791c0fd5bc6738ae391f7ccd0881",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "network_connection connected",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "atomic_technique",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "full",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

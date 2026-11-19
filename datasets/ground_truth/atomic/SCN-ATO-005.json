@@ -1,0 +1,83 @@
+{
+  "scenario_id": "SCN-ATO-005",
+  "dataset_version": "1.0.0",
+  "category": "atomic_technique",
+  "title": "Suspicious Memory Access to LSASS Process",
+  "description": "Untrusted process attempting to obtain a handle to lsass.exe memory space with PROCESS_VM_READ access mask.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 10,
+      "UtcTime": "2026-09-09 14:15:30.100",
+      "SourceProcessId": 5412,
+      "SourceImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "TargetProcessId": 648,
+      "TargetImage": "C:\\Windows\\System32\\lsass.exe",
+      "GrantedAccess": "0x1010",
+      "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+9d424|C:\\Windows\\System32\\KERNELBASE.dll+2c8d4",
+      "User": "CORP\\victim_user",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "malicious",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "lsass.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "powershell.exe",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1003",
+      "technique_name": "OS Credential Dumping",
+      "tactic": "Credential Access",
+      "is_mandatory": true,
+      "is_uncertain": false
+    },
+    {
+      "technique_id": "T1003.001",
+      "technique_name": "OS Credential Dumping: LSASS Memory",
+      "tactic": "Credential Access",
+      "is_mandatory": false,
+      "is_uncertain": true
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-ATO-06",
+      "statement": "powershell.exe requested process handle to lsass.exe with access mask 0x1010",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-ATO-06",
+      "prohibited_assertion": "Plaintext domain admin passwords were successfully harvested",
+      "reason": "Process access event does not capture memory read output or confirm credential extraction"
+    }
+  ],
+  "known_uncertainty": [
+    "Specific memory ranges accessed cannot be determined from Event ID 10.",
+    "Event ID 10 records handle acquisition with PROCESS_VM_READ access. While strongly indicative of credential access intent, completed memory extraction cannot be definitively established from ProcessAccess events alone. Therefore, parent technique T1003 is mandatory while sub-technique T1003.001 is categorized as uncertain."
+  ],
+  "expected_limitations": [
+    "CallTrace indicates API call entry points but lacks detailed stack frame arguments."
+  ],
+  "provenance": {
+    "author": "AISOP Detection Engineering Lead",
+    "dataset_source": "datasets/samples/sysmon/sysmon_process_access.json",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Senior Quality Assurance Auditor",
+    "review_notes": "Ground-truth verified for Sysmon EventID 10"
+  },
+  "is_synthetic": false
+}
+

@@ -1,0 +1,66 @@
+{
+  "scenario_id": "SCN-BEN-005",
+  "dataset_version": "1.0.0",
+  "category": "benign_baseline",
+  "title": "Microsoft Edge Browser Background Telemetry and DNS Query",
+  "description": "Routine Edge browser background process resolving official Microsoft telemetry domain.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 22,
+      "UtcTime": "2026-09-11 16:00:10.000",
+      "ProcessId": 6780,
+      "Image": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+      "QueryName": "v10.events.data.microsoft.com",
+      "QueryResults": "20.190.159.23",
+      "User": "CORP\\analyst_one",
+      "Computer": "CORP-WS-02"
+    }
+  ],
+  "expected_interpretation": "benign",
+  "expected_observables": [
+    {
+      "observable_type": "domain",
+      "observable_value": "v10.events.data.microsoft.com",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "msedge.exe",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-BEN-05",
+      "statement": "msedge.exe queried Microsoft telemetry domain v10.events.data.microsoft.com",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-BEN-06",
+      "prohibited_assertion": "Adversary is exfiltrating intellectual property to v10.events.data.microsoft.com",
+      "reason": "Official Microsoft telemetry endpoint queried by authentic signed Edge browser binary"
+    }
+  ],
+  "known_uncertainty": [
+    "Specific telemetry metrics transmitted inside TLS payload cannot be decoded from DNS logs."
+  ],
+  "expected_limitations": [
+    "Draft scenario pending final peer review."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Intern",
+    "dataset_source": "benign_browser_telemetry_draft",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "draft",
+    "reviewer": null,
+    "review_notes": "Pending formal peer sign-off; must be excluded from official benchmark scores"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate handling of browser telemetry and verify draft scenario exclusion"
+}
+

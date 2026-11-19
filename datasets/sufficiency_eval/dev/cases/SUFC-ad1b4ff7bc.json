@@ -1,0 +1,101 @@
+{
+  "base_scenario_id": "SCN-CHN-004",
+  "base_time_utc": "2026-09-10T13:00:00+00:00",
+  "case_id": "SUFC-ad1b4ff7bc",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "cmd.exe",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "net.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "whoami.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\compromised_user",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "whoami /priv",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\whoami.exe",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "ProcessId": "6120",
+        "UtcTime": "2026-09-10 13:00:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "net group \"Domain Admins\" /domain",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\net.exe",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "ProcessId": "6128",
+        "UtcTime": "2026-09-10 13:00:04.200"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e1",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 4.2
+    }
+  ],
+  "family": "multi_stage_chain",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "provenance_stripped",
+  "window": {
+    "end_offset_s": 5.2,
+    "start_offset_s": -1.0
+  }
+}

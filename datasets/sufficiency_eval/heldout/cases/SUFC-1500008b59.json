@@ -1,0 +1,137 @@
+{
+  "base_scenario_id": "SCN-BEN-001",
+  "base_time_utc": "2026-09-11T03:00:15+00:00",
+  "case_id": "SUFC-1500008b59",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "services.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "svchost.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "tiworker.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "trustedinstaller.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "nt authority\\system",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-490becf2.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+        "EventID": "1",
+        "Image": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+        "ParentImage": "C:\\Windows\\System32\\services.exe",
+        "ProcessId": "1420",
+        "UtcTime": "2026-09-11 03:00:15.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "19eaed4e56f8479ad6075a456760cb6b201dd34a58f2940f76a32a4e74a2a81e",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.19041.1_none_de123\\TiWorker.exe -Embeddin",
+        "EventID": "1",
+        "Image": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.19041.1_none_de123\\TiWorker.exe",
+        "ParentImage": "C:\\Windows\\System32\\svchost.exe",
+        "ProcessId": "1844",
+        "UtcTime": "2026-09-11 03:00:18.200"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e1",
+      "outcome": "success",
+      "raw_evidence_sha256": "ffced628b3b64a4f35faed9bf894afb6e4be82c92818b2e4f625fac48990f1f8",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 3.2
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "35c50a3a18c83507d2cae4355b3536eb3d011e78c43577f5a2fe38adffebe578",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 33.2
+    }
+  ],
+  "family": "benign_baseline",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 34.2,
+    "start_offset_s": -1.0
+  }
+}

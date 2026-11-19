@@ -1,0 +1,200 @@
+{
+  "instructions": "Owner: copy to labels.json and fill in label + justification. Do not run the gate first.",
+  "labeller": null,
+  "second_reviewer": null,
+  "date": null,
+  "labels": {
+    "SUFC-00d609cfd8": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-0520c26d10": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-08f47fab4c": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-0e1db75b4a": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1500008b59": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1bfd597226": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1c01e31888": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1c2a7d4140": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1e0296fa46": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-1e57fa6e8e": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-27274a7f58": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-2bd51e3842": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-35c67ed467": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-429a55fe06": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-461f568870": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-4acc0cc581": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-4ca018acb3": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-553d04019d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-5657eab827": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-66b9d0a861": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-6db9f8caec": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-70ecffc5d3": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-71b3de84e6": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-75021bc193": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-7f70b36c77": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-8d05224b6e": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-90b75782e4": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-93b02b6304": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-9754d2c386": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-9c847b753b": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a81cd0d139": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-a8906a45a3": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-ae420a3718": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-bac51f4baf": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-bcaa094e48": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-bfa8ad1249": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-cb7aba5425": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-d4f31f9497": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-d600b019d3": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-dec9f0025f": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-e32c0875cd": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-e7a09a734e": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-e9e966f38d": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-f102a9286a": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-f2b64a3f57": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-f3e1e1b72a": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-fa65aacecc": {
+      "label": null,
+      "justification": ""
+    },
+    "SUFC-fb0c48fbd0": {
+      "label": null,
+      "justification": ""
+    }
+  }
+}

@@ -730,7 +730,6 @@ async def test_atomic_savepoint_rollback_on_child_processing_error(db_session):
     preventing orphaned raw records, while allowing Event 0 and Event 2 to commit.
     """
     from unittest.mock import patch
-
     from app.modules.evidence.sysmon_parser import SysmonParser
 
     service = IngestionService()

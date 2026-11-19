@@ -1,0 +1,71 @@
+{
+  "base_scenario_id": "SCN-ATO-005",
+  "base_time_utc": "2026-09-09T14:15:30.100000+00:00",
+  "case_id": "SUFC-ac403c3007",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "lsass.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "accessed",
+      "attributes": {
+        "EventID": "10",
+        "SourceImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "SourceProcessId": "5412",
+        "TargetImage": "C:\\Windows\\System32\\lsass.exe",
+        "TargetProcessId": "648",
+        "UtcTime": "2026-09-09 14:15:30.100"
+      },
+      "event_id": "10",
+      "event_type": "process_access",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_access accessed",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "atomic_technique",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "provenance_stripped",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

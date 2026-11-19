@@ -1,0 +1,108 @@
+{
+  "base_scenario_id": "SCN-ADV-002",
+  "base_time_utc": "2026-09-12T11:00:00+00:00",
+  "case_id": "SUFC-dee617f80d",
+  "entities": [
+    {
+      "entity_type": "file_hash",
+      "entity_value": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "explorer.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "svchost.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-b5d49133.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Users\\victim_user\\AppData\\Roaming\\Microsoft\\svchost.exe -listen 4444",
+        "EventID": "1",
+        "Image": "C:\\Users\\victim_user\\AppData\\Roaming\\Microsoft\\svchost.exe",
+        "ParentImage": "C:\\Windows\\explorer.exe",
+        "ProcessId": "9210",
+        "UtcTime": "2026-09-12 11:00:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "6fd8c6f6c04f69995b5cd979790cf0522b438046da9d579ff1376fde63fcab74",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "826d696484a1674e2b6a6b500be49c97a1a0c6529d5588c33781cae4fe738d7b",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 30.0
+    }
+  ],
+  "family": "adversarial_ambiguous",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 31.0,
+    "start_offset_s": -1.0
+  }
+}

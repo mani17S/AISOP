@@ -1,0 +1,21 @@
+{
+  "base_scenario_id": "SCN-ADV-001",
+  "base_time_utc": "2026-09-12T10:15:00+00:00",
+  "case_id": "SUFC-d0fb7123ad",
+  "entities": [],
+  "events": [],
+  "family": "global",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "empty_scope",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

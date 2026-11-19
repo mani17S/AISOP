@@ -12,6 +12,7 @@ import logging
 import re
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from app.core.config import Settings, get_settings
@@ -99,11 +100,8 @@ def redact_sensitive_data(obj: Any, max_depth: int = 5) -> Any:
     return obj
 
 
-def json_sink_serializer(message: Any) -> None:
-    """
-    Custom Loguru sink serializer that formats records into clean, machine-readable JSON.
-    """
-    record = message.record
+def _json_line(record: Any) -> str:
+    """Render one loguru record as a redacted, machine-readable JSON line."""
     extra = redact_sensitive_data(record.get("extra", {}))
     sanitized_message = redact_text(record["message"])
 
@@ -125,8 +123,50 @@ def json_sink_serializer(message: Any) -> None:
     else:
         log_entry["exception"] = None
 
-    sys.stderr.write(json.dumps(log_entry, default=str) + "\n")
+    return json.dumps(log_entry, default=str)
+
+
+def json_sink_serializer(message: Any) -> None:
+    """
+    Custom Loguru sink serializer that formats records into clean, machine-readable JSON.
+    """
+    sys.stderr.write(_json_line(message.record) + "\n")
     sys.stderr.flush()
+
+
+def _is_diagnostic(record: Any) -> bool:
+    return record["extra"].get("component") == "diagnostic"
+
+
+def _diagnostic_format(record: Any) -> str:
+    # loguru format callables return a template; the JSON line is passed through `extra` so braces are never re-parsed.
+    record["extra"]["_diag_json"] = _json_line(record)
+    return "{extra[_diag_json]}\n"
+
+
+def _add_diagnostic_file_sink(path_text: str, settings: Settings, log_level: str) -> bool:
+    """Optional dedicated, restricted file for diagnostic records. Local file only; no external service."""
+    try:
+        path = Path(path_text)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        logger.add(
+            str(path),
+            format=_diagnostic_format,
+            level=log_level,
+            filter=_is_diagnostic,
+            rotation=settings.LOG_ROTATION,
+            retention=settings.LOG_RETENTION,
+            enqueue=False,
+            catch=True,  # a sink failure must never break request handling
+        )
+        try:
+            path.touch(exist_ok=True)
+            path.chmod(0o600)  # owner-only where the platform honours it; on Windows rely on the directory ACL
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
 
 
 class InterceptHandler(logging.Handler):
@@ -164,11 +204,17 @@ def setup_logging(settings: Settings | None = None) -> None:
 
     log_level = settings.LOG_LEVEL.upper()
 
+    # When a dedicated diagnostic file is configured and usable, diagnostic records go there ONLY, so general log readers
+    # never see them. Otherwise they stay in the general sink with component="diagnostic".
+    separate = bool(settings.DIAGNOSTIC_LOG_PATH) and _add_diagnostic_file_sink(settings.DIAGNOSTIC_LOG_PATH, settings, log_level)
+    general_filter = (lambda record: not _is_diagnostic(record)) if separate else None
+
     if settings.LOG_FORMAT == "json":
         # Machine-readable JSON sink
         logger.add(
             json_sink_serializer,
             level=log_level,
+            filter=general_filter,
         )
     else:
         # Development human-readable text format
@@ -184,6 +230,7 @@ def setup_logging(settings: Settings | None = None) -> None:
             format=text_format,
             level=log_level,
             colorize=True,
+            filter=general_filter,
         )
 
     # Intercept standard library loggers

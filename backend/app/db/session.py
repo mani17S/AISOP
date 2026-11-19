@@ -8,7 +8,12 @@ Testing support: Overridable session dependency for fast in-memory SQLite unit t
 
 from __future__ import annotations
 
-from typing import AsyncGenerator
+import asyncio
+from contextlib import asynccontextmanager
+import inspect
+from typing import Any, AsyncGenerator, Callable
+
+from fastapi import Request
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -20,6 +25,7 @@ from app.core.config import get_settings
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
+
 
 
 def get_engine() -> AsyncEngine:
@@ -47,6 +53,143 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
             autoflush=False,
         )
     return _session_factory
+
+
+def _adapt_session_override_to_factory(override_fn: Any) -> Any:
+    """
+    Adapt a session generator or session provider into an isolated session factory.
+    Enables tests overriding get_db_session to transparently supply sessions to isolated_session.
+    """
+    if not callable(override_fn):
+        return lambda: override_fn
+
+    if inspect.isasyncgenfunction(override_fn):
+        def _factory() -> Any:
+            @asynccontextmanager
+            async def _cm() -> AsyncGenerator[Any, None]:
+                gen = override_fn()
+                val = await gen.__anext__()
+                try:
+                    yield val
+                    try:
+                        await gen.__anext__()
+                    except (StopAsyncIteration, GeneratorExit):
+                        pass
+                except BaseException as exc:
+                    try:
+                        await gen.athrow(exc)
+                    except (StopAsyncIteration, GeneratorExit):
+                        pass
+                    raise
+            return _cm()
+        return _factory
+
+    def _adapted_factory() -> Any:
+        res = override_fn()
+        if inspect.isasyncgen(res):
+            @asynccontextmanager
+            async def _cm() -> AsyncGenerator[Any, None]:
+                val = await res.__anext__()
+                try:
+                    yield val
+                    try:
+                        await res.__anext__()
+                    except (StopAsyncIteration, GeneratorExit):
+                        pass
+                except BaseException as exc:
+                    try:
+                        await res.athrow(exc)
+                    except (StopAsyncIteration, GeneratorExit):
+                        pass
+                    raise
+            return _cm()
+        return res
+    return _adapted_factory
+
+
+def get_db_session_factory(request: Request = None) -> Any:
+    """
+    FastAPI dependency for accessing the database session factory.
+    If running within an overridden test application where get_db_session is overridden,
+    transparently adapts the override into an isolated factory.
+    """
+    if request is not None and hasattr(request, "app"):
+        if get_db_session_factory in request.app.dependency_overrides:
+            override = request.app.dependency_overrides[get_db_session_factory]
+            return override() if callable(override) else override
+        if get_db_session in request.app.dependency_overrides:
+            override = request.app.dependency_overrides[get_db_session]
+            return _adapt_session_override_to_factory(override)
+    return get_session_factory()
+
+
+@asynccontextmanager
+async def isolated_session(
+    session_factory: Any | None = None,
+    fallback_session: Any | None = None,
+) -> AsyncGenerator[Any, None]:
+    """
+    Context manager yielding an isolated session.
+    If session_factory is provided, instantiates a fresh session, commits on clean exit,
+    rolls back on exception or cancellation, and guarantees session closure.
+    If fallback_session is provided (e.g. legacy test adapter), manages commit/rollback on it.
+    """
+    if session_factory is not None:
+        candidate = session_factory()
+        if hasattr(candidate, "__aenter__"):
+            async with candidate as session:
+                try:
+                    yield session
+                    await session.commit()
+                except BaseException:
+                    await session.rollback()
+                    raise
+        else:
+            try:
+                yield candidate
+                if hasattr(candidate, "commit"):
+                    if asyncio.iscoroutinefunction(candidate.commit):
+                        await candidate.commit()
+                    else:
+                        candidate.commit()
+            except BaseException:
+                if hasattr(candidate, "rollback"):
+                    if asyncio.iscoroutinefunction(candidate.rollback):
+                        await candidate.rollback()
+                    else:
+                        candidate.rollback()
+                raise
+            finally:
+                if hasattr(candidate, "close"):
+                    if asyncio.iscoroutinefunction(candidate.close):
+                        await candidate.close()
+                    else:
+                        candidate.close()
+    elif fallback_session is not None:
+        try:
+            yield fallback_session
+            if hasattr(fallback_session, "commit"):
+                if asyncio.iscoroutinefunction(fallback_session.commit):
+                    await fallback_session.commit()
+                else:
+                    fallback_session.commit()
+        except BaseException:
+            if hasattr(fallback_session, "rollback"):
+                if asyncio.iscoroutinefunction(fallback_session.rollback):
+                    await fallback_session.rollback()
+                else:
+                    fallback_session.rollback()
+            raise
+    else:
+        factory = get_session_factory()
+        async with factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except BaseException:
+                await session.rollback()
+                raise
+
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

@@ -1,0 +1,36 @@
+{
+  "source_type": "firewall_ids",
+  "source_identifier": "sensor-perimeter-suricata-01",
+  "timestamp": "2026-10-31T09:40:02.109845Z",
+  "flow_id": 981240192348,
+  "event_type": "alert",
+  "src_ip": "10.0.4.15",
+  "src_port": 49201,
+  "dest_ip": "198.51.100.88",
+  "dest_port": 443,
+  "proto": "TCP",
+  "app_proto": "http",
+  "alert": {
+    "action": "allowed",
+    "gid": 1,
+    "signature_id": 2028192,
+    "rev": 3,
+    "signature": "ET MALWARE Suspicious CobaltStrike Malleable C2 HTTP Checkin",
+    "category": "A Network Trojan was detected",
+    "severity": 1,
+    "metadata": {
+      "updated_at": ["2026_09_15"],
+      "mitre_technique_id": ["T1071.001"],
+      "target": ["server"]
+    }
+  },
+  "http": {
+    "hostname": "cdn-cache-update.evil-c2.net",
+    "url": "/dpixel.png",
+    "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "http_method": "GET",
+    "protocol": "HTTP/1.1",
+    "status": 200
+  }
+}
+

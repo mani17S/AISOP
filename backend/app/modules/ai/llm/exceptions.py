@@ -24,6 +24,14 @@ class LLMError(Exception):
         return self.message
 
 
+class LLMDisabledError(LLMError):
+    """Raised by the inert provider when AI assistance is disabled by configuration. No network call precedes it."""
+
+
+class LLMConfigurationError(LLMError):
+    """Raised when the LLM configuration is invalid or unsafe (for example a non-local endpoint that was not explicitly allowed)."""
+
+
 class LLMConnectionError(LLMError):
     """Raised when the LLM provider daemon is unreachable, connection is refused, or network fails."""
 

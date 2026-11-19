@@ -1,0 +1,78 @@
+{
+  "base_scenario_id": "SCN-ADV-002",
+  "base_time_utc": "2026-09-12T11:00:00+00:00",
+  "case_id": "SUFC-935af28672",
+  "entities": [
+    {
+      "entity_type": "file_hash",
+      "entity_value": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "explorer.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "svchost.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Users\\victim_user\\AppData\\Roaming\\Microsoft\\svchost.exe -listen 4444",
+        "EventID": "1",
+        "Image": "C:\\Users\\victim_user\\AppData\\Roaming\\Microsoft\\svchost.exe",
+        "ParentImage": "C:\\Windows\\explorer.exe",
+        "ProcessId": "9210",
+        "UtcTime": "2026-09-12 11:00:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "6fd8c6f6c04f69995b5cd979790cf0522b438046da9d579ff1376fde63fcab74",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "adversarial_ambiguous",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "full",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

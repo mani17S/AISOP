@@ -1,0 +1,16 @@
+{
+  "source_type": "linux_auth",
+  "source_identifier": "bastion-prod-01",
+  "host": "bastion-prod-01.infra.net",
+  "program": "sshd",
+  "pid": 19482,
+  "timestamp": "2026-10-31T09:30:45.000000Z",
+  "message": "Failed password for invalid user admin from 203.0.113.195 port 44218 ssh2",
+  "src_ip": "203.0.113.195",
+  "src_port": 44218,
+  "user": "admin",
+  "facility": "AUTH",
+  "severity": "high",
+  "log_level": "WARNING"
+}
+

@@ -2,6 +2,13 @@
 AISOP Database Models.
 """
 
+from app.models.analyst import Analyst, AnalystApiClient
+from app.models.case import (
+    CaseAssignmentModel,
+    CaseAuditEventModel,
+    CaseEvidenceModel,
+    CaseModel,
+)
 from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
 from app.models.knowledge import KnowledgeEmbedding
 
@@ -10,4 +17,10 @@ __all__ = [
     "NormalizedEventModel",
     "ExtractedEntityModel",
     "KnowledgeEmbedding",
+    "Analyst",
+    "AnalystApiClient",
+    "CaseModel",
+    "CaseEvidenceModel",
+    "CaseAssignmentModel",
+    "CaseAuditEventModel",
 ]

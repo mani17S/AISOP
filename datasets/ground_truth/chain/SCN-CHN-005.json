@@ -1,0 +1,98 @@
+{
+  "scenario_id": "SCN-CHN-005",
+  "dataset_version": "1.0.0",
+  "category": "multi_stage_chain",
+  "title": "Lateral Movement via Remote Service Execution",
+  "description": "Synthetic multi-stage chain: Inbound SMB connection followed by service creation executing remote commands.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 3,
+      "UtcTime": "2026-09-10 14:00:00.000",
+      "ProcessId": 4,
+      "Image": "System",
+      "SourceIp": "192.168.10.50",
+      "SourcePort": 51234,
+      "DestinationIp": "192.168.10.105",
+      "DestinationPort": 445,
+      "Protocol": "tcp",
+      "Computer": "CORP-FIN-WS01"
+    },
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-10 14:00:02.100",
+      "ProcessId": 7012,
+      "Image": "C:\\Windows\\System32\\cmd.exe",
+      "CommandLine": "cmd.exe /c powershell.exe -c \"Get-Service\"",
+      "ParentImage": "C:\\Windows\\System32\\services.exe",
+      "User": "NT AUTHORITY\\SYSTEM",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "malicious",
+  "expected_observables": [
+    {
+      "observable_type": "ipv4",
+      "observable_value": "192.168.10.50",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "services.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "user",
+      "observable_value": "NT AUTHORITY\\SYSTEM",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1021.002",
+      "technique_name": "Remote Services: SMB/Windows Admin Shares",
+      "tactic": "Lateral Movement",
+      "is_mandatory": true,
+      "is_uncertain": false
+    },
+    {
+      "technique_id": "T1569.002",
+      "technique_name": "System Services: Service Execution",
+      "tactic": "Execution",
+      "is_mandatory": true,
+      "is_uncertain": false
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-CHN-08",
+      "statement": "Inbound SMB connection on port 445 preceded execution of cmd.exe spawned by services.exe under SYSTEM",
+      "category": "timeline",
+      "required_evidence_indices": [0, 1],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-CHN-05",
+      "prohibited_assertion": "Source IP 192.168.10.50 was flagged as a known external Russian C2 host",
+      "reason": "Source IP 192.168.10.50 is strictly RFC1918 internal; threat intelligence must shield internal IPs"
+    }
+  ],
+  "known_uncertainty": [
+    "Originating user identity on source workstation 192.168.10.50 is not logged on target endpoint."
+  ],
+  "expected_limitations": [
+    "Lateral movement scenario modeled with 2 endpoints."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "synthetic_lateral_movement_t1021",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Validated against lateral movement pattern"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate lateral movement correlation and verify PrivateNetworkShield invariant on internal IPs"
+}
+

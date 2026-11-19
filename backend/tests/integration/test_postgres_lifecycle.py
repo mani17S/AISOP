@@ -196,8 +196,15 @@ def test_postgres_alembic_upgrade_lifecycle(
     # Check knowledge_embeddings indexes
     indices_know = inspector.get_indexes("knowledge_embeddings")
     assert any(idx["name"] == "ix_knowledge_embeddings_source_document" for idx in indices_know)
+    # Under Option A-Prime, content_hash is a non-unique B-tree lookup index
     assert any(
         idx["name"] == "ix_knowledge_embeddings_content_hash"
+        and (idx["unique"] == 0 or idx["unique"] is False)
+        for idx in indices_know
+    )
+    # Composite position (source_document, chunk_index) is UNIQUE
+    assert any(
+        idx["name"] == "ix_knowledge_embeddings_source_document_chunk_index"
         and (idx["unique"] == 1 or idx["unique"] is True)
         for idx in indices_know
     )
@@ -580,6 +587,11 @@ async def test_postgres_foreign_key_cascades(postgres_session: AsyncSession):
 # ==============================================================================
 
 
+@pytest.mark.skip(
+    reason="Stage 7B (D6): `alembic downgrade base` is destructive to the schema and must never run against an existing or shared database. "
+    "It is runnable only against a separately created, ephemeral test cluster/database after explicit owner authorization; "
+    "the approved Stage 7B target is not such a database."
+)
 def test_postgres_alembic_downgrade_lifecycle(
     postgres_alembic_config: Config, postgres_sync_engine
 ):
@@ -658,6 +670,7 @@ async def test_postgres_knowledge_embedding_vector_crud_and_cosine_similarity(
     chunk_1 = KnowledgeEmbedding(
         source_document=doc_source,
         section_title="T1059.001 - PowerShell",
+        chunk_index=0,
         content=content_1,
         content_hash=KnowledgeEmbedding.compute_hash(content_1),
         embedding=vec_exact,
@@ -666,6 +679,7 @@ async def test_postgres_knowledge_embedding_vector_crud_and_cosine_similarity(
     chunk_2 = KnowledgeEmbedding(
         source_document=doc_source,
         section_title="T1047 - WMI",
+        chunk_index=1,
         content=content_2,
         content_hash=KnowledgeEmbedding.compute_hash(content_2),
         embedding=vec_orthogonal,
@@ -696,19 +710,34 @@ async def test_postgres_knowledge_embedding_vector_crud_and_cosine_similarity(
     assert second_chunk.section_title == "T1047 - WMI"
     assert pytest.approx(second_distance, abs=1e-4) == 1.0
 
-    # 2. Content hash deduplication enforcement
+    # 2. Option A-Prime uniqueness enforcement:
+    # A) Identical content_hash in a different document or different chunk_index is PERMITTED
     dup_chunk = KnowledgeEmbedding(
         source_document="knowledge/other.md",
         section_title="Duplicate PowerShell Chunk",
+        chunk_index=0,
         content=content_1,
         content_hash=KnowledgeEmbedding.compute_hash(content_1),
         embedding=[0.5] * 768,
-        chunk_metadata={"status": "duplicate"},
+        chunk_metadata={"status": "duplicate_allowed_in_other_doc"},
+    )
+    postgres_session.add(dup_chunk)
+    await postgres_session.flush()
+
+    # B) Composite uniqueness violation on (source_document, chunk_index) raises UniqueViolation
+    colliding_chunk = KnowledgeEmbedding(
+        source_document=doc_source,
+        section_title="Colliding Position Chunk",
+        chunk_index=0,  # Collides with chunk_1 at chunk_index=0
+        content="Different content at colliding position",
+        content_hash=KnowledgeEmbedding.compute_hash("Different content at colliding position"),
+        embedding=[0.5] * 768,
+        chunk_metadata={"status": "colliding_position"},
     )
     with pytest.raises(IntegrityError) as exc_info:
         async with postgres_session.begin_nested():
-            postgres_session.add(dup_chunk)
+            postgres_session.add(colliding_chunk)
             await postgres_session.flush()
 
     assert isinstance(exc_info.value.orig, psycopg.errors.UniqueViolation)
-    assert "ix_knowledge_embeddings_content_hash" in str(exc_info.value)
+    assert "ix_knowledge_embeddings_source_document_chunk_index" in str(exc_info.value)

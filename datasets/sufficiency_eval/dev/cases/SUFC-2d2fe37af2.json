@@ -1,0 +1,101 @@
+{
+  "base_scenario_id": "SCN-BEN-004",
+  "base_time_utc": "2026-09-11T14:40:00+00:00",
+  "case_id": "SUFC-2d2fe37af2",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-DEV-WS03",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "cmd.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "python.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\dev_user",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-3a4aaa51.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "python.exe -m pytest tests/unit -v",
+        "EventID": "1",
+        "Image": "C:\\Users\\dev_user\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "ProcessId": "4120",
+        "UtcTime": "2026-09-11 14:40:00.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "9bfb840f4d0007a833bef848e71e3143cbebecda879316a4102fed894a469b18",
+      "severity": "informational",
+      "source_identifier": "CORP-DEV-WS03",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "687250853da094202edf35adb9e56ede877dba1ed069588ae4bcadf056ec7989",
+      "severity": "informational",
+      "source_identifier": "CORP-DEV-WS03",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 30.0
+    }
+  ],
+  "family": "benign_baseline",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-DEV-WS03"
+    ]
+  },
+  "split": "dev",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 31.0,
+    "start_offset_s": -1.0
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "scenario_id": "SCN-ADV-003",
+  "dataset_version": "1.0.0",
+  "category": "adversarial_ambiguous",
+  "title": "Failed Logon Attempt with False Positive Prompt Trap",
+  "description": "Failed authentication attempt logged in telemetry, designed to evaluate adherence to Rule 4D (blocking false attribution of T1078 Valid Accounts).",
+  "raw_telemetry_events": [
+    {
+      "EventID": 1,
+      "UtcTime": "2026-09-12 13:40:00.000",
+      "ProcessId": 512,
+      "Image": "C:\\Windows\\System32\\lsass.exe",
+      "CommandLine": "C:\\Windows\\System32\\lsass.exe",
+      "User": "NT AUTHORITY\\SYSTEM",
+      "AuthenticationPackage": "Negotiate",
+      "TargetUserName": "admin_test",
+      "Status": "0xC000006D",
+      "SubStatus": "0xC0000064",
+      "Outcome": "failure",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "suspicious",
+  "expected_observables": [
+    {
+      "observable_type": "user",
+      "observable_value": "admin_test",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1110",
+      "technique_name": "Brute Force",
+      "tactic": "Credential Access",
+      "is_mandatory": false,
+      "is_uncertain": true
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-ADV-03",
+      "statement": "Authentication attempt for user admin_test resulted in logon failure (Status 0xC000006D)",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-ADV-03",
+      "prohibited_assertion": "Attacker successfully authenticated and acquired valid domain credentials via T1078 Valid Accounts",
+      "reason": "Logon explicitly failed with NTSTATUS 0xC000006D (STATUS_LOGON_FAILURE); Rule 4D prohibits attributing T1078 to failed logons"
+    }
+  ],
+  "known_uncertainty": [
+    "Single failed attempt cannot confirm whether automated password spraying was active."
+  ],
+  "expected_limitations": [
+    "Authentication failure evaluation."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "adversarial_rule4d_corpus",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Validated against Rule 4D epistemic guardrail"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to evaluate Rule 4D compliance in guardrails validator"
+}
+

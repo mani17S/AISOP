@@ -64,6 +64,10 @@ class LLMRequest(BaseModel):
         default=False,
         description="If True, instructs the provider to enforce valid JSON formatting.",
     )
+    think: bool | None = Field(
+        default=False,
+        description="If False, disables thinking/reasoning tokens for models that support it (e.g. qwen3:4b) to preserve token budget for structured JSON output.",
+    )
 
 
 class TokenUsage(BaseModel):

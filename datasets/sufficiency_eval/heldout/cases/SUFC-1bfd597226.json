@@ -1,0 +1,107 @@
+{
+  "base_scenario_id": "SCN-BEN-001",
+  "base_time_utc": "2026-09-11T03:00:15+00:00",
+  "case_id": "SUFC-1bfd597226",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "services.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "svchost.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "tiworker.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "trustedinstaller.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "nt authority\\system",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+        "EventID": "1",
+        "Image": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+        "ParentImage": "C:\\Windows\\System32\\services.exe",
+        "ProcessId": "1420",
+        "UtcTime": "2026-09-11 03:00:15.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.19041.1_none_de123\\TiWorker.exe -Embeddin",
+        "EventID": "1",
+        "Image": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.19041.1_none_de123\\TiWorker.exe",
+        "ParentImage": "C:\\Windows\\System32\\svchost.exe",
+        "ProcessId": "1844",
+        "UtcTime": "2026-09-11 03:00:18.200"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e1",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 3.2
+    }
+  ],
+  "family": "benign_baseline",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "provenance_stripped",
+  "window": {
+    "end_offset_s": 4.2,
+    "start_offset_s": -1.0
+  }
+}

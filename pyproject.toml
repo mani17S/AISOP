@@ -11,6 +11,7 @@ testpaths = ["backend/tests"]
 pythonpath = ["backend"]
 markers = [
     "postgres: marks tests requiring live PostgreSQL (deselect with '-m \"not postgres\"')",
+    "ollama: marks tests requiring a live Ollama daemon with nomic-embed-text pulled (subset of postgres)",
 ]
 
 [tool.black]

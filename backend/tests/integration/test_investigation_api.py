@@ -20,6 +20,8 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
+from app.api.dependencies import AuthenticatedAnalyst, AuthenticatedClient, verify_api_key
+from app.core.rbac import GlobalRole
 from app.db.session import get_db_session
 from app.main import app
 from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
@@ -27,19 +29,41 @@ from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawE
 
 @pytest.fixture
 def test_app(db_session):
-    """Override database dependency to use isolated in-memory SQLite session."""
+    """Override database and auth dependencies to use isolated in-memory SQLite session and test client."""
 
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db_session] = override_get_db
+    app.dependency_overrides[verify_api_key] = lambda: AuthenticatedClient(
+        client_id="test-investigation",
+        analyst=AuthenticatedAnalyst(
+            analyst_id=uuid.uuid4(),
+            username="investigation-analyst",
+            global_role=GlobalRole.ANALYST_TIER_1,
+            is_active=True,
+        ),
+    )
     yield app
     app.dependency_overrides.clear()
 
 
+def _override_analyst(app, global_role: GlobalRole) -> None:
+    """Switch the auth dependency override to an analyst holding the given global role."""
+    app.dependency_overrides[verify_api_key] = lambda: AuthenticatedClient(
+        client_id="test-investigation",
+        analyst=AuthenticatedAnalyst(
+            analyst_id=uuid.uuid4(),
+            username="investigation-analyst",
+            global_role=global_role,
+            is_active=True,
+        ),
+    )
+
+
 @pytest.mark.anyio
 async def test_investigation_empty_db(test_app):
-    """Querying an empty database returns 200 with empty items and appropriate 404s for lookups."""
+    """Querying an empty database returns 200 with empty items and 403 for deprecated unscoped detail lookups."""
     transport = httpx.ASGITransport(app=test_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # 1. Events list on empty DB
@@ -61,24 +85,26 @@ async def test_investigation_empty_db(test_app):
         assert data_entities["items"] == []
         assert data_entities["total"] == 0
 
-        # 3. Non-existent event ID -> 404
+        # 3. Direct unscoped event detail -> 403 Forbidden (deprecated)
         res_event_404 = await client.get(f"/api/v1/evidence/events/{uuid.uuid4()}")
-        assert res_event_404.status_code == 404
+        assert res_event_404.status_code == 403
 
-        # 4. Non-existent evidence ID -> 404
+        # 4. Direct unscoped evidence ID -> 403 Forbidden (deprecated)
         res_evidence_404 = await client.get(f"/api/v1/evidence/{uuid.uuid4()}")
-        assert res_evidence_404.status_code == 404
+        assert res_evidence_404.status_code == 403
 
-        # 5. Non-existent hash -> 404
+        # 5. Direct unscoped hash -> 403 Forbidden (deprecated)
         res_hash_404 = await client.get(f"/api/v1/evidence/by-hash/{'0' * 64}")
-        assert res_hash_404.status_code == 404
+        assert res_hash_404.status_code == 403
 
 
 @pytest.mark.anyio
 async def test_investigation_single_event_lifecycle(test_app):
-    """Ingest a single event and verify retrieval across all investigation endpoints."""
+    """Ingest a single event and verify sanitized global query retrieval and unscoped detail closure."""
     transport = httpx.ASGITransport(app=test_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Ingestion requires the INGEST global role (P3-H2 RBAC boundary).
+        _override_analyst(test_app, GlobalRole.INGEST)
         # Ingest 1 Sysmon event
         ingest_res = await client.post(
             "/api/v1/evidence/ingest",
@@ -100,8 +126,10 @@ async def test_investigation_single_event_lifecycle(test_app):
         assert ingest_res.status_code == 200
         ingest_data = ingest_res.json()
         assert ingest_data["total_normalized"] == 1
+        # Restore analyst (triage) role for sanitized evidence queries.
+        _override_analyst(test_app, GlobalRole.ANALYST_TIER_1)
 
-        # 1. Query /events
+        # 1. Query /events (returns sanitized summary without raw_evidence_id or normalized_payload)
         events_res = await client.get("/api/v1/evidence/events")
         assert events_res.status_code == 200
         events_data = events_res.json()
@@ -110,32 +138,21 @@ async def test_investigation_single_event_lifecycle(test_app):
         assert event_summary["event_type"] == "process_creation"
         assert event_summary["source_type"] == "sysmon"
         assert event_summary["source_identifier"] == "ENDPOINT-SOC-01"
+        assert "normalized_payload" not in event_summary
+        assert "raw_evidence_id" not in event_summary
         event_id = event_summary["id"]
-        evidence_id = event_summary["raw_evidence_id"]
 
-        # 2. Get event detail /events/{event_id}
+        # 2. Direct unscoped event detail /events/{event_id} -> 403 Forbidden
         event_detail_res = await client.get(f"/api/v1/evidence/events/{event_id}")
-        assert event_detail_res.status_code == 200
-        event_detail = event_detail_res.json()
-        assert event_detail["id"] == event_id
-        assert event_detail["raw_sha256_hash"] is not None
-        assert len(event_detail["entities"]) > 0
-        sha256_hash = event_detail["raw_sha256_hash"]
+        assert event_detail_res.status_code == 403
 
-        # 3. Get raw evidence by UUID
-        evidence_res = await client.get(f"/api/v1/evidence/{evidence_id}")
-        assert evidence_res.status_code == 200
-        evidence_data = evidence_res.json()
-        assert evidence_data["id"] == evidence_id
-        assert evidence_data["sha256_hash"] == sha256_hash
-        assert len(evidence_data["normalized_events"]) == 1
-        assert evidence_data["normalized_events"][0]["id"] == event_id
+        # 3. Direct unscoped raw evidence by UUID -> 403 Forbidden
+        evidence_res = await client.get(f"/api/v1/evidence/{uuid.uuid4()}")
+        assert evidence_res.status_code == 403
 
-        # 4. Get raw evidence by hash
-        hash_res = await client.get(f"/api/v1/evidence/by-hash/{sha256_hash}")
-        assert hash_res.status_code == 200
-        hash_data = hash_res.json()
-        assert hash_data["id"] == evidence_id
+        # 4. Direct unscoped raw evidence by hash -> 403 Forbidden
+        hash_res = await client.get(f"/api/v1/evidence/by-hash/{'a' * 64}")
+        assert hash_res.status_code == 403
 
 
 @pytest.mark.anyio
@@ -143,6 +160,8 @@ async def test_investigation_pagination_and_bounds(test_app):
     """Verify pagination progression (first, middle, final, beyond) and limit boundaries."""
     transport = httpx.ASGITransport(app=test_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Ingestion requires the INGEST global role (P3-H2 RBAC boundary).
+        _override_analyst(test_app, GlobalRole.INGEST)
         # Ingest 25 distinct events
         batch_events = [
             {
@@ -162,6 +181,8 @@ async def test_investigation_pagination_and_bounds(test_app):
             },
         )
         assert ingest_res.status_code == 200
+        # Restore analyst (triage) role for sanitized evidence queries.
+        _override_analyst(test_app, GlobalRole.ANALYST_TIER_1)
 
         # Page 1: 10 items
         p1 = await client.get("/api/v1/evidence/events?page=1&limit=10")
@@ -224,6 +245,8 @@ async def test_investigation_time_range_filtering_and_validation(test_app):
     """Test time-range filtering and rejection of invalid or reversed time ranges."""
     transport = httpx.ASGITransport(app=test_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Ingestion requires the INGEST global role (P3-H2 RBAC boundary).
+        _override_analyst(test_app, GlobalRole.INGEST)
         # Ingest 3 events at specific hours
         events = [
             {
@@ -245,7 +268,7 @@ async def test_investigation_time_range_filtering_and_validation(test_app):
                 "User": "u3",
             },
         ]
-        await client.post(
+        ingest_res = await client.post(
             "/api/v1/evidence/ingest",
             json={
                 "source_type": "sysmon",
@@ -253,6 +276,9 @@ async def test_investigation_time_range_filtering_and_validation(test_app):
                 "events": events,
             },
         )
+        assert ingest_res.status_code == 200
+        # Restore analyst (triage) role for sanitized evidence queries.
+        _override_analyst(test_app, GlobalRole.ANALYST_TIER_1)
 
         # 1. Filter window [10:30, 11:30] -> matches powershell.exe only
         res = await client.get(
@@ -261,10 +287,8 @@ async def test_investigation_time_range_filtering_and_validation(test_app):
         assert res.status_code == 200
         data = res.json()
         assert data["total"] == 1
-        assert (
-            "powershell.exe"
-            in data["items"][0]["normalized_payload"]["process"]["image_path"]
-        )
+        assert data["items"][0]["event_type"] == "process_creation"
+        assert "normalized_payload" not in data["items"][0]
 
         # 2. Reversed time range -> 400 Bad Request
         rev_res = await client.get(
@@ -283,8 +307,10 @@ async def test_investigation_entity_endpoints(test_app):
     """Test IOC/entity query endpoint with type and value filters."""
     transport = httpx.ASGITransport(app=test_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Ingestion requires the INGEST global role (P3-H2 RBAC boundary).
+        _override_analyst(test_app, GlobalRole.INGEST)
         # Ingest Sysmon network connection event (EventID 3)
-        await client.post(
+        ingest_res = await client.post(
             "/api/v1/evidence/ingest",
             json={
                 "source_type": "sysmon",
@@ -303,6 +329,9 @@ async def test_investigation_entity_endpoints(test_app):
                 ],
             },
         )
+        assert ingest_res.status_code == 200
+        # Restore analyst (triage) role for sanitized evidence queries.
+        _override_analyst(test_app, GlobalRole.ANALYST_TIER_1)
 
         # 1. Query /entities for IP
         ent_res = await client.get("/api/v1/evidence/entities?entity_type=ip")
@@ -336,9 +365,9 @@ async def test_investigation_hash_validation(test_app):
         res_non_hex = await client.get(f"/api/v1/evidence/by-hash/{'g' * 64}")
         assert res_non_hex.status_code == 422
 
-        # Valid 64-character hex but non-existent -> 404
+        # Valid 64-character hex on deprecated unscoped endpoint -> 403 Forbidden
         res_valid_404 = await client.get(f"/api/v1/evidence/by-hash/{'a' * 64}")
-        assert res_valid_404.status_code == 404
+        assert res_valid_404.status_code == 403
 
 
 @pytest.mark.anyio
@@ -358,6 +387,8 @@ async def test_investigation_deterministic_tie_breaker_http(test_app):
     """Verify HTTP pagination returns disjoint, deterministically sorted items when timestamps collide."""
     transport = httpx.ASGITransport(app=test_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Ingestion requires the INGEST global role (P3-H2 RBAC boundary).
+        _override_analyst(test_app, GlobalRole.INGEST)
         # Ingest 4 events with identical UtcTime
         events = [
             {
@@ -368,7 +399,7 @@ async def test_investigation_deterministic_tie_breaker_http(test_app):
             }
             for i in range(4)
         ]
-        await client.post(
+        ingest_res = await client.post(
             "/api/v1/evidence/ingest",
             json={
                 "source_type": "sysmon",
@@ -376,6 +407,9 @@ async def test_investigation_deterministic_tie_breaker_http(test_app):
                 "events": events,
             },
         )
+        assert ingest_res.status_code == 200
+        # Restore analyst (triage) role for sanitized evidence queries.
+        _override_analyst(test_app, GlobalRole.ANALYST_TIER_1)
 
         p1_res = await client.get("/api/v1/evidence/events?page=1&limit=2")
         assert p1_res.status_code == 200
@@ -403,8 +437,10 @@ async def test_investigation_multi_filter_combination_http(test_app):
     """Test multi-filter combination across event_type, source_type, and source_identifier."""
     transport = httpx.ASGITransport(app=test_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Ingestion requires the INGEST global role (P3-H2 RBAC boundary).
+        _override_analyst(test_app, GlobalRole.INGEST)
         # Ingest from host 1
-        await client.post(
+        ingest_res_1 = await client.post(
             "/api/v1/evidence/ingest",
             json={
                 "source_type": "sysmon",
@@ -418,8 +454,9 @@ async def test_investigation_multi_filter_combination_http(test_app):
                 ],
             },
         )
+        assert ingest_res_1.status_code == 200
         # Ingest from host 2
-        await client.post(
+        ingest_res_2 = await client.post(
             "/api/v1/evidence/ingest",
             json={
                 "source_type": "sysmon",
@@ -433,6 +470,9 @@ async def test_investigation_multi_filter_combination_http(test_app):
                 ],
             },
         )
+        assert ingest_res_2.status_code == 200
+        # Restore analyst (triage) role for sanitized evidence queries.
+        _override_analyst(test_app, GlobalRole.ANALYST_TIER_1)
 
         # Match only host 1
         res = await client.get(

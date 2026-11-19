@@ -1,0 +1,47 @@
+{
+  "source_type": "cloud_audit",
+  "source_identifier": "aws-guardduty-us-east-1",
+  "id": "gd-finding-89a1b2c3d4e5f6071829",
+  "accountId": "123456789012",
+  "type": "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
+  "title": "AWS Credentials Exfiltrated and Used from an External IP Address",
+  "description": "EC2 instance credentials for role 'ProductionAppServerRole' were used from external IP 203.0.113.84 outside the AWS network.",
+  "severity": 8.0,
+  "createdAt": "2026-10-31T09:45:11.890000Z",
+  "resource": {
+    "resourceType": "AccessKey",
+    "accessKeyDetails": {
+      "accessKeyId": "ASIAIOSFODNN7EXAMPLE",
+      "principalId": "AROA123456789EXAMPLE:i-0123456789abcdef0",
+      "userName": "ProductionAppServerRole",
+      "userType": "AssumedRole"
+    }
+  },
+  "service": {
+    "serviceName": "guardduty",
+    "detectorId": "d123456789abcdef",
+    "action": {
+      "actionType": "AWS_API_CALL",
+      "awsApiCallAction": {
+        "api": "DescribeInstances",
+        "serviceName": "ec2.amazonaws.com",
+        "callerType": "Remote IP",
+        "remoteIpDetails": {
+          "ipAddressV4": "203.0.113.84",
+          "organization": {
+            "asn": "13335",
+            "asnOrg": "Cloudflare Inc."
+          },
+          "country": {
+            "countryName": "Romania"
+          },
+          "city": {
+            "cityName": "Bucharest"
+          }
+        },
+        "userAgent": "aws-sdk-python/1.28.1 Linux/5.15.0-88-generic"
+      }
+    }
+  }
+}
+

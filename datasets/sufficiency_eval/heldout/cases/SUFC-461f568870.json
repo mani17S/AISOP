@@ -1,0 +1,108 @@
+{
+  "base_scenario_id": "SCN-ATO-004",
+  "base_time_utc": "2026-09-09T14:15:25+00:00",
+  "case_id": "SUFC-461f568870",
+  "entities": [
+    {
+      "entity_type": "file",
+      "entity_value": "mimikatz.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "file_hash",
+      "entity_value": "17565fe8a1553835b19fa865befa0df85fa3ec04b9741d8b4d445f0f5cc054d6",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-d3721b67.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "created",
+      "attributes": {
+        "CreationUtcTime": "2026-09-09 14:15:25.000",
+        "EventID": "11",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessId": "5412",
+        "TargetFilename": "C:\\Users\\Public\\mimikatz.exe",
+        "UtcTime": "2026-09-09 14:15:25.000"
+      },
+      "event_id": "11",
+      "event_type": "file_create",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "c37efaf6d9fe2b826aace82343f79b1c6e4205428c51dc5bfd2284e5de29ec5e",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "file_create created",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "9b38646771ee3591352adf8291836b8a9be88d0b1327a25e7ac5e56dbdf8c281",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 30.0
+    }
+  ],
+  "family": "atomic_technique",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 31.0,
+    "start_offset_s": -1.0
+  }
+}

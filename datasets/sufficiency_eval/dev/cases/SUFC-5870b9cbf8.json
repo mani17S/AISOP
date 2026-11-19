@@ -1,0 +1,78 @@
+{
+  "base_scenario_id": "SCN-ATO-003",
+  "base_time_utc": "2026-09-09T14:15:21.500000+00:00",
+  "case_id": "SUFC-5870b9cbf8",
+  "entities": [
+    {
+      "entity_type": "domain",
+      "entity_value": "c2.apt-simulated.org",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "198.51.100.45",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "queried",
+      "attributes": {
+        "EventID": "22",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessId": "5412",
+        "QueryName": "c2.apt-simulated.org",
+        "User": "CORP\\victim_user",
+        "UtcTime": "2026-09-09 14:15:21.500"
+      },
+      "event_id": "22",
+      "event_type": "dns_query",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "dns_query queried",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "atomic_technique",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "provenance_stripped",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

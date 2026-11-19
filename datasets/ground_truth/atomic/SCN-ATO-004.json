@@ -1,0 +1,74 @@
+{
+  "scenario_id": "SCN-ATO-004",
+  "dataset_version": "1.0.0",
+  "category": "atomic_technique",
+  "title": "Dropping Executable Payload to World-Writable Public Directory",
+  "description": "Creation of executable file mimikatz.exe in C:\\Users\\Public\\ directory by PowerShell process.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 11,
+      "UtcTime": "2026-09-09 14:15:25.000",
+      "ProcessId": 5412,
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "TargetFilename": "C:\\Users\\Public\\mimikatz.exe",
+      "CreationUtcTime": "2026-09-09 14:15:25.000",
+      "Hashes": "SHA256=17565FE8A1553835B19FA865BEFA0DF85FA3EC04B9741D8B4D445F0F5CC054D6",
+      "User": "CORP\\victim_user",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "malicious",
+  "expected_observables": [
+    {
+      "observable_type": "sha256",
+      "observable_value": "17565fe8a1553835b19fa865befa0df85fa3ec04b9741d8b4d445f0f5cc054d6",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "mimikatz.exe",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1105",
+      "technique_name": "Ingress Tool Transfer",
+      "tactic": "Command and Control",
+      "is_mandatory": true,
+      "is_uncertain": false
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-ATO-05",
+      "statement": "File mimikatz.exe was created in C:\\Users\\Public\\ by powershell.exe",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-ATO-05",
+      "prohibited_assertion": "The dropped file was executed and extracted LSASS credentials",
+      "reason": "Event ID 11 captures file creation only; no process execution or memory dump occurred in this event"
+    }
+  ],
+  "known_uncertainty": [
+    "Telemetry does not establish whether the dropped binary was executed."
+  ],
+  "expected_limitations": [
+    "No process execution or digital signature verification telemetry present."
+  ],
+  "provenance": {
+    "author": "AISOP Detection Engineering Lead",
+    "dataset_source": "datasets/samples/sysmon/sysmon_file_create.json",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Senior Quality Assurance Auditor",
+    "review_notes": "Ground-truth verified for Sysmon EventID 11"
+  },
+  "is_synthetic": false
+}
+

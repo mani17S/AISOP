@@ -1,0 +1,113 @@
+{
+  "base_scenario_id": "SCN-CHN-005",
+  "base_time_utc": "2026-09-10T14:00:00+00:00",
+  "case_id": "SUFC-e9e966f38d",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "192.168.10.105",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "192.168.10.50",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "cmd.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "services.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "system",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "nt authority\\system",
+      "event_keys": [
+        "e1"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "connected",
+      "attributes": {
+        "EventID": "3",
+        "Image": "System",
+        "ProcessId": "4",
+        "SourceIp": "192.168.10.50",
+        "SourcePort": "51234",
+        "UtcTime": "2026-09-10 14:00:00.000"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "network_connection connected",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "cmd.exe /c powershell.exe -c \"Get-Service\"",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\cmd.exe",
+        "ParentImage": "C:\\Windows\\System32\\services.exe",
+        "ProcessId": "7012",
+        "UtcTime": "2026-09-10 14:00:02.100"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e1",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 2.1
+    }
+  ],
+  "family": "multi_stage_chain",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "provenance_stripped",
+  "window": {
+    "end_offset_s": 3.1,
+    "start_offset_s": -1.0
+  }
+}

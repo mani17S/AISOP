@@ -1,0 +1,71 @@
+{
+  "base_scenario_id": "SCN-BEN-001",
+  "base_time_utc": "2026-09-11T03:00:15+00:00",
+  "case_id": "SUFC-00d609cfd8",
+  "entities": [
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "services.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "trustedinstaller.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "nt authority\\system",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+        "EventID": "1",
+        "Image": "C:\\Windows\\servicing\\TrustedInstaller.exe",
+        "ParentImage": "C:\\Windows\\System32\\services.exe",
+        "ProcessId": "1420",
+        "UtcTime": "2026-09-11 03:00:15.000"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "19eaed4e56f8479ad6075a456760cb6b201dd34a58f2940f76a32a4e74a2a81e",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "benign_baseline",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "sparse_root_only",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

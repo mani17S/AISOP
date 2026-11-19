@@ -1,0 +1,180 @@
+{
+  "base_scenario_id": "SCN-CHN-001",
+  "base_time_utc": "2026-09-09T14:15:20.123000+00:00",
+  "case_id": "SUFC-157d0fec00",
+  "entities": [
+    {
+      "entity_type": "domain",
+      "entity_value": "c2.apt-simulated.org",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "file",
+      "entity_value": "mimikatz.exe",
+      "event_keys": [
+        "e3"
+      ]
+    },
+    {
+      "entity_type": "file_hash",
+      "entity_value": "17565fe8a1553835b19fa865befa0df85fa3ec04b9741d8b4d445f0f5cc054d6",
+      "event_keys": [
+        "e3"
+      ]
+    },
+    {
+      "entity_type": "file_hash",
+      "entity_value": "a697368b25a0b7ec9aebee3fece92ce9d0e76f4b84bbda5701fea28a6635a33d",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0",
+        "e1",
+        "e2",
+        "e3"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "192.168.10.105",
+      "event_keys": [
+        "e2"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "198.51.100.45",
+      "event_keys": [
+        "e1",
+        "e2"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "explorer.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0",
+        "e1",
+        "e2",
+        "e3"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "started",
+      "attributes": {
+        "CommandLine": "powershell.exe -NoP -NonI -W Hidden -Enc SUVY...",
+        "EventID": "1",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ParentImage": "C:\\Windows\\explorer.exe",
+        "ProcessId": "5412",
+        "UtcTime": "2026-09-09 14:15:20.123"
+      },
+      "event_id": "1",
+      "event_type": "process_creation",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "b707bf6566a6fbacefbe8a0d78b8a6293045043b38c35d577057aefbabccd5fa",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "process_creation started",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "queried",
+      "attributes": {
+        "EventID": "22",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessId": "5412",
+        "QueryName": "c2.apt-simulated.org",
+        "QueryResults": "198.51.100.45",
+        "UtcTime": "2026-09-09 14:15:21.500"
+      },
+      "event_id": "22",
+      "event_type": "dns_query",
+      "key": "e1",
+      "outcome": "success",
+      "raw_evidence_sha256": "b707bf6566a6fbacefbe8a0d78b8a6293045043b38c35d577057aefbabccd5fa",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "dns_query queried",
+      "timestamp_offset_s": 1.377
+    },
+    {
+      "action": "connected",
+      "attributes": {
+        "DestinationIp": "198.51.100.45",
+        "EventID": "3",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessId": "5412",
+        "SourceIp": "192.168.10.105",
+        "UtcTime": "2026-09-09 14:15:22.800"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e2",
+      "outcome": "success",
+      "raw_evidence_sha256": "9d3b79a3df5308079fe1abffc4a8a88de86a16cf7f1e7ad3800eb90a1ef3efc8",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "network_connection connected",
+      "timestamp_offset_s": 2.677
+    },
+    {
+      "action": "created",
+      "attributes": {
+        "EventID": "11",
+        "Hashes": "SHA256=17565FE8A1553835B19FA865BEFA0DF85FA3EC04B9741D8B4D445F0F5CC054D6",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessId": "5412",
+        "TargetFilename": "C:\\Users\\Public\\mimikatz.exe",
+        "UtcTime": "2026-09-09 14:15:25.000"
+      },
+      "event_id": "11",
+      "event_type": "file_create",
+      "key": "e3",
+      "outcome": "success",
+      "raw_evidence_sha256": "635c4d6ffe573baee04db2c00900c750f4fed53ea7503cef726484a932ef691b",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "file_create created",
+      "timestamp_offset_s": 4.877
+    }
+  ],
+  "family": "multi_stage_chain",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "same_record_pair",
+  "window": {
+    "end_offset_s": 5.877,
+    "start_offset_s": -1.0
+  }
+}

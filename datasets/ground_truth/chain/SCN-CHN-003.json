@@ -1,0 +1,113 @@
+{
+  "scenario_id": "SCN-CHN-003",
+  "dataset_version": "1.0.0",
+  "category": "multi_stage_chain",
+  "title": "Process Injection via CreateRemoteThread and Evidence Deletion",
+  "description": "Synthetic multi-stage chain: An unmapped executable injects a thread into notepad.exe and subsequently deletes its dropper binary.",
+  "raw_telemetry_events": [
+    {
+      "EventID": 8,
+      "UtcTime": "2026-09-10 11:30:10.000",
+      "SourceProcessId": 4812,
+      "SourceImage": "C:\\Users\\victim_user\\AppData\\Local\\Temp\\dropper.exe",
+      "TargetProcessId": 2940,
+      "TargetImage": "C:\\Windows\\System32\\notepad.exe",
+      "StartAddress": "0x00007FFA12341000",
+      "User": "CORP\\victim_user",
+      "Computer": "CORP-FIN-WS01"
+    },
+    {
+      "EventID": 23,
+      "UtcTime": "2026-09-10 11:30:12.400",
+      "ProcessId": 4812,
+      "Image": "C:\\Users\\victim_user\\AppData\\Local\\Temp\\dropper.exe",
+      "TargetFilename": "C:\\Users\\victim_user\\AppData\\Local\\Temp\\dropper.exe",
+      "Hashes": "SHA256=5E884898DA28047151D0E56F8DC6292773603D0D6AABDD62A11EF721D1542D80",
+      "User": "CORP\\victim_user",
+      "Computer": "CORP-FIN-WS01"
+    }
+  ],
+  "expected_interpretation": "malicious",
+  "expected_observables": [
+    {
+      "observable_type": "executable",
+      "observable_value": "dropper.exe",
+      "is_mandatory": true
+    },
+    {
+      "observable_type": "executable",
+      "observable_value": "notepad.exe",
+      "is_mandatory": true
+    }
+  ],
+  "expected_mitre_techniques": [
+    {
+      "technique_id": "T1055",
+      "technique_name": "Process Injection",
+      "tactic": "Defense Evasion",
+      "is_mandatory": true,
+      "is_uncertain": false
+    },
+    {
+      "technique_id": "T1055.001",
+      "technique_name": "Process Injection: Dynamic-link Library Injection",
+      "tactic": "Defense Evasion",
+      "is_mandatory": false,
+      "is_uncertain": true
+    },
+    {
+      "technique_id": "T1055.002",
+      "technique_name": "Process Injection: Portable Executable Injection",
+      "tactic": "Defense Evasion",
+      "is_mandatory": false,
+      "is_uncertain": true
+    },
+    {
+      "technique_id": "T1070.004",
+      "technique_name": "Indicator Removal: File Deletion",
+      "tactic": "Defense Evasion",
+      "is_mandatory": true,
+      "is_uncertain": false
+    }
+  ],
+  "expected_claims": [
+    {
+      "claim_id": "EXP-CHN-04",
+      "statement": "dropper.exe created a remote thread inside notepad.exe process memory space",
+      "category": "behavioral",
+      "required_evidence_indices": [0],
+      "is_mandatory": true
+    },
+    {
+      "claim_id": "EXP-CHN-05",
+      "statement": "dropper.exe deleted its own binary from AppData\\Local\\Temp\\",
+      "category": "behavioral",
+      "required_evidence_indices": [1],
+      "is_mandatory": true
+    }
+  ],
+  "prohibited_claims": [
+    {
+      "prohibited_claim_id": "PRO-CHN-03",
+      "prohibited_assertion": "notepad.exe crashed due to an unhandled memory exception",
+      "reason": "Sysmon Event ID 8 indicates thread creation; no crash telemetry is present"
+    }
+  ],
+  "known_uncertainty": [
+    "Payload shellcode injected into notepad.exe memory address cannot be decompiled from Event ID 8."
+  ],
+  "expected_limitations": [
+    "Synthetic scenario modeling process injection and anti-forensic self-deletion."
+  ],
+  "provenance": {
+    "author": "AISOP Evaluation Architect",
+    "dataset_source": "synthetic_p1_h8_expansion",
+    "creation_timestamp_utc": "2026-10-30T12:00:00Z",
+    "review_status": "approved",
+    "reviewer": "Principal Security Architect",
+    "review_notes": "Validated against Sysmon Event ID 8 and Event ID 23 normalizer specifications"
+  },
+  "is_synthetic": true,
+  "synthetic_generation_rationale": "Constructed to validate P1-H8 parser expansion for EventID 8 and EventID 23 in attack scenarios"
+}
+

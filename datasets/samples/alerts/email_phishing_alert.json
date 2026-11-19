@@ -1,0 +1,27 @@
+{
+  "source_type": "email_phishing",
+  "source_identifier": "proofpoint-tap-feed",
+  "provider": "Proofpoint Targeted Attack Protection",
+  "message_id": "msg-8899aabbccddeeff-01",
+  "sender": "payroll-notification@secure-portal-update.com",
+  "recipient": "bob.finance@enterprise.org",
+  "subject": "URGENT: Quarterly Bonus Direct Deposit Verification",
+  "timestamp": "2026-10-31T09:50:00.000000Z",
+  "threat_type": "Credential Phish",
+  "severity": "high",
+  "verdict": "malicious",
+  "attachment": {
+    "name": "Direct_Deposit_Authorization_Form.pdf.iso",
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "md5": "9e107d9d372bb6826bd81d3542a419d6",
+    "size": 249856
+  },
+  "urls": [
+    {
+      "url": "https://secure-portal-update.com/login?auth=session_98234",
+      "verdict": "malicious"
+    }
+  ],
+  "quarantine_action": "delivered_to_junk"
+}
+

@@ -1,0 +1,78 @@
+{
+  "base_scenario_id": "SCN-ATO-004",
+  "base_time_utc": "2026-09-09T14:15:25+00:00",
+  "case_id": "SUFC-35c67ed467",
+  "entities": [
+    {
+      "entity_type": "file",
+      "entity_value": "mimikatz.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "file_hash",
+      "entity_value": "17565fe8a1553835b19fa865befa0df85fa3ec04b9741d8b4d445f0f5cc054d6",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "powershell.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "created",
+      "attributes": {
+        "CreationUtcTime": "2026-09-09 14:15:25.000",
+        "EventID": "11",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "ProcessId": "5412",
+        "TargetFilename": "C:\\Users\\Public\\mimikatz.exe",
+        "UtcTime": "2026-09-09 14:15:25.000"
+      },
+      "event_id": "11",
+      "event_type": "file_create",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "file_create created",
+      "timestamp_offset_s": 0.0
+    }
+  ],
+  "family": "atomic_technique",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "heldout",
+  "transform": "provenance_stripped",
+  "window": {
+    "end_offset_s": 1.0,
+    "start_offset_s": -1.0
+  }
+}

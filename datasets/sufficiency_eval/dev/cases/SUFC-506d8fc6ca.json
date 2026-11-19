@@ -1,0 +1,138 @@
+{
+  "base_scenario_id": "SCN-CHN-003",
+  "base_time_utc": "2026-09-10T11:30:10+00:00",
+  "case_id": "SUFC-506d8fc6ca",
+  "entities": [
+    {
+      "entity_type": "file",
+      "entity_value": "dropper.exe",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "file_hash",
+      "entity_value": "5e884898da28047151d0e56f8dc6292773603d0d6aabdd62a11ef721d1542d80",
+      "event_keys": [
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "host",
+      "entity_value": "CORP-FIN-WS01",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "dropper.exe",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "process",
+      "entity_value": "notepad.exe",
+      "event_keys": [
+        "e0"
+      ]
+    },
+    {
+      "entity_type": "user",
+      "entity_value": "corp\\victim_user",
+      "event_keys": [
+        "e0",
+        "e1"
+      ]
+    },
+    {
+      "entity_type": "domain",
+      "entity_value": "corroboration-882cd49c.example",
+      "event_keys": [
+        "e0",
+        "e_corr"
+      ]
+    },
+    {
+      "entity_type": "ip",
+      "entity_value": "203.0.114.9",
+      "event_keys": [
+        "e_corr"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "action": "created",
+      "attributes": {
+        "EventID": "8",
+        "SourceImage": "C:\\Users\\victim_user\\AppData\\Local\\Temp\\dropper.exe",
+        "SourceProcessId": "4812",
+        "TargetImage": "C:\\Windows\\System32\\notepad.exe",
+        "TargetProcessId": "2940",
+        "UtcTime": "2026-09-10 11:30:10.000"
+      },
+      "event_id": "8",
+      "event_type": "create_remote_thread",
+      "key": "e0",
+      "outcome": "success",
+      "raw_evidence_sha256": "cdd54cd5baf4c5a4c899617bd7ce4e86c6153a73867223760e33fecec346eca3",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "create_remote_thread created",
+      "timestamp_offset_s": 0.0
+    },
+    {
+      "action": "deleted",
+      "attributes": {
+        "EventID": "23",
+        "Hashes": "SHA256=5E884898DA28047151D0E56F8DC6292773603D0D6AABDD62A11EF721D1542D80",
+        "Image": "C:\\Users\\victim_user\\AppData\\Local\\Temp\\dropper.exe",
+        "ProcessId": "4812",
+        "TargetFilename": "C:\\Users\\victim_user\\AppData\\Local\\Temp\\dropper.exe",
+        "UtcTime": "2026-09-10 11:30:12.400"
+      },
+      "event_id": "23",
+      "event_type": "file_delete",
+      "key": "e1",
+      "outcome": "success",
+      "raw_evidence_sha256": "e45ced5a2c585734329248b637ead133d1953a36ceedbd3f18911eb1a4f4c57c",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "file_delete deleted",
+      "timestamp_offset_s": 2.4
+    },
+    {
+      "action": "connect",
+      "attributes": {
+        "note": "synthetic corroborating observation"
+      },
+      "event_id": "3",
+      "event_type": "network_connection",
+      "key": "e_corr",
+      "outcome": "success",
+      "raw_evidence_sha256": "58a36f082610937f8e84f0d497fe0bad3e69793e59f7b29fc3d8607f43b87d97",
+      "severity": "informational",
+      "source_identifier": "CORP-FIN-WS01",
+      "summary": "outbound connection observed by a second sensor",
+      "timestamp_offset_s": 32.4
+    }
+  ],
+  "family": "multi_stage_chain",
+  "omitted_events": 0,
+  "question": {
+    "root_event_key": "e0",
+    "target_hosts": [
+      "CORP-FIN-WS01"
+    ]
+  },
+  "split": "dev",
+  "transform": "independently_corroborated",
+  "window": {
+    "end_offset_s": 33.4,
+    "start_offset_s": -1.0
+  }
+}

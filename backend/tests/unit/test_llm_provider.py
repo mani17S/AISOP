@@ -451,6 +451,7 @@ def test_get_llm_provider_factory() -> None:
         LLM_PROVIDER="ollama",
         OLLAMA_BASE_URL="http://test-server:11434",
         OLLAMA_MODEL="llama3.1:8b",
+        LLM_ALLOW_NON_LOCAL_ENDPOINT=True,  # Task 2 local-first guard: a non-local endpoint now needs this explicit opt-in
     )
     provider = get_llm_provider(settings)
     assert isinstance(provider, OllamaProvider)
