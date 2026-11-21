@@ -692,6 +692,7 @@ class TestIntegrationHardeningAndEdgeCases:
         raw_alert = {
             "source_type": "generic_siem",
             "source_identifier": "unknown-vendor-sensor",
+            "timestamp": "2026-11-07T09:00:00Z",  # an alert must carry its own event time (F1: no invented timestamps)
             "vendor_custom_blob": {"deep_nested": [1, 2, 3]},
             "proprietary_field_x": "unrecognized_flag_xyz",
         }

@@ -58,6 +58,9 @@ from app.schemas.sufficiency import SUFFICIENCY_RULE_VERSION
 svc_logger = logger.bind(component="multisource_investigation_service")
 
 MULTISOURCE_ACTION = "case_multisource_investigation"
+MULTISOURCE_REVIEW_ACTION = "case_multisource_review"   # append-only analyst review of one stored investigation (human approval record)
+MAX_REVIEW_NOTE_CHARS = 500
+MULTISOURCE_EXPORT_ACTION = "case_multisource_export"
 PAYLOAD_SCHEMA = "multisource-v1"
 MAX_TIMELINE_ENTRIES = 200
 MAX_LINKS = 100
@@ -107,6 +110,18 @@ class PersistenceFailed(MultiSourceError):
 
 class NoInvestigation(MultiSourceError):
     code = "no_investigation"
+
+
+class ExportNotApproved(MultiSourceError):
+    """The export is released only for a result the case lead has approved and whose evidence has not changed since."""
+
+    code = "export_requires_approval"
+
+
+class InvestigationMismatch(MultiSourceError):
+    """The reviewer saw a different investigation than the current stored one (or the evidence changed since the run)."""
+
+    code = "conflict_investigation_changed"
 
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
@@ -262,7 +277,107 @@ class MultiSourceInvestigationService:
         payload["created_at"] = _iso(latest.created_at)
         current = self.fingerprint(await self._load_rows(session, case_id), bool(payload.get("use_llm")))
         stale = current != payload.get("evidence_fingerprint")
-        return self.section_view(payload, section, stale)
+        view = self.section_view(payload, section, stale)
+        if section in (MultiSourceSection.STATUS, MultiSourceSection.REPORT):
+            view["review"] = await self._review_view(session, case_id, latest, stale)
+        return view
+
+    # ── analyst review (human approval record) ──────────────────────────────
+    async def _review_view(self, session: AsyncSession, case_id: uuid.UUID, latest: CaseAuditEventModel, stale: bool) -> dict[str, Any]:
+        """Review state of the CURRENT stored investigation: not_reviewed, approved, rejected, or stale (evidence changed since the run)."""
+        rows = (await session.execute(
+            select(CaseAuditEventModel)
+            .where(CaseAuditEventModel.case_id == case_id, CaseAuditEventModel.action == MULTISOURCE_REVIEW_ACTION)
+            .order_by(CaseAuditEventModel.created_at.desc())
+            .limit(25)
+        )).scalars().all()
+        mine = next((r for r in rows if (r.details or {}).get("investigation_audit_id") == str(latest.id)), None)
+        if mine is None:
+            return {"state": "stale" if stale else "not_reviewed", "decision": None, "reviewed_by": None, "reviewed_at": None, "note": None}
+        d = mine.details or {}
+        return {"state": "stale" if stale else d.get("decision"), "decision": d.get("decision"), "reviewed_by": mine.actor_username,
+                "reviewed_at": _iso(mine.created_at), "note": d.get("note")}
+
+    async def review(
+        self,
+        *,
+        session: AsyncSession,
+        case_id: uuid.UUID,
+        actor: AuthenticatedAnalyst,
+        decision: str,
+        evidence_fingerprint: str,
+        note: Optional[str],
+    ) -> dict[str, Any]:
+        """Record the lead's decision on the latest stored investigation. Append-only; never edits the investigation itself."""
+        case = (await session.execute(select(CaseModel).where(CaseModel.id == case_id))).scalars().first()
+        if case is None:
+            raise CaseNotFound("Case not found or access denied.")
+        if case.status in (CaseStatus.CLOSED.value, CaseStatus.ARCHIVED.value):
+            raise CaseClosed("The case is closed or archived; it can no longer be reviewed.")
+        latest = await self._latest(session, case_id)
+        if latest is None:
+            raise NoInvestigation("No multi-source investigation has been started for this case.")
+        stored_fp = (latest.details or {}).get("evidence_fingerprint")
+        current_fp = self.fingerprint(await self._load_rows(session, case_id), bool((latest.details or {}).get("use_llm")))
+        if evidence_fingerprint != stored_fp or current_fp != stored_fp:
+            raise InvestigationMismatch("The investigation or its evidence changed; reload it and review the current result.")
+        clean_note = None
+        if note:
+            clean_note = "".join(ch for ch in note if ch.isprintable() or ch in " \n")[:MAX_REVIEW_NOTE_CHARS].strip() or None
+        now = datetime.now(timezone.utc)
+        session.add(CaseAuditEventModel(
+            id=uuid.uuid4(), case_id=case_id, actor_analyst_id=actor.analyst_id, actor_username=actor.username,
+            action=MULTISOURCE_REVIEW_ACTION, context_sha256=latest.context_sha256,
+            details={"decision": decision, "note": clean_note, "evidence_fingerprint": stored_fp, "investigation_audit_id": str(latest.id)},
+            created_at=now,
+        ))
+        try:
+            await session.commit()
+        except Exception as exc:  # noqa: BLE001
+            await session.rollback()
+            svc_logger.error("Multi-source review audit write failed", error_type=type(exc).__name__)
+            raise PersistenceFailed("Audit logging failed; the review was not stored.") from None
+        return await self._review_view(session, case_id, latest, False)
+
+    async def export_report(self, *, session: AsyncSession, case_id: uuid.UUID, actor: AuthenticatedAnalyst) -> dict[str, Any]:
+        """
+        Released report bundle (markdown) for the latest stored investigation. Refused unless the case lead has APPROVED this exact result
+        and the evidence is unchanged. Each release is an append-only audit row. The markdown is the stored deterministic report; the
+        approval header only states who approved what, it adds no claim.
+        """
+        latest = await self._latest(session, case_id)
+        if latest is None:
+            raise NoInvestigation("No multi-source investigation has been started for this case.")
+        payload = dict(latest.details or {})
+        stored_fp = payload.get("evidence_fingerprint")
+        stale = self.fingerprint(await self._load_rows(session, case_id), bool(payload.get("use_llm"))) != stored_fp
+        review = await self._review_view(session, case_id, latest, stale)
+        if review["state"] != "approved":
+            raise ExportNotApproved(f"Export refused: review state is {review['state']}.")
+        parts = [
+            "# AISOP investigation report (approved)",
+            f"Approved by {review['reviewed_by']} at {review['reviewed_at']}. Evidence fingerprint {stored_fp}.",
+            "The approval records a human decision about this result. It does not make any claim in the report more certain.",
+        ]
+        if review.get("note"):
+            parts.append("Reviewer note: " + str(review["note"]).replace("\n", " "))
+        if payload.get("batch_report_markdown"):
+            parts.append(str(payload["batch_report_markdown"])[:MAX_REPORT_CHARS])
+        for inc in payload.get("incidents", []):
+            parts.append(str(inc.get("report_markdown", ""))[:MAX_REPORT_CHARS])
+        session.add(CaseAuditEventModel(
+            id=uuid.uuid4(), case_id=case_id, actor_analyst_id=actor.analyst_id, actor_username=actor.username,
+            action=MULTISOURCE_EXPORT_ACTION, context_sha256=latest.context_sha256,
+            details={"evidence_fingerprint": stored_fp, "investigation_audit_id": str(latest.id), "approved_by": review["reviewed_by"]},
+            created_at=datetime.now(timezone.utc),
+        ))
+        try:
+            await session.commit()
+        except Exception as exc:  # noqa: BLE001
+            await session.rollback()
+            svc_logger.error("Multi-source export audit write failed", error_type=type(exc).__name__)
+            raise PersistenceFailed("Audit logging failed; the report was not released.") from None
+        return {"filename": f"aisop-report-{str(case_id)[:8]}.md", "markdown": "\n\n".join(parts), "evidence_fingerprint": stored_fp, "review": review}
 
     @staticmethod
     def _observation_view(o: Any, placed: set[Any]) -> dict[str, Any]:

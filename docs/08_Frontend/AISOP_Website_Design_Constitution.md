@@ -120,6 +120,38 @@ Measured contrast (WCAG 2.1 relative luminance, computed 2026-11-13; script and 
 
 Rules: do not infer accessibility from one ratio; text smaller than 12px in `--text-muted` is permitted only for the documented technical-identifier exception; hover and focus states must be measured separately (see the Phase 2.2 populated-UI review).
 
+#### 3.1.3 Case-file direction (Amendment A4, 2026-11-20, owner instruction in the current task)
+The owner asked that the interface stop resembling common SIEM and SOAR consoles. The following are adopted; every earlier prohibition still applies.
+- Navigation is a top bar, not a left sidebar. Content is a centered column (1120px for reading pages, 1320px for wide data pages).
+- Page and section titles use a serif face (Newsreader, self-hosted). Interface text stays Geist, identifiers and hashes stay JetBrains Mono.
+- The primary action is an off-white fill with dark text. The blue `--accent-action` token is retained for focus, links and informational state but is no longer the default primary fill.
+- Severity and status are a square marker plus the word, never a filled pill. Tables are ledgers: a single rule above, hairlines between rows, no frame or header fill.
+- Each evidence record carries a short exhibit reference (`E-` plus the first four hex characters of its own identifier) wherever it appears. It is a label only; the full UUID remains the identifier.
+Contrast tokens in 3.1.1 and 3.1.2 are unchanged.
+
+#### 3.1.4 Surface, border, radius, spacing and control-height tokens (Amendment A5, 2026-11-21, owner-approved)
+The owner approved the token set in `docs/08_Frontend/UI_Token_Proposal_2026-11-21.md` for a minimal, professional black interface. This amendment is limited to the rows below. Nothing else in this constitution changes: A1 to A4, every prohibition in section 2, the semantic status colours, the typography and the accessible text tones remain as written. Existing token names stay as aliases of the new ones, so no component depends on a removed name.
+
+| Token group | Old value (stylesheet before A5; constitution 3.1 where it differs) | New value | Reason |
+|---|---|---|---|
+| Surfaces | `--bg-primary #0b0d12` (constitution `#0a0e14`), `--bg-secondary #0f1116` (`#0f141c`), `--bg-card #14171d` (`#151b24`), `--bg-hover #272c37`, `--bg-input #0d0f14` (`#1a2332`): five or four near-identical levels | Three levels: `--surface-0 #0b0d12` (page), `--surface-1 #14171d` (cards, panels, inputs, navigation), `--surface-2 #1a1e26` (hover, selected, menus). `--bg-primary` aliases surface-0; `--bg-secondary`, `--bg-card`, `--bg-input` alias surface-1; `--bg-hover` aliases surface-2 | Fewer, clearer levels; the old hover value was a large jump |
+| Borders | `--border-color #262b35` (constitution `#232d3f`), `--border-subtle #1b1f27` (`#1c2534`); measured 1.26:1 and 1.09:1 against the card | `--line-hairline #1b1f27` (separators), `--line-default #262b35` (card and table edges), new `--line-strong #5f6a80` (input and control boundaries, selected state); `--border-color` and `--border-subtle` alias the first two | Input and control boundaries must reach 3:1: `#5f6a80` measures 3.57 on the page, 3.30 on the card, 3.07 on surface-2 and 3.52 on the old input surface |
+| Radii | 4, 6 and 8 px used without a rule | `--radius-control 6px` (buttons, inputs, selects), `--radius-container 8px` (cards, tables, dialogs). Square status markers (A4) and the 8 px cap on buttons (section 2.1) are unchanged | One rule for the two kinds of object |
+| Spacing | 4px and 8px grid (section 3.2) | Scale 4, 8, 12, 16, 24, 32 px as tokens `--space-1` to `--space-6` | Same grid, named values |
+| Control height | about 33 px (8 px padding, 13 px text) | `--control-height 40px` on desktop; 44px when the pointer is coarse or the window is narrower than 768px | Owner request; 44 px follows the touch-target guidance reviewed for this change |
+
+Measured pairings added by this amendment (WCAG 2.1, computed 2026-11-21): primary text `#eceef2` on surface-1 15.45:1; muted `#8795ad` on surface-2 5.51:1; off-white button fill with `#0b0d12` label 16.73:1 (hover `#ffffff` 19.43:1, active `#d5d9e0` 13.73:1); focus ring `#60a5fa` on surface-1 7.06:1 and on the page 7.64:1; critical text `#f87171` on surface-1 6.49:1. The A1 and A2 tables remain the record for the pairings they list; any pairing not listed in A1, A2 or here must be measured before use.
+
+#### 3.1.5 Display typeface (Amendment A6, 2026-11-21, owner instruction)
+The owner found that the serif title face made the interface look like a common AI-assistant product and asked for it to change. Amendment A4 (serif page and section titles in Newsreader) is superseded for typography only; everything else in A4 stands.
+
+| Item | Old | New | Reason |
+|---|---|---|---|
+| Page, section and table titles, wordmark | Newsreader (serif), weight 500 | Geist (already installed), weight 600, letter-spacing -0.015em; wordmark 18px, weight 600, letter-spacing 0.14em | Owner request; no new dependency |
+| Interface text | Geist | unchanged | |
+| Identifiers, hashes, telemetry | JetBrains Mono | unchanged; tabular figures added for table data | |
+| Font loading | Newsreader loaded in `main.tsx` | not loaded; the `@fontsource-variable/newsreader` package remains in `package.json` until the owner approves removing it | removing a dependency is the owner's decision |
+
 ### 3.2 Spacing, Density & Layout
 - Use a disciplined 4px / 8px grid (padding: 8px, 12px, 16px, 24px).
 - Maintain high information density suitable for SOC workflows without clutter.

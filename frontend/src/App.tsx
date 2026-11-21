@@ -14,8 +14,12 @@ import { Evidence } from './pages/Evidence';
 import { Reports } from './pages/Reports';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PrivacyPolicy, TermsOfService } from './pages/Legal';
+import { Landing } from './pages/Landing';
+import { NoKeyPage } from './components/NoKeyPage';
+import { useAuth } from './contexts/AuthContext';
 
-const AppShell: React.FC = () => {
+const ShellBody: React.FC = () => {
+  const { apiKey } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [selectedCaseIdForReport, setSelectedCaseIdForReport] = useState<string | null>(null);
   const [selectedCaseIdForWorkspace, setSelectedCaseIdForWorkspace] = useState<string | null>(null);
@@ -48,21 +52,22 @@ const AppShell: React.FC = () => {
   };
 
   return (
-    <AuthProvider>
+    <>
       <div className="app-container">
         <Navbar currentTab={currentTab} onSelectTab={handleSelectTab} />
 
         <main className="main-content">
-          <ErrorBoundary fallbackTitle="Application View Error">
-            {currentTab === 'dashboard' && (
+          <ErrorBoundary fallbackTitle="Application view error">
+            {!apiKey && <NoKeyPage />}
+            {apiKey && currentTab === 'dashboard' && (
               <Dashboard
                 onNavigate={setCurrentTab}
                 onCreateIncident={handleCreateIncidentFromDashboard}
                 onNavigateToCase={handleNavigateToCase}
               />
             )}
-            {currentTab === 'alerts' && <Alerts onNavigateToCase={handleNavigateToCase} />}
-            {currentTab === 'cases' && (
+            {apiKey && currentTab === 'alerts' && <Alerts onNavigateToCase={handleNavigateToCase} />}
+            {apiKey && currentTab === 'cases' && (
               <Cases
                 onNavigateToReport={handleNavigateToReport}
                 initialCaseId={selectedCaseIdForWorkspace}
@@ -70,20 +75,33 @@ const AppShell: React.FC = () => {
                 onClearInitialOpenCreate={() => setInitialOpenCreateCase(false)}
               />
             )}
-            {currentTab === 'evidence' && <Evidence />}
-            {currentTab === 'reports' && <Reports initialCaseId={selectedCaseIdForReport} />}
+            {apiKey && currentTab === 'evidence' && <Evidence />}
+            {apiKey && currentTab === 'reports' && <Reports initialCaseId={selectedCaseIdForReport} />}
           </ErrorBoundary>
         </main>
+
+        <footer className="app-footer">
+          <span>AISOP</span>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </footer>
       </div>
-    </AuthProvider>
+    </>
   );
 };
+
+const AppShell: React.FC = () => (
+  <AuthProvider>
+    <ShellBody />
+  </AuthProvider>
+);
 
 export const App: React.FC = () => {
   const path = typeof window !== 'undefined' ? window.location.pathname.replace(/\/+$/, '') : '';
   if (path === '/privacy') return <PrivacyPolicy />;
   if (path === '/terms') return <TermsOfService />;
-  return <AppShell />;
+  if (path === '/app') return <AppShell />;
+  return <Landing />;
 };
 
 export default App;

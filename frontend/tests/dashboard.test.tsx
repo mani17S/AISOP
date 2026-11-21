@@ -86,12 +86,12 @@ describe('AISOP P6.5: Dashboard & Navbar Component Verification', () => {
       />
     );
 
-    assert.ok(html.includes('Security Operations Overview'), 'Overview header must be present');
-    assert.ok(html.includes('+ Create New Incident'), 'Create incident button must be present');
+    assert.ok(html.includes('Overview'), 'Overview header must be present');
+    assert.ok(html.includes('New case'), 'Create incident button must be present');
     assert.ok(html.includes('Loading security telemetry...'), 'Loading placeholder must be present');
     assert.ok(!html.includes('Ollama Local Runtime'), 'Static LLM runtime claim must not be present');
     assert.ok(!html.includes('Evidence validation and AI guardrails'), 'Static guardrails claim must not be present');
-    assert.ok(html.includes('View All Cases'), 'View All Cases button must be present');
+    assert.ok(html.includes('All cases'), 'All cases button must be present');
   });
 
   it('renders explicit 401 authentication required banner and metric states', () => {
@@ -110,7 +110,7 @@ describe('AISOP P6.5: Dashboard & Navbar Component Verification', () => {
       '401 error message must be displayed in banner'
     );
     assert.ok(
-      html.includes('Auth Required'),
+      html.includes('Key needed'),
       'Card values must display Auth Required instead of zero'
     );
     assert.ok(
@@ -221,11 +221,11 @@ describe('AISOP P6.5: Dashboard & Navbar Component Verification', () => {
     );
 
     assert.ok(
-      html.includes('Create Security Incident Case'),
+      html.includes('New case'),
       'Create modal header must be rendered when initialOpenCreate is true'
     );
     assert.ok(
-      html.includes('Incident Title *'),
+      html.includes('Title *'),
       'Title input label must be present'
     );
     assert.ok(

@@ -70,8 +70,8 @@ def _default_descriptors() -> tuple[SourceDescriptor, ...]:
         SourceDescriptor("tor_exit_nodes", "Tor exit nodes", SourceKind.LOCAL_FEED, frozenset({ObservableType.IPV4, ObservableType.IPV6}),
                          implemented=True, terms_status=TermsStatus.NOT_APPLICABLE, lineage=("torproject",), note="Local feed file; always on; offline."),
         # Candidates: config key fields or empty packages exist, but NO adapter is implemented. Non-operational.
-        SourceDescriptor("abuseipdb", "AbuseIPDB", SourceKind.EXTERNAL_API, frozenset({ObservableType.IPV4, ObservableType.IPV6}), implemented=False,
-                         terms_status=TermsStatus.UNVERIFIED, requires_credential=True, credential_setting="ABUSEIPDB_API_KEY", note="Candidate only; no adapter."),
+        SourceDescriptor("abuseipdb", "AbuseIPDB", SourceKind.EXTERNAL_API, frozenset({ObservableType.IPV4, ObservableType.IPV6}), implemented=True,
+                         terms_status=TermsStatus.UNVERIFIED, requires_credential=True, credential_setting="ABUSEIPDB_API_KEY", note="Adapter implemented (AbuseIPDBProvider). Needs operator opt-in, a key, and the private-network shield; terms unverified."),
         SourceDescriptor("alienvault_otx", "AlienVault OTX", SourceKind.EXTERNAL_API,
                          frozenset({ObservableType.IPV4, ObservableType.IPV6, ObservableType.DOMAIN, ObservableType.SHA256, ObservableType.SHA1, ObservableType.MD5}),
                          implemented=False, terms_status=TermsStatus.UNVERIFIED, requires_credential=True, credential_setting="ALIENVAULT_OTX_API_KEY",

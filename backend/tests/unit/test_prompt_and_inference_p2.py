@@ -274,7 +274,10 @@ def test_json_mode_and_deterministic_sampling_configuration():
     # Verify OllamaProvider payload mapping
     provider = OllamaProvider(model="qwen3:4b")
     payload = provider._build_payload(req)
-    assert payload["format"] == "json"
+    # Structured outputs: the provider constrains generation to the investigation schema (a JSON object), with the
+    # system-owned fields pinned so a model cannot invent an investigation id.
+    assert isinstance(payload["format"], dict) and payload["format"]["type"] == "object"
+    assert payload["format"]["properties"]["investigation_id"]["const"] == str(ctx.investigation_id)
     assert payload["options"]["temperature"] == 0.0
     assert payload["options"]["num_predict"] == 2048
 

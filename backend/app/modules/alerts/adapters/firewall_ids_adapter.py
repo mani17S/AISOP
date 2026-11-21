@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.modules.evidence.hasher import compute_sha256
+from app.modules.alerts.adapter_protocol import require_event_time
 from app.schemas.alert import (
     AlertCategory,
     AlertEntity,
@@ -105,13 +106,7 @@ class NetworkIdsAdapter:
 
         # Timestamp
         ts_val = data.get("timestamp") or data.get("@timestamp")
-        if ts_val:
-            try:
-                ts = datetime.fromisoformat(str(ts_val).replace("Z", "+00:00"))
-            except Exception:
-                ts = datetime.now(timezone.utc)
-        else:
-            ts = datetime.now(timezone.utc)
+        ts = require_event_time(ts_val)
 
         # MITRE ATT&CK extraction
         mitre_list: list[MitreAttackReference] = []

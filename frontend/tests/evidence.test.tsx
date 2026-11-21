@@ -1,5 +1,5 @@
 /**
- * AISOP Phase 6.6 — Evidence & Telemetry Component Verification Test Suite.
+ * AISOP Phase 6.6 — Evidence Component Verification Test Suite.
  *
  * Verifies:
  * 1. Initial loading state rendering without unhandled exceptions.
@@ -65,10 +65,10 @@ const mockMalformedTimestampEvent: NormalizedEventSummary = {
   severity: 'medium',
 };
 
-describe('AISOP Phase 6.6: Evidence & Telemetry Page Verification', () => {
+describe('AISOP Phase 6.6: Evidence Page Verification', () => {
   it('renders initial loading state without crashing', () => {
     const html = renderWithAuth(<Evidence initialLoading={true} initialEvents={[]} />);
-    assert.ok(html.includes('Evidence Explorer'), 'Page title must render');
+    assert.ok(html.includes('<h1>Evidence</h1>'), 'Page title must render');
     assert.ok(html.includes('Querying telemetry database...'), 'Loading indicator must render');
   });
 
@@ -76,7 +76,7 @@ describe('AISOP Phase 6.6: Evidence & Telemetry Page Verification', () => {
     const html = renderWithAuth(
       <Evidence initialEvents={[mockSanitizedEvent]} initialTotal={1} initialLoading={false} />
     );
-    assert.ok(html.includes('Normalized Events (1)'), 'Total count must render');
+    assert.ok(html.includes('Events (1)'), 'Total count must render');
     assert.ok(html.includes('2026-10-31 09:35:10'), 'Timestamp must format correctly');
     assert.ok(html.includes('alert.malware'), 'Event type badge must render');
     assert.ok(html.includes('CrowdStrike Falcon'), 'Provider must render');
@@ -102,7 +102,7 @@ describe('AISOP Phase 6.6: Evidence & Telemetry Page Verification', () => {
     assert.ok(html.includes('network_connection'), 'Event type renders safely');
   });
 
-  it('renders explicit error notification and retry button when API fails', () => {
+  it('shows one setup notice for a missing key and never renders a failed load as zero events', () => {
     const html = renderWithAuth(
       <Evidence
         initialEvents={[]}
@@ -111,10 +111,26 @@ describe('AISOP Phase 6.6: Evidence & Telemetry Page Verification', () => {
         initialError="Authentication required. Please provide a valid API key."
       />
     );
+    assert.ok(html.includes('Set API key'), 'The recovery action must be the key dialog');
+    assert.ok(html.includes('setup-notice'), 'One shared setup notice must render');
+    assert.ok(!html.includes('Retry query'), 'Retrying cannot fix a missing key');
+    assert.ok(!html.includes('Events (0)'), 'A failed load must not render as a zero count');
+    assert.ok(!html.includes('No telemetry events matching'), 'No filtered-empty message under an auth failure');
+  });
+
+  it('renders explicit error notification and retry button when API fails', () => {
+    const html = renderWithAuth(
+      <Evidence
+        initialEvents={[]}
+        initialTotal={0}
+        initialLoading={false}
+        initialError="The telemetry service returned an error."
+      />
+    );
     assert.ok(html.includes('alert-error'), 'Error alert box must render');
-    assert.ok(html.includes('Unable to Display Telemetry'), 'Error card heading must render');
-    assert.ok(html.includes('Authentication required'), 'Specific error message must render');
-    assert.ok(html.includes('Retry Query'), 'Retry button must render');
+    assert.ok(html.includes('Unable to display telemetry'), 'Error card heading must render');
+    assert.ok(html.includes('The telemetry service returned an error.'), 'Specific error message must render');
+    assert.ok(html.includes('Retry query'), 'Retry button must render');
   });
 
   it('renders clean empty state when zero events match filters', () => {

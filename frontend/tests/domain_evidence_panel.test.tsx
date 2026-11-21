@@ -56,6 +56,22 @@ describe('Domain evidence views', () => {
     assert.ok(html.includes('abababababab') && html.includes('idp-synthetic') && html.includes('api_export'));
   });
 
+  it('marks every evidence class with its own glyph shape and always with the word, never colour alone', () => {
+    const classes = ['raw_observed', 'tool_asserted', 'analyst_observation', 'ti_context', 'derived', 'model_inference', 'analyst_confirmed'];
+    const html = render(<EvidenceTable observations={classes.map((c, i) => obs({ evidence_id: 'k' + i, trust_class: c as DomainObservation['trust_class'] }))} />);
+    for (const c of classes) assert.ok(html.includes('class-glyph--' + c), c);
+    for (const w of ['Observed (collector record)', 'Tool-asserted', 'Analyst statement (context only)', 'External intelligence (context only)', 'Derived', 'AI inference', 'Analyst confirmed']) assert.ok(html.includes(w), w);
+    assert.ok(html.includes('aria-hidden="true"'));                       // the glyph is decorative; the word carries the meaning
+    assert.ok(!/class-glyph[^>]*(color|background):/i.test(html));         // no inline colour: styling comes from tokens only
+  });
+
+  it('offers a legend that explains each class in a plain sentence, and an unknown class degrades to its own text', () => {
+    const html = render(<EvidenceTable observations={[obs({ trust_class: 'something_new' as DomainObservation['trust_class'] })]} />);
+    assert.ok(html.includes('<details') && html.includes('How to read the evidence classes'));
+    assert.ok(html.includes('It is never observed evidence.') && html.includes('never corroborates machine evidence'));
+    assert.ok(html.includes('something_new') && html.includes('class-glyph--unknown'));
+  });
+
   it('labels weak correlations as context only and only strong or specific as corroboration', () => {
     const html = render(<GraphSection graph={graph} />);
     assert.ok(html.includes('Corroboration (specific)') && html.includes('Context only (weak)'));

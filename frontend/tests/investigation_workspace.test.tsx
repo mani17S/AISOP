@@ -4,8 +4,8 @@
  * Verifies:
  * 1. Initial loading state rendering with case ID and back button.
  * 2. Header metadata rendering (Case number, Title, Severity, Status, Lead Analyst).
- * 3. Evidence Panel (Area B): case-scoped listing, payload inspection, zero raw leakage.
- * 4. Investigation Context & Observables (Area C): facts vs enrichment vs inferences.
+ * 3. Evidence (Area B): case-scoped listing, payload inspection, zero raw leakage.
+ * 4. Context and indicators (Area C): facts vs enrichment vs inferences.
  * 5. Human-Invoked AI Investigation (Area D): explicit trigger, offline fallback notice.
  * 6. Findings & Report (Area E): epistemic partitioning, MITRE ATT&CK, actions, gaps.
  * 7. Activity & Audit Trail: immutable history, actor attribution, event ordering.
@@ -204,7 +204,7 @@ describe('AISOP Phase 4B: Investigation Workspace Component Verification', () =>
       />
     );
 
-    assert.ok(html.includes('Back to Cases'), 'Back button must be rendered');
+    assert.ok(html.includes('Back to cases'), 'Back button must be rendered');
     assert.ok(html.includes('Loading investigation workspace for case test-case-uuid-42...'), 'Loading text must contain case ID');
   });
 
@@ -223,8 +223,8 @@ describe('AISOP Phase 4B: Investigation Workspace Component Verification', () =>
     assert.ok(html.includes('badge-high'), 'Severity badge class must be rendered');
     assert.ok(html.includes('badge-open'), 'Status badge class must be rendered');
     assert.ok(html.includes('analyst-sec-01'), 'Lead analyst ID must be rendered');
-    assert.ok(html.includes('View Full Report Bundle'), 'Report navigation button must be rendered');
-    assert.ok(html.includes('Close Case'), 'Close case button must be rendered');
+    assert.ok(html.includes('Report bundle'), 'Report navigation button must be rendered');
+    assert.ok(html.includes('Close case'), 'Close case button must be rendered');
   });
 
   it('renders Evidence Panel with case-scoped evidence and zero raw-payload leakage (Area B)', () => {
@@ -238,7 +238,7 @@ describe('AISOP Phase 4B: Investigation Workspace Component Verification', () =>
       />
     );
 
-    assert.ok(html.includes('Link Evidence by UUID'), 'Link evidence action must be present');
+    assert.ok(html.includes('Link evidence'), 'Link evidence action must be present');
     assert.ok(html.includes('powershell.exe -enc SQBFAFgA'), 'First evidence action/summary must be rendered');
     assert.ok(html.includes('TCP outbound 198.51.100.45:443'), 'Second evidence action/summary must be rendered');
     assert.ok(html.includes('ProcessCreate'), 'Event type must be rendered');
@@ -281,7 +281,7 @@ describe('AISOP Phase 4B: Investigation Workspace Component Verification', () =>
     );
 
     assert.ok(html.includes('Human-in-the-Loop Investigation Synthesis'), 'Synthesis section must be present');
-    assert.ok(html.includes('Start AI Investigation'), 'Explicit human action button must be present');
+    assert.ok(html.includes('Start AI investigation'), 'Explicit human action button must be present');
     assert.ok(html.includes('AISOP does not run autonomous background investigations'), 'Anti-autonomous notice must be present');
     assert.ok(html.includes('Zero External Egress: Synthesis runs via local Ollama daemon or a deterministic offline provider'), 'Offline disclaimer must be present');
   });
@@ -424,7 +424,7 @@ describe('AISOP Phase 4B: Investigation Workspace Component Verification', () =>
     );
 
     assert.ok(html.includes('No evidence events currently linked to this case'), 'Evidence empty state text must be present');
-    assert.ok(html.includes('+ Link Evidence by UUID'), 'Link evidence button must be available in empty state');
+    assert.ok(html.includes('+ Link evidence'), 'Link evidence button must be available in empty state');
   });
 
   it('renders empty state when zero activity events are recorded for case', () => {
@@ -487,7 +487,7 @@ describe('AISOP Phase 4B: Investigation Workspace Component Verification', () =>
     );
 
     assert.ok(html.includes('badge-closed'), 'Closed badge must be present');
-    assert.strictEqual(html.includes('Close Case</button>'), false, 'Close case button must not be rendered for closed case');
+    assert.strictEqual(html.includes('Close case</button>'), false, 'Close case button must not be rendered for closed case');
   });
 
   it('strictly adheres to Design Constitution (no emojis, no purple gradients, standard button radius)', () => {

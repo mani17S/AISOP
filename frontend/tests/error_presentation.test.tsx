@@ -156,3 +156,132 @@ describe('apiErrorFromResponse: stable backend envelope (Phase 2.2)', () => {
     assert.strictEqual(err.requestId, 'header-id-12345678');
   });
 });
+// ── Plain-language explanations for fixed backend codes (UX review U6, U7) ─────────────────────────────────────
+import { explainRecordCode, whatWouldRaiseVerdict } from '../src/utils/explain';
+
+describe('explainRecordCode', () => {
+  it('explains known rejection and quarantine codes in a full sentence', () => {
+    assert.match(explainRecordCode('TIMESTAMP_MISSING_OR_INVALID'), /no usable event time/);
+    assert.match(explainRecordCode('NO_ADAPTER'), /No parser recognises/);
+    assert.match(explainRecordCode('FIELD_INVALID:ip'), /"ip".*invalid format/);
+    assert.match(explainRecordCode('FIELD_MISSING:source'), /"source".*missing/);
+    assert.match(explainRecordCode('ADAPTER_ERROR:KeyError'), /parser failed/);
+  });
+  it('never invents text for an unknown code and never echoes anything beyond the code', () => {
+    assert.strictEqual(explainRecordCode('SOMETHING_NEW'), 'SOMETHING_NEW');
+    assert.strictEqual(explainRecordCode('FIELD_INVALID'), 'FIELD_INVALID');
+  });
+  it('uses no em dashes (interface copy rule)', () => {
+    for (const c of ['TIMESTAMP_MISSING_OR_INVALID', 'NO_ADAPTER', 'RECORD_TOO_LARGE', 'FIELD_INVALID:x']) assert.ok(!explainRecordCode(c).includes('—'));
+  });
+});
+
+describe('whatWouldRaiseVerdict', () => {
+  it('maps reason codes to distinct next steps and ignores qualifiers', () => {
+    const out = whatWouldRaiseVerdict(['UNCORROBORATED_QUESTION', 'WEAK_LINK_ONLY:host', 'UNCORROBORATED_QUESTION']);
+    assert.strictEqual(out.length, 2);
+    assert.match(out[0], /independent source/);
+  });
+  it('returns nothing for codes that are disclosures only or unknown', () => {
+    assert.deepStrictEqual(whatWouldRaiseVerdict(['DUPLICATE_EVIDENCE_COLLAPSED', 'IRRELEVANT_EVIDENCE_EXCLUDED', 'NOT_A_CODE']), []);
+  });
+});
+
+// ── Pasted API key handling (browser check, 2026-11-20) ────────────────────────────────────────────────────────
+import { apiKeyShapeHint, normalizeApiKey } from '../src/utils/apiKey';
+
+const GOOD_KEY = 'aisop_live_' + 'a1b2c3d4e5f60718' + '_' + '0123456789abcdef'.repeat(4);
+
+describe('normalizeApiKey', () => {
+  it('removes every kind of whitespace, including a newline inside the value', () => {
+    assert.strictEqual(normalizeApiKey(`  ${GOOD_KEY}\r\n`), GOOD_KEY);
+    assert.strictEqual(normalizeApiKey(`${GOOD_KEY.slice(0, 30)}\n${GOOD_KEY.slice(30)}`), GOOD_KEY);
+    assert.strictEqual(normalizeApiKey('a b\tc'), 'abc');
+  });
+});
+
+describe('apiKeyShapeHint', () => {
+  it('has nothing to say about a well-formed key or an empty field', () => {
+    assert.strictEqual(GOOD_KEY.length, 92);
+    assert.strictEqual(apiKeyShapeHint(GOOD_KEY), null);
+    assert.strictEqual(apiKeyShapeHint('  '), null);
+  });
+  it('detects a key pasted twice, with or without a separator', () => {
+    assert.match(apiKeyShapeHint(GOOD_KEY + GOOD_KEY) ?? '', /pasted 2 times/);
+    assert.match(apiKeyShapeHint(`${GOOD_KEY} ${GOOD_KEY}`) ?? '', /pasted 2 times/);
+  });
+  it('detects a key with extra text or a missing part, and tells the length', () => {
+    assert.match(apiKeyShapeHint(GOOD_KEY + 'extra') ?? '', /97 characters.*92/);
+    assert.match(apiKeyShapeHint(GOOD_KEY.slice(0, 50)) ?? '', /50 characters.*92/);
+  });
+  it('does not block a different kind of key, and never echoes the key itself', () => {
+    const hint = apiKeyShapeHint('legacy-key-123') ?? '';
+    assert.match(hint, /can still be saved/);
+    assert.ok(!hint.includes('legacy-key-123'));
+    assert.ok(!(apiKeyShapeHint(GOOD_KEY + GOOD_KEY) ?? '').includes(GOOD_KEY));
+  });
+  it('uses no em dashes (interface copy rule)', () => {
+    for (const k of [GOOD_KEY + GOOD_KEY, GOOD_KEY + 'x', 'nope']) assert.ok(!(apiKeyShapeHint(k) ?? '').includes('—'));
+  });
+});
+
+describe('401 message', () => {
+  it('tells the person what to do', () => {
+    const e = apiErrorFromResponse(401, { detail: 'secret server text' }, null, null);
+    assert.match(e.message, /did not accept this API key/);
+    assert.match(e.message, /Clear key/);
+    assert.ok(!e.message.includes('secret server text'));
+  });
+});
+
+import { isAuthMessage } from '../src/components/SetupNotice';
+
+describe('auth messages are recognised so a refused request is shown as a setup step, never as "0 results"', () => {
+  it('matches the 401 message shown to the person', () => {
+    assert.ok(isAuthMessage(apiErrorFromResponse(401, null, null, null).message));
+    assert.ok(!isAuthMessage(apiErrorFromResponse(500, null, null, null).message));
+  });
+});
+
+// ── Optional AI explanation: hard deadline, cancel, and an unchanged deterministic result ──────────────────────
+import { runWithDeadline } from '../src/utils/deadline';
+
+const never = (): Promise<string> => new Promise(() => {});                      // a task that never settles and ignores abort
+const later = (ms: number, v: string): Promise<string> => new Promise((r) => setTimeout(() => r(v), ms));
+
+describe('runWithDeadline', () => {
+  it('returns the value when the task finishes in time', async () => {
+    const h = runWithDeadline(async () => 'explained', 500);
+    assert.deepStrictEqual(await h.result, { kind: 'done', value: 'explained' });
+  });
+  it('times out a task that never settles, even if it ignores the abort signal', async () => {
+    const t0 = Date.now();
+    const out = await runWithDeadline(never, 40).result;
+    assert.deepStrictEqual(out, { kind: 'timeout' });
+    assert.ok(Date.now() - t0 < 1000);
+  });
+  it('a late result after the deadline never replaces the timeout outcome', async () => {
+    const out = await runWithDeadline(() => later(120, 'too late'), 30).result;
+    assert.deepStrictEqual(out, { kind: 'timeout' });
+    await later(200, 'wait');                                                  // nothing throws and nothing changes afterwards
+  });
+  it('cancel stops waiting and reports cancelled; the signal is aborted for the task', async () => {
+    let aborted = false;
+    const h = runWithDeadline((signal) => new Promise<string>((_r, rej) => signal.addEventListener('abort', () => { aborted = true; rej(new Error('aborted')); })), 5000);
+    setTimeout(() => h.cancel(), 20);
+    assert.deepStrictEqual(await h.result, { kind: 'cancelled' });
+    assert.ok(aborted);
+  });
+  it('a failing task becomes failed with its safe message and is not retried', async () => {
+    let calls = 0;
+    const out = await runWithDeadline(async () => { calls += 1; throw new Error('The service is unavailable.'); }, 500).result;
+    assert.deepStrictEqual(out, { kind: 'failed', message: 'The service is unavailable.' });
+    assert.strictEqual(calls, 1);
+  });
+  it('cancel after completion is ignored', async () => {
+    const h = runWithDeadline(async () => 'ok', 500);
+    const out = await h.result;
+    h.cancel();
+    assert.deepStrictEqual(out, { kind: 'done', value: 'ok' });
+  });
+});

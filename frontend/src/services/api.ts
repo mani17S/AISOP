@@ -30,6 +30,8 @@ import {
   InvestigationValidationResult,
   DomainImportResult,
   MultiSourceInvestigation,
+  MultiSourceReview,
+  MultiSourceReviewRequest,
   MultiSourceSectionName,
   MultiSourceStartRequest,
   NormalizedEventSummary,
@@ -37,6 +39,7 @@ import {
   ReportExportResponse,
 } from '../types';
 
+import { normalizeApiKey } from '../utils/apiKey';
 import { apiErrorFromResponse, networkApiError, safeRequestId, unreadableResponseError } from './errors';
 
 class ApiClient {
@@ -59,7 +62,7 @@ class ApiClient {
   }
 
   public setApiKey(key: string, persistSession: boolean = false): void {
-    this.inMemoryApiKey = key.trim();
+    this.inMemoryApiKey = normalizeApiKey(key);
     try {
       if (persistSession && this.inMemoryApiKey) {
         sessionStorage.setItem('aisop_api_key', this.inMemoryApiKey);
@@ -310,12 +313,26 @@ class ApiClient {
   /** Human-initiated; the deterministic workflow needs no model. 201 = stored, 200 = identical evidence reused. */
   public async startMultiSourceInvestigation(
     caseId: string,
-    params: MultiSourceStartRequest = {}
+    params: MultiSourceStartRequest = {},
+    signal?: AbortSignal
   ): Promise<MultiSourceInvestigation> {
     return this.request<MultiSourceInvestigation>(
       `/api/v1/cases/${encodeURIComponent(caseId)}/investigations/multisource`,
-      { method: 'POST', body: JSON.stringify(params) }
+      { method: 'POST', body: JSON.stringify(params), signal }
     );
+  }
+
+  /** Record the case lead's review (approve or reject) of the latest investigation. Lead only; bound to the fingerprint the reviewer saw. */
+  public async reviewMultiSourceInvestigation(caseId: string, body: MultiSourceReviewRequest): Promise<MultiSourceReview> {
+    return this.request<MultiSourceReview>(
+      `/api/v1/cases/${encodeURIComponent(caseId)}/investigations/multisource/review`,
+      { method: 'POST', body: JSON.stringify(body) }
+    );
+  }
+
+  /** Released report for the latest investigation. The server refuses (409) unless the case lead approved this exact result. */
+  public async exportMultiSourceReport(caseId: string): Promise<{ filename: string; markdown: string; evidence_fingerprint: string }> {
+    return this.request(`/api/v1/cases/${encodeURIComponent(caseId)}/investigations/multisource/export`);
   }
 
   /** Import aisop.evidence/1 envelopes into a case. The server validates every record; malformed ones are quarantined. */

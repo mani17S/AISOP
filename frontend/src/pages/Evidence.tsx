@@ -1,5 +1,5 @@
 /**
- * AISOP Evidence & Telemetry Exploration Page.
+ * AISOP Evidence Exploration Page.
  *
  * Provides analyst query capabilities across normalized security events,
  * correlation timelines, and extracted atomic entity indicators (IOCs).
@@ -9,6 +9,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import { NormalizedEventSummary } from '../types';
+import { ExhibitTag } from '../components/ExhibitTag';
+import { SetupNotice, isAuthMessage } from '../components/SetupNotice';
 
 export interface EvidenceProps {
   initialEvents?: NormalizedEventSummary[];
@@ -76,9 +78,9 @@ export const Evidence: React.FC<EvidenceProps> = ({
     <div className="evidence-page">
       <div className="page-header">
         <div>
-        <h1>Telemetry & Evidence Explorer</h1>
+        <h1>Evidence</h1>
         <p className="page-header-sub">
-          Normalized telemetry events, atomic IOC extractions, and Sysmon correlation
+          Normalized events and the indicators extracted from them
         </p>
         </div>
       </div>
@@ -104,7 +106,7 @@ export const Evidence: React.FC<EvidenceProps> = ({
             setPage(1);
           }}
         >
-          <option value="">All Event Types</option>
+          <option value="">All event types</option>
           <option value="alert.malware">EDR / Malware Alert</option>
           <option value="process_creation">Process Creation</option>
           <option value="network_connection">Network Connection</option>
@@ -121,7 +123,7 @@ export const Evidence: React.FC<EvidenceProps> = ({
             setPage(1);
           }}
         >
-          <option value="">All Severities</option>
+          <option value="">All severities</option>
           <option value="critical">Critical</option>
           <option value="high">High</option>
           <option value="medium">Medium</option>
@@ -130,15 +132,11 @@ export const Evidence: React.FC<EvidenceProps> = ({
         </select>
       </div>
 
-      {error && (
-        <div className="alert-box alert-error" style={{ marginBottom: '16px' }}>
-          {error}
-        </div>
-      )}
+      {error && (isAuthMessage(error) ? <SetupNotice message={error} /> : <div className="alert-box alert-error" role="alert" style={{ marginBottom: '16px' }}>{error}</div>)}
 
       <div className="table-container">
         <div className="table-header-bar">
-          <div className="table-header-title">Normalized Events ({total})</div>
+          <div className="table-header-title">Events {error ? '(unavailable)' : `(${total})`}</div>
         </div>
 
         {loading ? (
@@ -146,17 +144,17 @@ export const Evidence: React.FC<EvidenceProps> = ({
             Querying telemetry database...
           </div>
         ) : error ? (
-          <div style={{ padding: '32px', textAlign: 'center' }}>
+          isAuthMessage(error) ? null : <div style={{ padding: '32px', textAlign: 'center' }}>
             <div
               className="alert-box alert-error"
               style={{ display: 'inline-block', maxWidth: '600px', textAlign: 'left' }}
             >
-              <div style={{ fontWeight: 600, marginBottom: '6px' }}>Unable to Display Telemetry</div>
+              <div style={{ fontWeight: 600, marginBottom: '6px' }}>Unable to display telemetry</div>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                 {error}
               </div>
               <button className="btn btn-secondary" onClick={() => fetchEvents()}>
-                Retry Query
+                Retry query
               </button>
             </div>
           </div>
@@ -168,12 +166,12 @@ export const Evidence: React.FC<EvidenceProps> = ({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Timestamp (UTC)</th>
-                <th>Type & Provider</th>
-                <th>Source Host</th>
+                <th>Observed (UTC)</th>
+                <th>Type and provider</th>
+                <th>Source host</th>
                 <th>Severity</th>
-                <th>Event Summary / Action</th>
-                <th>Entities / Details</th>
+                <th>Summary</th>
+                <th>Entities</th>
               </tr>
             </thead>
             <tbody>
@@ -194,7 +192,7 @@ export const Evidence: React.FC<EvidenceProps> = ({
                       {displayTime}
                     </td>
                     <td>
-                      <span className="badge badge-info">{evt.event_type || 'event'}</span>
+                      <span className="event-type"><ExhibitTag id={evt.id} /> {evt.event_type || 'event'}</span>
                       {evt.provider && (
                         <div
                           className="font-mono"

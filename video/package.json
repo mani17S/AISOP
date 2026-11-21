@@ -1,0 +1,21 @@
+{
+  "name": "aisop-demo-video",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Demo video for AISOP, built with Remotion. Uses real screenshots of the application with sample data.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts AisopDemo out/aisop-demo.mp4 --browser-executable=\"C:/Program Files/Google/Chrome/Application/chrome.exe\""
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.441",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "remotion": "4.0.441"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.6.3"
+  }
+}

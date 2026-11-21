@@ -73,9 +73,10 @@ def create_app() -> FastAPI:
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
         description="AISOP — AI Security Investigation & Operations Platform Backend",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
+        # Interactive docs and the schema describe every endpoint and are served only in development.
+        docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
+        redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
+        openapi_url=f"{settings.API_V1_PREFIX}/openapi.json" if settings.ENVIRONMENT == "development" else None,
         lifespan=lifespan,
     )
 
@@ -105,8 +106,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "X-API-Key", "Content-Type", "X-Request-ID"],
     )
 
     # Stable error envelope (Phase 2.2): code, safe message, server-generated request_id; legacy detail preserved

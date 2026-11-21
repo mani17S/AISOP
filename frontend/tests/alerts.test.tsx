@@ -137,15 +137,15 @@ describe('AISOP Phase 4A: Alerts Page & Component Verification', () => {
   it('renders initial alerts page with title, toolbar controls, and loading state', () => {
     const html = renderWithAuth(<Alerts />);
 
-    assert.ok(html.includes('Security Alert Triage &amp; Ingestion'), 'Title must be rendered');
-    assert.ok(html.includes('Multi-source vendor-neutral alert queue'), 'Subtitle must be rendered');
-    assert.ok(html.includes('Ingest Alerts'), 'Ingest action button must be present');
+    assert.ok(html.includes('<h1>Alerts</h1>'), 'Title must be rendered');
+    assert.ok(html.includes('Triage incoming alerts and promote them to cases'), 'Subtitle must be rendered');
+    assert.ok(html.includes('Ingest alerts'), 'Ingest action button must be present');
     assert.ok(html.includes('Refresh'), 'Refresh button must be present');
     assert.ok(html.includes('Search title, description, ID...'), 'Search input must be present');
-    assert.ok(html.includes('All Severities'), 'Severity filter must be present');
-    assert.ok(html.includes('All Categories'), 'Category filter must be present');
-    assert.ok(html.includes('All Adapters'), 'Adapter filter must be present');
-    assert.ok(html.includes('Alert Triage Queue'), 'Table header bar must be present');
+    assert.ok(html.includes('All severities'), 'Severity filter must be present');
+    assert.ok(html.includes('All categories'), 'Category filter must be present');
+    assert.ok(html.includes('All adapters'), 'Adapter filter must be present');
+    assert.ok(html.includes('Alert queue'), 'Table header bar must be present');
     assert.ok(html.includes('Retrieving normalized alert events...'), 'Loading indicator must be present on initial render');
   });
 

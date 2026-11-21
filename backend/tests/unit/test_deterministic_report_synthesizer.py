@@ -929,7 +929,7 @@ def test_sec_audit_002_detached_report_critical_looking_text():
 
 
 def test_sec_audit_002_detached_report_explicit_truncation_disclosure():
-    """Detached report preserves explicit truncation gaps and discloses unavailability."""
+    """T1-B/D7: a detached (unverified) report withholds client-supplied gap text and discloses why (D3 Amendment 1, Option A)."""
     inv_id = uuid.uuid4()
     val_res = _make_sample_validation_result(
         inv_id,
@@ -939,9 +939,13 @@ def test_sec_audit_002_detached_report_explicit_truncation_disclosure():
     )
     synthesizer = DeterministicReportSynthesizer()
     bundle = synthesizer.synthesize_bundle(val_res, context=None)
+    gaps = bundle.executive_brief.uncertainties_and_limitations
     assert bundle.executive_brief.incident_severity == IncidentSeverityTier.INCONCLUSIVE
-    assert any("CONTEXT_TRUNCATED" in g for g in bundle.executive_brief.uncertainties_and_limitations)
-    assert any("TELEMETRY_UNAVAILABLE" in g for g in bundle.executive_brief.uncertainties_and_limitations)
+    # The submitted (client-supplied) gap text is withheld on an unverified report ...
+    assert not any("Historical log buffer dropped 50 events" in g for g in gaps)
+    # ... and the report states why, and that telemetry is unavailable.
+    assert any("REPORT_VERIFICATION_FAILED" in g for g in gaps)
+    assert any("TELEMETRY_UNAVAILABLE" in g for g in gaps)
 
 
 # ── SEC-AUDIT-004 REGRESSION TESTS: HARDENED UNTRUSTED MARKDOWN RENDERING ───

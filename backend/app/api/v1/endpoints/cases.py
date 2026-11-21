@@ -81,7 +81,7 @@ from app.schemas.query import (
     SanitizedNormalizedEventSummary,
 )
 from app.schemas.report import InvestigationReportBundle, ReportExportResponse
-from app.schemas.multisource import DomainEvidenceImportRequest, MultiSourceInvestigationRequest, MultiSourceSection
+from app.schemas.multisource import DomainEvidenceImportRequest, MultiSourceInvestigationRequest, MultiSourceReviewRequest, MultiSourceSection
 from app.services.domain_evidence_service import DomainEvidenceService, ImportTooLarge
 from app.services.case_service import CaseService
 from app.services.multisource_investigation_service import (
@@ -89,6 +89,8 @@ from app.services.multisource_investigation_service import (
     CaseNotFound,
     EvidenceChanged,
     EvidenceTooLarge,
+    ExportNotApproved,
+    InvestigationMismatch,
     MultiSourceError,
     MultiSourceInvestigationService,
     NoInvestigation,
@@ -429,6 +431,8 @@ _MULTISOURCE_HTTP = {
     EvidenceChanged: (status.HTTP_409_CONFLICT, "Case evidence changed while the investigation was running; the result was discarded."),
     PersistenceFailed: (status.HTTP_500_INTERNAL_SERVER_ERROR, "Audit logging failed; the investigation result was not stored."),
     NoInvestigation: (status.HTTP_404_NOT_FOUND, "No multi-source investigation has been started for this case."),
+    InvestigationMismatch: (status.HTTP_409_CONFLICT, "The investigation or its evidence changed; reload it and review the current result."),
+    ExportNotApproved: (status.HTTP_409_CONFLICT, "Export refused: the case lead has not approved the current result."),
 }
 
 
@@ -496,6 +500,47 @@ async def start_multisource_investigation(
         raise _multisource_http_error(exc)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return payload
+
+
+@router.post(
+    "/{case_id}/investigations/multisource/review",
+    summary="Record the case lead's review (approve or reject) of the latest multi-source investigation",
+)
+async def review_multisource_investigation(
+    request: MultiSourceReviewRequest,
+    case_id: uuid.UUID = Path(..., description="Case UUID"),
+    context: AuthenticatedCaseContext = Depends(require_case_role(CaseRole.LEAD)),
+    analyst: AuthenticatedAnalyst = Depends(get_current_analyst),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    """
+    Human review record. Only the case lead can write it. It is bound to the evidence fingerprint the reviewer saw, appended to the
+    audit trail, and becomes 'stale' automatically if the case evidence changes afterwards. It does not change the investigation.
+    """
+    try:
+        return await MultiSourceInvestigationService().review(
+            session=session, case_id=case_id, actor=analyst, decision=request.decision,
+            evidence_fingerprint=request.evidence_fingerprint, note=request.note,
+        )
+    except MultiSourceError as exc:
+        raise _multisource_http_error(exc)
+
+
+@router.get(
+    "/{case_id}/investigations/multisource/export",
+    summary="Release the approved multi-source report (case lead approval of the current result required)",
+)
+async def export_multisource_report(
+    case_id: uuid.UUID = Path(..., description="Case UUID"),
+    context: AuthenticatedCaseContext = Depends(require_case_role(CaseRole.INVESTIGATOR, CaseRole.LEAD)),
+    analyst: AuthenticatedAnalyst = Depends(get_current_analyst),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    """Outward-facing release: refused (409) unless the lead approved this exact result and the evidence is unchanged. Audited."""
+    try:
+        return await MultiSourceInvestigationService().export_report(session=session, case_id=case_id, actor=analyst)
+    except MultiSourceError as exc:
+        raise _multisource_http_error(exc)
 
 
 @router.get(

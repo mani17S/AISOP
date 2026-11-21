@@ -16,6 +16,9 @@ const apiOriginCsp = () => ({
   },
 });
 
+// Dev proxy target; override with AISOP_API_PROXY to run beside another backend (default: the standard local port 8000).
+const apiProxyTarget = process.env.AISOP_API_PROXY ?? 'http://127.0.0.1:8000';
+
 export default defineConfig({
   plugins: [react(), apiOriginCsp()],
   server: {
@@ -24,12 +27,12 @@ export default defineConfig({
     host: '127.0.0.1',
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: false,
       },
       '/health': {
-        target: 'http://127.0.0.1:8000',
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: false,
       },

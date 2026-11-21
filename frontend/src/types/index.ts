@@ -714,6 +714,21 @@ export interface MultiSourceIncident {
   analyst_statements?: AnalystStatementView[];
 }
 
+/** The case lead's review of one stored investigation (human approval record). "stale" = the evidence changed after the run. */
+export interface MultiSourceReview {
+  state: 'not_reviewed' | 'approved' | 'rejected' | 'stale';
+  decision: 'approved' | 'rejected' | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  note: string | null;
+}
+
+export interface MultiSourceReviewRequest {
+  decision: 'approved' | 'rejected';
+  evidence_fingerprint: string;
+  note?: string;
+}
+
 export interface MultiSourceInvestigation {
   schema: string;
   status: string;

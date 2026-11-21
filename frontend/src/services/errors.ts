@@ -148,7 +148,7 @@ export function apiErrorFromResponse(
     return new ApiError('rate_limit', status, `Too many requests. Please wait ${wait} before retrying.`, requestId, code);
   }
   if (status === 401) {
-    return new ApiError('auth', status, 'Authentication required. Please provide a valid API key.', requestId, code);
+    return new ApiError('auth', status, 'Authentication required. The server did not accept this API key. Open Set API key, press Clear key, paste the key once and save it.', requestId, code);
   }
   if (status === 403) {
     return new ApiError('forbidden', status, 'Access forbidden. Your role has insufficient privileges.', requestId, code);

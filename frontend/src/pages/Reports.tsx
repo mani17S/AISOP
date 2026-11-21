@@ -127,14 +127,14 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
           </div>
 
           <div className="case-selector-group">
-            <label className="selector-label">Target Incident Case:</label>
+            <label className="selector-label">Case</label>
             <select
               className="select-input case-select"
               value={selectedCaseId}
               disabled={loadingCases || synthesizing}
               onChange={(e) => handleCaseChange(e.target.value)}
             >
-              {cases.length === 0 && <option value="">No authorized cases found</option>}
+              {cases.length === 0 && <option value="">No cases assigned to you</option>}
               {cases.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.case_number}: {c.title} ({c.severity.toUpperCase()})
@@ -148,7 +148,7 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
         {selectedCase && (
           <div className="case-context-strip">
             <div className="context-item">
-              <span className="context-label">Case Number:</span>
+              <span className="context-label">Case number:</span>
               <span className="context-value mono">{selectedCase.case_number}</span>
             </div>
             <div className="context-item">
@@ -162,7 +162,7 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
               <span className="status-tag">{selectedCase.status.toUpperCase()}</span>
             </div>
             <div className="context-item">
-              <span className="context-label">Lead Analyst ID:</span>
+              <span className="context-label">Lead analyst:</span>
               <span className="context-value mono">{selectedCase.lead_analyst_id || 'Assigned Lead'}</span>
             </div>
             <div className="context-item actions-right">
@@ -246,7 +246,7 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
       <div className="reports-view-area">
         {casesError && (
           <div className="alert-box alert-error">
-            <strong>Case Loading Error:</strong> {casesError}
+            <strong>Cases could not be loaded:</strong> {casesError}
           </div>
         )}
 
@@ -299,10 +299,9 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
 
         {!loadingCases && cases.length === 0 && (
           <div className="empty-report-card">
-            <h3 className="empty-title">No Assigned Cases Available</h3>
+            <h3 className="empty-title">No cases assigned to you</h3>
             <p className="empty-text">
-              You currently have no active case assignments. Case-level authorization prevents unassigned operators
-              from inspecting incident reports (Anti-Enumeration Contract).
+              You can open reports only for cases assigned to you. Ask a case lead to assign you, or create a case.
             </p>
           </div>
         )}

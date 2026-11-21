@@ -427,7 +427,11 @@ async def _llm_for_incident(analysis: IncidentAnalysis, provider: Any, attack_re
         return
     builder = InvestigationPromptBuilder(default_model=getattr(provider, "model_name", "llama3.1:8b"), structured_assertions=True)
     try:
-        request = builder.build_request(context, sufficiency_note=assessment.limitation_note())
+        request = builder.build_request(
+            context,
+            sufficiency_note=assessment.limitation_note(),
+            model_override=getattr(provider, "model_name", None),  # use the configured model, not the context's recorded default
+        )
         raw = await GatedGenerator.generate(provider, request, assessment, context)
     except Exception as exc:  # noqa: BLE001 - provider failure or gate refusal: deterministic fallback
         analysis.llm_result = apply_sufficiency_disclosure(fallback(f"LLM invocation failed ({type(exc).__name__})"), assessment)

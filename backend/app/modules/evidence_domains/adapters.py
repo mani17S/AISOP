@@ -35,7 +35,7 @@ simply not established, and every one of these fields is additive (existing reco
                                   origin forms a verified causal-ordering relationship.
 
 Source-format coverage: the envelope (structured JSON, analyst-supplied evidence, file import through
-``import_file``). Native vendor formats (CloudTrail, Entra, Zeek...) are PROPOSED: each would be a new adapter
+``import_file``). Native vendor formats: Suricata EVE is a translator in ``suricata_eve.py`` (alert, dns, flow). Others (CloudTrail, Entra, Zeek...) are PROPOSED: each would be a new adapter
 that emits the same ``Observation``.
 """
 

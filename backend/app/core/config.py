@@ -119,7 +119,7 @@ class Settings(BaseSettings):
     )
     LLM_PROVIDER: str = Field(
         default="ollama",
-        description="Active LLM provider identifier. Only 'ollama' (local) is implemented; any other value fails closed. Never inferred from API keys.",
+        description="Active LLM provider name. 'ollama' (local, free) is built in; others are added with register_llm_provider and must follow the same local-first rules. An unregistered name fails closed. Never inferred from API keys.",
     )
     LLM_ENABLED: bool = Field(
         default=True,

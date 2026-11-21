@@ -129,7 +129,9 @@ class OllamaProvider:
             },
         }
 
-        if request.json_mode:
+        if getattr(request, "response_schema", None):
+            payload["format"] = request.response_schema
+        elif request.json_mode:
             payload["format"] = "json"
 
         if getattr(request, "think", None) is not None:
@@ -292,6 +294,9 @@ class OllamaProvider:
         logger.info(
             "Ollama inference completed successfully",
             model=target_model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            finish_reason=finish_reason,
             total_tokens=total_tokens,
             duration_ms=duration_ms,
         )

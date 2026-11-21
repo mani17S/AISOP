@@ -70,8 +70,14 @@ def test_global_switch_without_listing_does_not_enable_a_source():
 
 def test_enabled_but_not_implemented_candidates_are_unavailable_not_enabled():
     reg = SourceRegistry.from_settings(_settings(TI_EXTERNAL_ENABLED=True, TI_ENABLED_SOURCES="abuseipdb,virustotal", ABUSEIPDB_API_KEY="synthetic-key"))
-    assert reg.state("abuseipdb") is SourceState.UNAVAILABLE and reg.state("virustotal") is SourceState.UNAVAILABLE
-    assert reg.external_lookup_permitted("abuseipdb", ObservableType.IPV4, True) == (False, "unavailable")
+    # AbuseIPDB has an adapter now and becomes ENABLED only with the global switch, the allowlist and a key.
+    assert reg.state("abuseipdb") is SourceState.ENABLED
+    # VirusTotal has no adapter and is deferred by the owner: enabling it never makes it usable.
+    assert reg.state("virustotal") is SourceState.UNAVAILABLE
+    assert reg.external_lookup_permitted("virustotal", ObservableType.IPV4, True) == (False, "unavailable")
+    # Without a key the adapter is not configured, even when enabled.
+    no_key = SourceRegistry.from_settings(_settings(TI_EXTERNAL_ENABLED=True, TI_ENABLED_SOURCES="abuseipdb"))
+    assert no_key.state("abuseipdb") is SourceState.NOT_CONFIGURED
 
 
 # ── distinguishable states (using a synthetic implemented descriptor) ─────────
@@ -120,7 +126,7 @@ def test_registry_describes_only_what_exists_and_makes_no_unverified_claims():
     for sid in reg.ids():
         d = reg.get(sid)
         if d.kind is SourceKind.EXTERNAL_API:
-            assert d.implemented is False and d.terms_status is TermsStatus.UNVERIFIED
+            assert d.implemented is (sid == "abuseipdb") and d.terms_status is TermsStatus.UNVERIFIED
         assert d.terms_status is not TermsStatus.VERIFIED
     assert "Deferred by the owner" in reg.get("virustotal").note
 

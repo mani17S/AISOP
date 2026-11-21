@@ -1386,7 +1386,7 @@ async def test_27_detached_formatting_demotes_claims_and_removes_confirmed_findi
         assert data["provenance"]["is_verified_investigation"] is False
         assert data["executive_brief"]["key_confirmed_findings"] == []
         assert data["technical_report"]["confirmed_findings"] == []
-        assert "No confirmed factual claims verified in telemetry" in data["markdown_executive"]
+        assert "Not assessed: report verification failed." in data["markdown_executive"]  # T1-B: unverified reports say "not assessed"
         assert any("[UNVERIFIED]" in inf["claim_text"] for inf in data["technical_report"]["hypotheses_and_inferences"])
 
 

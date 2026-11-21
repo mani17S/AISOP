@@ -22,6 +22,8 @@ interface AuthContextType {
   setRole: (role: GlobalRole) => void;
   setUsername: (name: string) => void;
   setApiKey: (key: string) => void;
+  keyDialogOpen: boolean;
+  setKeyDialogOpen: (open: boolean) => void;
   canCreateCase: () => boolean;
   canCloseCase: () => boolean;
   canManageAssignments: () => boolean;
@@ -35,6 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [username, setUsername] = useState<string>('lead_analyst');
   const [globalRole, setRole] = useState<GlobalRole>('analyst_tier_2');
   const [apiKey, setApiKeyState] = useState<string>(() => api.getApiKey());
+  const [keyDialogOpen, setKeyDialogOpen] = useState<boolean>(false);
 
   const handleSetApiKey = (key: string) => {
     setApiKeyState(key);
@@ -71,6 +74,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setRole,
         setUsername,
         setApiKey: handleSetApiKey,
+        keyDialogOpen,
+        setKeyDialogOpen,
         canCreateCase,
         canCloseCase,
         canManageAssignments,

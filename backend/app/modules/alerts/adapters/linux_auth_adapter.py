@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.modules.evidence.hasher import compute_sha256
+from app.modules.alerts.adapter_protocol import require_event_time
 from app.schemas.alert import (
     AlertCategory,
     AlertEntity,
@@ -70,13 +71,7 @@ class LinuxAuthAdapter:
         hostname = str(data.get("host") or data.get("hostname") or "linux-server")
         ts_val = data.get("timestamp") or data.get("@timestamp")
 
-        if ts_val:
-            try:
-                ts = datetime.fromisoformat(str(ts_val).replace("Z", "+00:00"))
-            except Exception:
-                ts = datetime.now(timezone.utc)
-        else:
-            ts = datetime.now(timezone.utc)
+        ts = require_event_time(ts_val)
 
         # Parsing heuristics for sshd log patterns
         # e.g.: "Failed password for invalid user admin from 198.51.100.23 port 54321 ssh2"

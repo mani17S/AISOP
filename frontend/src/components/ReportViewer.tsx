@@ -254,7 +254,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       {activeTab === 'executive' && (
         <div className="report-content-pane">
           <section className="report-section">
-            <h3 className="section-heading">Incident Executive Summary</h3>
+            <h3 className="section-heading">Executive summary</h3>
             <p className="narrative-text">{executive_brief.executive_summary}</p>
           </section>
 
@@ -325,14 +325,14 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       {activeTab === 'technical' && (
         <div className="report-content-pane">
           <section className="report-section">
-            <h3 className="section-heading">Technical Incident Narrative</h3>
+            <h3 className="section-heading">Technical narrative</h3>
             <p className="narrative-text">{technical_report.technical_narrative}</p>
           </section>
 
           {/* Investigation Timeline */}
           <section className="report-section">
             <div className="section-header-split">
-              <h3 className="section-heading">Incident Timeline</h3>
+              <h3 className="section-heading">Timeline</h3>
               <span className="section-counter">
                 {technical_report.investigation_timeline.length} Chronological Events
               </span>
@@ -347,9 +347,9 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
                 <table className="soc-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '180px' }}>Timestamp (UTC)</th>
-                      <th style={{ width: '130px' }}>Sensor / Host</th>
-                      <th style={{ width: '130px' }}>Event Type</th>
+                      <th style={{ width: '180px' }}>Observed (UTC)</th>
+                      <th style={{ width: '130px' }}>Sensor or host</th>
+                      <th style={{ width: '130px' }}>Event type</th>
                       <th style={{ width: '100px' }}>Action</th>
                       <th style={{ width: '90px' }}>Outcome</th>
                       <th>Summary</th>
@@ -552,7 +552,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
                       <th>Observable Value</th>
                       <th style={{ width: '160px' }}>Provenance</th>
                       <th style={{ width: '110px' }}>Disposition</th>
-                      <th style={{ width: '170px' }}>First Seen (UTC)</th>
+                      <th style={{ width: '170px' }}>First seen (UTC)</th>
                     </tr>
                   </thead>
                   <tbody>

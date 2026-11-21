@@ -427,7 +427,7 @@ def test_policy_module_imports_only_stdlib_pydantic_and_project_modules():
 def test_windows_adapter_default_for_event_1102_is_unchanged():
     from app.modules.alerts.adapters.windows_security_adapter import WindowsSecurityAdapter
 
-    alert = WindowsSecurityAdapter().adapt({"Event": {"System": {"EventID": 1102, "Computer": "SRV-01"}, "EventData": {"SubjectUserName": "attacker"}}})
+    alert = WindowsSecurityAdapter().adapt({"Event": {"System": {"EventID": 1102, "Computer": "SRV-01", "TimeCreated": {"@SystemTime": "2026-11-07T09:00:00Z"}}, "EventData": {"SubjectUserName": "attacker"}}})
     m = alert.mitre_attack[0]
     assert (m.technique_id, m.tactic_id, m.tactic_name) == ("T1070.001", "TA0005", "Defense Evasion")
     assert alert.category == "defense_evasion" and alert.severity == "critical"

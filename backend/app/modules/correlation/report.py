@@ -49,7 +49,11 @@ def _explain(code: str) -> str:
 
 
 def _cell(text: object) -> str:
-    return str(text if text not in (None, "") else "-").replace("|", "/").replace("\n", " ")
+    """One Markdown table cell from evidence-derived text. Evidence is untrusted: HTML, link/image syntax and code spans are
+    neutralised so an exported report cannot carry active markup (OWASP A03 / LLM05; probe-suite finding SEC-F1, 2026-11-20)."""
+    s = str(text if text not in (None, "") else "-").replace("\r", " ").replace("\n", " ")
+    s = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("|", "/").replace("`", "'")
+    return s.replace("](", "] (").replace("![", "! [")  # link / image syntax cannot form; plain [brackets] stay readable
 
 
 def render_incident_report(result: "WorkflowResult", a: "IncidentAnalysis") -> str:
@@ -61,7 +65,7 @@ def render_incident_report(result: "WorkflowResult", a: "IncidentAnalysis") -> s
         f"{' (escalated: 3+ kill-chain stages)' if inc.escalated else ''}")
     add("")
     add(f"{len(a.events)} event(s) from {len(sources)} source(s) ({', '.join(sources)}); "
-        f"hosts: {', '.join(inc.hosts) or '-'}; users: {', '.join(inc.users) or '-'}; "
+        f"hosts: {_cell(', '.join(inc.hosts))}; users: {_cell(', '.join(inc.users))}; "
         f"{inc.first_seen.isoformat()} to {inc.last_seen.isoformat()}.")
     add("")
     add("## 1. Evidence sufficiency (decided before any AI is used)")

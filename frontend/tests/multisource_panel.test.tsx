@@ -1,5 +1,5 @@
 /**
- * AISOP Stage 4 - Multi-Source Investigation Panel test suite (ADR-010).
+ * AISOP Stage 4 - Multi-source Panel test suite (ADR-010).
  *
  * Verifies: verdicts cannot be mistaken for confirmed findings, reasons are shown, provenance and sources are shown,
  * claims are labelled by grounding, data-quality problems and stale evidence are visible, strict output escaping,
@@ -12,7 +12,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { VerificationNote } from '../src/components/VerificationNote';
-import { ClaimVerificationNote, MultiSourcePanel, MultiSourceResultView, VerdictBanner } from '../src/components/MultiSourcePanel';
+import { AiExplanationStep, ClaimVerificationNote, MultiSourcePanel, MultiSourceResultView, ReviewStep, VerdictBanner, reviewText } from '../src/components/MultiSourcePanel';
 import { AuthProvider } from '../src/contexts/AuthContext';
 import { ClaimVerification, ClaimVerificationOutcome, MultiSourceClaim, MultiSourceInvestigation, MultiSourceRationale, MultiSourceSufficiency } from '../src/types';
 
@@ -327,5 +327,83 @@ describe('Multi-source panel', () => {
     const down = render(<MultiSourceResultView data={withStatus('fallback:LLMConnectionError')} />);
     assert.ok(down.includes('AI assistance was unavailable for this run') && !down.includes('disabled by configuration'));
     assert.ok(!render(<MultiSourceResultView data={withStatus('validated')} />).includes('AI assistance was unavailable'));
+  });
+});
+
+describe('AI explanation step (optional, on demand, never blocks the deterministic result)', () => {
+  it('is a separate explicit action, idle by default, and says the result above is complete without it', () => {
+    const html = render(<AiExplanationStep caseId="c1" onResult={() => {}} />);
+    assert.ok(html.includes('AI explanation (optional)'));
+    assert.match(html, /Run AI explanation/);
+    assert.match(html, /complete without it/);
+    assert.ok(!html.includes('Cancel'));                       // no cancel button until a run is in progress
+    assert.ok(!html.includes('running'));
+  });
+  it('offers a re-run after an AI run and can be disabled while the deterministic run is busy', () => {
+    const again = render(<AiExplanationStep caseId="c1" alreadyRun onResult={() => {}} />);
+    assert.match(again, /Run AI explanation again/);
+    const disabled = render(<AiExplanationStep caseId="c1" disabled onResult={() => {}} />);
+    assert.match(disabled, /disabled=""/);
+  });
+  it('makes no speed claim and uses no em dash', () => {
+    const html = render(<AiExplanationStep caseId="c1" onResult={() => {}} />);
+    assert.ok(!/fast|quick|seconds? to|instant/i.test(html));
+    assert.ok(!html.includes('—'));
+  });
+  it('the live panel no longer has the combined "also run AI" checkbox that made the investigation wait for the model', () => {
+    const src = readFileSync(new URL('../src/components/MultiSourcePanel.tsx', import.meta.url), 'utf8');
+    assert.ok(!src.includes('Also run AI-assisted analysis'));
+    assert.match(src, /use_llm: false, force/);                 // the deterministic start always requests the model off
+  });
+});
+
+describe('an investigation loaded from storage (status section) has no batch contradictions field', () => {
+  it('renders without throwing when contradictions or rejected are absent (regression: opening the Multi-source tab crashed the view)', () => {
+    const stored = { ...data('limited') } as Partial<MultiSourceInvestigation>;
+    delete stored.contradictions;
+    const html = render(<MultiSourceResultView data={stored as MultiSourceInvestigation} />);
+    assert.ok(html.includes('LIMITED'));
+    delete stored.rejected;
+    assert.doesNotThrow(() => render(<MultiSourceResultView data={stored as MultiSourceInvestigation} />));
+  });
+});
+
+describe('lead review (human approval record)', () => {
+  const rev = (state: 'not_reviewed' | 'approved' | 'rejected' | 'stale', note: string | null = null) => ({
+    state, decision: state === 'approved' || state === 'rejected' ? state : null, reviewed_by: state === 'not_reviewed' ? null : 'lead_one',
+    reviewed_at: state === 'not_reviewed' ? null : '2026-11-21T10:00:00Z', note,
+  });
+  const show = (r: ReturnType<typeof rev>, canReview = true, caseClosed = false) =>
+    render(<ReviewStep caseId="c1" fingerprint={'a'.repeat(64)} canReview={canReview} caseClosed={caseClosed} initialReview={r} />);
+
+  it('says plainly what the state is, by word and not by colour', () => {
+    assert.ok(show(rev('not_reviewed')).includes('Not reviewed.'));
+    assert.ok(show(rev('approved')).includes('Approved by lead_one at 2026-11-21T10:00:00Z.'));
+    assert.ok(show(rev('rejected')).includes('Rejected by lead_one'));
+    assert.ok(show(rev('stale')).includes('earlier review no longer applies'));
+  });
+  it('offers the decision buttons only to a lead on an open case', () => {
+    assert.ok(show(rev('not_reviewed')).includes('Approve this result'));
+    assert.ok(!show(rev('not_reviewed'), false).includes('Approve this result'));
+    assert.ok(show(rev('not_reviewed'), false).includes('Only the case lead can record a review.'));
+    assert.ok(!show(rev('approved'), true, true).includes('Approve this result'));
+  });
+  it('shows the reviewer note escaped and states that a review changes nothing', () => {
+    const html = show(rev('approved', '<script>alert(1)</script>'));
+    assert.ok(!html.includes('<script>'));
+    assert.ok(html.includes('&lt;script&gt;'));
+    assert.ok(html.includes('does not change the investigation or the evidence'));
+  });
+  it('offers the report download only for an approved result', () => {
+    assert.ok(show(rev('approved')).includes('Download approved report'));
+    for (const s of ['not_reviewed', 'rejected', 'stale'] as const) {
+      const html = show(rev(s));
+      assert.ok(!html.includes('Download approved report'), s);
+      assert.ok(html.includes('only after the case lead approves'), s);
+    }
+  });
+  it('uses no em dash and no stale wording for a loading state', () => {
+    for (const r of ['not_reviewed', 'approved', 'rejected', 'stale'] as const) assert.ok(!reviewText(rev(r)).includes('—'));
+    assert.strictEqual(reviewText(null), 'Loading the review state.');
   });
 });

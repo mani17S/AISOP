@@ -264,11 +264,11 @@ async function run() {
     reduce ? parseFloat(btnTransition) < 0.001 : parseFloat(btnTransition) >= 0.1, `transition-duration=${btnTransition}`);
 
   // 1. API key dialog (Navbar)
-  await verifyDialog('API key (Navbar)', buttonByText('Set API Key') ?? buttonByText('Key Configured'));
+  await verifyDialog('API key (Navbar)', buttonByText('Set API key') ?? buttonByText('Key set'));
 
   // Cases
   await goto('Cases'); snap('cases-list');
-  await verifyDialog('Create case (Cases)', buttonByText('+ Create New Incident'));
+  await verifyDialog('Create case (Cases)', buttonByText('New case'));
 
   // Detail failure feedback, then success path
   failDetail = true;
@@ -290,8 +290,8 @@ async function run() {
     record('dialog: Case detail (Cases)', 'focus entered the dialog', detail.contains(document.activeElement));
     record('dialog: Case detail (Cases)', 'aria-labelledby resolves', !!document.getElementById(detail.getAttribute('aria-labelledby') ?? '')?.textContent);
     snap('cases-detail-dialog');
-    // Nested: Close Incident opens a second dialog
-    const closeIncident = buttonByText('Close Incident', detail);
+    // Nested: Close case opens a second dialog
+    const closeIncident = buttonByText('Close case', detail);
     await verifyDialog('Close case, nested (Cases)', closeIncident);
     record('dialog: Case detail (Cases)', 'outer dialog still open after nested closes', dialogs().length === 1);
     // Escape on the outer dialog; focus returns to the View Details button
@@ -306,7 +306,7 @@ async function run() {
 
   // Alerts
   await goto('Alerts'); await sleep(120); snap('alerts-list');
-  await verifyDialog('Ingest alerts (Alerts)', buttonByText('Ingest Alerts'));
+  await verifyDialog('Ingest alerts (Alerts)', buttonByText('Ingest alerts'));
   const inspect = buttonByText('Inspect');
   await verifyDialog('Alert detail (Alerts)', inspect);
   await click(buttonByText('Inspect'), 'Inspect');
@@ -336,7 +336,7 @@ async function run() {
   const panel = document.querySelector('[role="tabpanel"]');
   record('tabs: workspace', 'tabpanel labelled by the selected tab', panel?.getAttribute('aria-labelledby') === selected()[0]?.id);
   // Populated findings: run the (stubbed) human-invoked investigation so claims, hypotheses and ATT&CK rows render.
-  await click(buttonByText('Start AI Investigation'), 'Start AI Investigation'); await sleep(200);
+  await click(buttonByText('Start AI investigation'), 'Start AI investigation'); await sleep(200);
   const bodyText = document.body.textContent ?? '';
   record('populated: findings', 'hypothesis and ATT&CK rows rendered with labelled confidence', bodyText.includes('T1059.001') && bodyText.includes('Model-reported confidence'));
   snap('workspace-findings-populated');
@@ -363,9 +363,9 @@ async function run() {
   const truncated = $$('td, td span').filter((el) => getComputedStyle(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth);
   record('populated: activity', 'every ellipsis-truncated element has a title or a keyboard disclosure button beside it', truncated.every((el) => !!el.getAttribute('title') || !!el.closest('td')?.querySelector('button[aria-expanded]')), `truncated=${truncated.length}`);
   await click(document.getElementById('ws-tab-evidence'), 'tab evidence'); await sleep(120);
-  await verifyDialog('Inspect evidence (Workspace)', buttonByText('Inspect Evidence'));
-  await verifyDialog('Link evidence (Workspace)', buttonByText('+ Link Evidence by UUID'));
-  await verifyDialog('Close case (Workspace)', buttonByText('Close Case'));
+  await verifyDialog('Inspect evidence (Workspace)', buttonByText('Inspect evidence'));
+  await verifyDialog('Link evidence (Workspace)', buttonByText('+ Link evidence'));
+  await verifyDialog('Close case (Workspace)', buttonByText('Close case'));
 
   // Report viewer tabs (real component, synthetic bundle)
   const c2 = document.createElement('div');
@@ -402,17 +402,17 @@ async function shot(state: string) {
   if (state === 'alerts') { await nav('Alerts'); await sleep(150); }
   if (state === 'alerts-detail') { await nav('Alerts'); await sleep(150); await click(buttonByText('Inspect'), 'inspect'); await sleep(100); }
   if (state === 'evidence') { await nav('Evidence'); await sleep(200); }
-  if (state === 'api-key') { await click(buttonByText('Set API Key') ?? buttonByText('Key Configured'), 'key'); }
-  if (state === 'alerts-ingest') { await nav('Alerts'); await sleep(150); await click(buttonByText('Ingest Alerts'), 'ingest'); }
+  if (state === 'api-key') { await click(buttonByText('Set API key') ?? buttonByText('Key set'), 'key'); }
+  if (state === 'alerts-ingest') { await nav('Alerts'); await sleep(150); await click(buttonByText('Ingest alerts'), 'ingest'); }
   if (state === 'alerts-promote') { await nav('Alerts'); await sleep(150); await click(buttonByText('Promote'), 'promote'); }
-  if (state === 'cases-close-nested') { await nav('Cases'); await sleep(150); await click(buttonByText('View Details'), 'details'); await click(buttonByText('Close Incident'), 'close'); }
-  if (state === 'cases-create') { await nav('Cases'); await sleep(150); await click(buttonByText('+ Create New Incident'), 'create'); }
+  if (state === 'cases-close-nested') { await nav('Cases'); await sleep(150); await click(buttonByText('View Details'), 'details'); await click(buttonByText('Close case'), 'close'); }
+  if (state === 'cases-create') { await nav('Cases'); await sleep(150); await click(buttonByText('New case'), 'create'); }
   if (state.startsWith('workspace')) {
     await nav('Cases'); await sleep(150); await click(buttonByText('Investigate'), 'inv'); await sleep(250);
-    if (state === 'workspace-inspect') await click(buttonByText('Inspect Evidence'), 'inspect');
-    if (state === 'workspace-link') await click(buttonByText('+ Link Evidence by UUID'), 'link');
-    if (state === 'workspace-close') await click(buttonByText('Close Case'), 'close');
-    if (state === 'workspace-findings') { await click(buttonByText('Start AI Investigation'), 'start'); await sleep(200); }
+    if (state === 'workspace-inspect') await click(buttonByText('Inspect evidence'), 'inspect');
+    if (state === 'workspace-link') await click(buttonByText('+ Link evidence'), 'link');
+    if (state === 'workspace-close') await click(buttonByText('Close case'), 'close');
+    if (state === 'workspace-findings') { await click(buttonByText('Start AI investigation'), 'start'); await sleep(200); }
     if (state === 'workspace-audit-open') { await click(document.getElementById('ws-tab-activity'), 'activity'); await sleep(120); await click(document.querySelector<HTMLButtonElement>('button[aria-expanded][aria-controls^="audit-details-"]'), 'details'); }
     if (state === 'workspace-activity') { await click(document.getElementById('ws-tab-activity'), 'activity'); await sleep(120); }
   }

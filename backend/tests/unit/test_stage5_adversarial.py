@@ -476,11 +476,11 @@ async def test_stored_result_round_trips_without_loss_and_sections_match(db_sess
 @pytest.mark.anyio
 async def test_unparseable_and_invalid_timestamp_evidence_abstains_without_invented_times(db_session, app_instance):
     recs = [_siem(timestamp="not a date"), _siem(timestamp=None), {"foo": "bar"}]
-    client, tok, _lead, case = await setup(db_session, app_instance, recs, prefix="badts")
-    async with Keep(client):
-        r = (await client.post(START.format(cid=case.id), json={}, headers=bearer(tok))).json()
-    assert r["counts"]["records_normalized"] == 0 and r["incidents"] == [] and r["batch_sufficiency"]["verdict"] == "insufficient"
-    assert {x["reason"] for x in r["rejected"]} >= {"TIMESTAMP_MISSING_OR_INVALID"}
+    # F1: the ingestion edge no longer stores an alert with an unusable timestamp, so such records can no longer reach a case through
+    # /alerts/ingest. The investigation layer still refuses them (legacy rows, other callers): checked on the normalizer directly.
+    res = normalize_records(recs)
+    assert res.events == [] and "TIMESTAMP_MISSING_OR_INVALID" in {x.reason for x in res.rejected}
+    assert analyze(recs).incidents == []
 
 
 # ═══ F. LLM path: untrusted evidence, hostile model output ═══════════════════

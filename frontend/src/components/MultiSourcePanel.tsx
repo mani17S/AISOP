@@ -1,5 +1,5 @@
 /**
- * AISOP Stage 4 - Multi-Source Investigation Panel (ADR-010).
+ * AISOP Stage 4 - Multi-source Panel (ADR-010).
  *
  * Case-scoped analyst view of the deterministic multi-source investigation:
  * - Explicit, human-initiated start (never automatic). The optional AI-assisted analysis is a separate,
@@ -21,8 +21,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { ApiError } from '../services/errors';
 import { VerificationNote, LEGACY_GROUNDING_EXPLANATION } from './VerificationNote';
-import { MultiSourceClaim, MultiSourceIncident, MultiSourceInvestigation, MultiSourceRationale, MultiSourceSufficiency } from '../types';
+import { ClassGlyph } from './EvidenceClassMark';
+import { MultiSourceClaim, MultiSourceIncident, MultiSourceInvestigation, MultiSourceRationale, MultiSourceReview, MultiSourceSufficiency } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { explainRecordCode, whatWouldRaiseVerdict } from '../utils/explain';
+import { runWithDeadline } from '../utils/deadline';
 import {
   AnalystStatements,
   ContradictionSection,
@@ -255,6 +258,7 @@ export const RationalePanel: React.FC<{ r?: MultiSourceRationale }> = ({ r }) =>
 
 export const VerdictBanner: React.FC<{ s: MultiSourceSufficiency; title?: string }> = ({ s, title }) => {
   const style = VERDICT_STYLE[s.verdict] ?? INSUFFICIENT_STYLE;
+  const raise = s.verdict === 'sufficient' ? [] : whatWouldRaiseVerdict(s.reason_codes);
   return (
     <div
       role="status"
@@ -278,6 +282,16 @@ export const VerdictBanner: React.FC<{ s: MultiSourceSufficiency; title?: string
             </li>
           ))}
         </ul>
+      )}
+      {raise.length > 0 && (
+        <div style={{ margin: '8px 0 0' }}>
+          <strong>What would raise this verdict</strong>
+          <ul style={{ margin: '4px 0 0 18px' }}>
+            {raise.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="font-mono" style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
         events {s.counts.events}, evidence units {s.counts.evidence_units}, relevant {s.counts.relevant}, digest format checked{' '}
@@ -318,10 +332,11 @@ export const IncidentView: React.FC<{ inc: MultiSourceIncident; index: number }>
     <h4>Evidence timeline</h4>
     <div className="table-container">
       <table>
+<caption className="visually-hidden">Evidence timeline, one row per event in time order, with source, outcome and raw SHA-256 prefix</caption>
         <thead>
           <tr>
-            <th>#</th><th>Time (UTC)</th><th>Source</th><th>Host</th><th>User</th><th>Event</th><th>Stage</th>
-            <th>Outcome</th><th>Provenance (raw SHA-256)</th><th>Notes</th>
+            <th scope="col">#</th><th scope="col">Time (UTC)</th><th scope="col">Source</th><th scope="col">Host</th><th scope="col">User</th><th scope="col">Event</th><th scope="col">Stage</th>
+            <th scope="col">Outcome</th><th scope="col">Provenance (raw SHA-256)</th><th scope="col">Notes</th>
           </tr>
         </thead>
         <tbody>
@@ -356,7 +371,8 @@ export const IncidentView: React.FC<{ inc: MultiSourceIncident; index: number }>
     {inc.links.length > 0 && (
       <div className="table-container">
         <table>
-          <thead><tr><th>Strength</th><th>Evidence units</th><th>Shared entities</th></tr></thead>
+<caption className="visually-hidden">Links between evidence units, with strength and shared entities</caption>
+          <thead><tr><th scope="col">Strength</th><th scope="col">Evidence units</th><th scope="col">Shared entities</th></tr></thead>
           <tbody>
             {inc.links.map((l, i) => (
               <tr key={`${l.clusters.join('-')}-${i}`}>
@@ -376,8 +392,9 @@ export const IncidentView: React.FC<{ inc: MultiSourceIncident; index: number }>
     ) : (
       <div className="table-container">
         <table>
+<caption className="visually-hidden">ATT&CK techniques derived by rule, with the independent evidence behind each</caption>
           <thead>
-            <tr><th>Technique</th><th>Tactic(s)</th><th>Rule</th><th>Independent evidence</th><th>Source also asserted</th><th>Limitation</th></tr>
+            <tr><th scope="col">Technique</th><th scope="col">Tactic(s)</th><th scope="col">Rule</th><th scope="col">Independent evidence</th><th scope="col">Source also asserted</th><th scope="col">Limitation</th></tr>
           </thead>
           <tbody>
             {inc.mitre.map((m) => (
@@ -476,7 +493,8 @@ export const MultiSourceResultView: React.FC<{ data: MultiSourceInvestigation; s
     <h4>Contributing sources</h4>
     <div className="table-container">
       <table>
-        <thead><tr><th>Source</th><th>Events</th><th>Distinct raw records</th></tr></thead>
+<caption className="visually-hidden">Contributing sources with event and distinct raw record counts</caption>
+        <thead><tr><th scope="col">Source</th><th scope="col">Events</th><th scope="col">Distinct raw records</th></tr></thead>
         <tbody>
           {data.sources.map((s) => (
             <tr key={s.source_type}><td>{s.source_type}</td><td>{s.events}</td><td>{s.distinct_raw_records}</td></tr>
@@ -493,14 +511,14 @@ export const MultiSourceResultView: React.FC<{ data: MultiSourceInvestigation; s
       </div>
     )}
 
-    {(data.rejected.length > 0 || data.contradictions.length > 0) && (
+    {((data.rejected ?? []).length > 0 || (data.contradictions ?? []).length > 0) && (
       <div className="alert-box alert-error" role="alert">
         <strong>Data-quality problems</strong>
         <ul>
-          {data.rejected.map((r) => (
-            <li key={r.record_index}>Record {r.record_index} could not be normalized (<span className="font-mono">{r.reason}</span>, SHA-256 {r.raw_sha256_prefix}).</li>
+          {(data.rejected ?? []).map((r) => (
+            <li key={r.record_index}>Record {r.record_index} could not be normalized. {explainRecordCode(r.reason)} (<span className="font-mono">{r.reason}</span>, SHA-256 {r.raw_sha256_prefix}).</li>
           ))}
-          {data.contradictions.map((c, i) => (
+          {(data.contradictions ?? []).map((c, i) => (
             <li key={`${c.reason}-${i}`}>Contradictory evidence: <span className="font-mono">{c.reason}</span> ({c.event_ids.length} events).</li>
           ))}
         </ul>
@@ -536,12 +554,11 @@ interface MultiSourcePanelProps {
 }
 
 export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, caseClosed, initialResult, initialStale }) => {
-  const { canSynthesizeReports } = useAuth();
+  const { canSynthesizeReports, canCloseCase } = useAuth();
   const [result, setResult] = useState<MultiSourceInvestigation | null>(initialResult ?? null);
   const [stale, setStale] = useState<boolean>(initialStale ?? false);
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [useLlm, setUseLlm] = useState<boolean>(false);
   const [loaded, setLoaded] = useState<boolean>(!!initialResult);
 
   const loadExisting = useCallback(async () => {
@@ -603,7 +620,8 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
     setBusy(true);
     setError(null);
     try {
-      const data = await api.startMultiSourceInvestigation(caseId, { use_llm: useLlm && canSynthesizeReports(), force });
+      // The deterministic investigation never waits for the AI step: it is always requested with the model off.
+      const data = await api.startMultiSourceInvestigation(caseId, { use_llm: false, force });
       setResult(data);
       setStale(false);
     } catch (e) {
@@ -624,12 +642,6 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
             Force a new run
           </button>
         )}
-        {canSynthesizeReports() && (
-          <label style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
-            Also run AI-assisted analysis (local model, gated by the sufficiency check and claim-verified)
-          </label>
-        )}
       </div>
       {!caseClosed && <DomainEvidenceImport caseId={caseId} caseClosed={caseClosed} />}
       <p style={{ color: 'var(--text-secondary)' }}>
@@ -640,7 +652,178 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
       {!result && loaded && !busy && !error && (
         <p role="status">No multi-source investigation has been run for this case yet. Select &quot;Start&quot; to analyse the linked evidence.</p>
       )}
+      {result && canSynthesizeReports() && !caseClosed && (
+        <AiExplanationStep
+          caseId={caseId}
+          disabled={busy}
+          alreadyRun={result.use_llm}
+          onResult={(data) => {
+            setResult(data);
+            setStale(false);
+          }}
+        />
+      )}
+      {result && <ReviewStep caseId={caseId} fingerprint={result.evidence_fingerprint} caseClosed={caseClosed} canReview={canCloseCase()} />}
       {result && <MultiSourceResultView data={result} stale={stale} />}
     </div>
+  );
+};
+
+/** The case lead's review of the stored result: a record of a human decision. It changes neither the investigation nor the evidence. */
+export const reviewText = (r: MultiSourceReview | null): string => {
+  if (!r) return 'Loading the review state.';
+  if (r.state === 'stale') return 'The evidence changed after this result was produced, so any earlier review no longer applies. Run the investigation again and review the new result.';
+  if (r.state === 'approved') return `Approved by ${r.reviewed_by ?? 'the case lead'}${r.reviewed_at ? ` at ${r.reviewed_at}` : ''}.`;
+  if (r.state === 'rejected') return `Rejected by ${r.reviewed_by ?? 'the case lead'}${r.reviewed_at ? ` at ${r.reviewed_at}` : ''}.`;
+  return 'Not reviewed. The case lead has not recorded a decision on this result.';
+};
+
+export const ReviewStep: React.FC<{
+  caseId: string;
+  fingerprint: string;
+  caseClosed?: boolean;
+  canReview: boolean;
+  initialReview?: MultiSourceReview | null;
+}> = ({ caseId, fingerprint, caseClosed, canReview, initialReview }) => {
+  const [review, setReview] = useState<MultiSourceReview | null>(initialReview ?? null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialReview !== undefined) return undefined;
+    let live = true;
+    api.getMultiSourceSection<{ review?: MultiSourceReview }>(caseId, 'status')
+      .then((s) => { if (live) setReview(s.review ?? null); })
+      .catch(() => { if (live) setReview(null); });
+    return () => { live = false; };
+  }, [caseId, fingerprint, initialReview]);
+
+  const download = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const out = await api.exportMultiSourceReport(caseId);
+      const url = URL.createObjectURL(new Blob([out.markdown], { type: 'text/markdown' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = out.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The report could not be released.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async (decision: 'approved' | 'rejected') => {
+    setBusy(true);
+    setError(null);
+    try {
+      setReview(await api.reviewMultiSourceInvestigation(caseId, { decision, evidence_fingerprint: fingerprint, note: note.trim() || undefined }));
+      setNote('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The review could not be recorded.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section aria-label="Lead review" className="alert-box alert-info" style={{ display: 'block', margin: '0 0 16px' }}>
+      <strong>Lead review</strong>
+      <p role="status" style={{ margin: '4px 0' }}>{reviewText(review)}</p>
+      {review?.note && <p style={{ margin: '4px 0' }}>Note: {review.note}</p>}
+      <p style={{ margin: '4px 0 8px', color: 'var(--text-secondary)' }}>
+        A review records the lead&apos;s decision about this result. It does not change the investigation or the evidence, and nothing is sent anywhere.
+      </p>
+      {canReview && !caseClosed && (
+        <div>
+          <label className="field-label" htmlFor="review-note">Note (optional)</label>
+          <textarea id="review-note" className="input-field" maxLength={500} rows={2} value={note} onChange={(e) => setNote(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn-primary" disabled={busy} onClick={() => void submit('approved')}>Approve this result</button>
+            <button className="btn btn-secondary" disabled={busy} onClick={() => void submit('rejected')}>Reject this result</button>
+          </div>
+        </div>
+      )}
+      {!canReview && <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>Only the case lead can record a review.</p>}
+      {review?.state === 'approved' ? (
+        <button className="btn btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => void download()}>Download approved report (.md)</button>
+      ) : (
+        <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>The report can be downloaded only after the case lead approves the current result.</p>
+      )}
+      {error && <p role="alert" style={{ margin: '8px 0 0' }}>{error}</p>}
+    </section>
+  );
+};
+
+/** The AI explanation is optional, on demand and never blocks the deterministic result shown above it. */
+export const AI_EXPLANATION_TIMEOUT_MS = 90_000;
+
+type AiStepState = { kind: 'idle' } | { kind: 'running' } | { kind: 'done'; seconds: number } | { kind: 'timeout' } | { kind: 'cancelled' } | { kind: 'failed'; message: string };
+
+export const AiExplanationStep: React.FC<{
+  caseId: string;
+  disabled?: boolean;
+  alreadyRun?: boolean;
+  onResult: (data: MultiSourceInvestigation) => void;
+  timeoutMs?: number;
+}> = ({ caseId, disabled, alreadyRun, onResult, timeoutMs = AI_EXPLANATION_TIMEOUT_MS }) => {
+  const [state, setState] = useState<AiStepState>({ kind: 'idle' });
+  const [elapsed, setElapsed] = useState(0);
+  const cancelRef = React.useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (state.kind !== 'running') return undefined;
+    const t0 = Date.now();
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [state.kind]);
+
+  const run = async () => {
+    setState({ kind: 'running' });
+    const t0 = Date.now();
+    const handle = runWithDeadline((signal) => api.startMultiSourceInvestigation(caseId, { use_llm: true }, signal), timeoutMs);
+    cancelRef.current = handle.cancel;
+    const outcome = await handle.result;
+    cancelRef.current = null;
+    if (outcome.kind === 'done') {
+      onResult(outcome.value);
+      setState({ kind: 'done', seconds: Math.round((Date.now() - t0) / 1000) });
+    } else if (outcome.kind === 'failed') {
+      setState({ kind: 'failed', message: outcome.message });
+    } else {
+      setState({ kind: outcome.kind });
+    }
+  };
+
+  return (
+    <section aria-label="AI explanation" className="setup-notice alert-box alert-info" style={{ display: 'block', margin: '0 0 16px' }}>
+      <strong><ClassGlyph cls="model_inference" /> AI explanation (optional)</strong>
+      <p style={{ margin: '4px 0 8px' }}>
+        The investigation above is complete without it. A local language model runs on this machine and can be slow. It runs only if the evidence check allows it, and every claim it makes is checked against the evidence.
+      </p>
+      {state.kind === 'running' ? (
+        <div role="status">
+          AI explanation running, {elapsed} s. The result above is unchanged.{' '}
+          <button className="btn btn-secondary" onClick={() => cancelRef.current?.()}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button className="btn btn-primary" disabled={disabled} onClick={() => void run()}>
+          {alreadyRun || state.kind === 'done' ? 'Run AI explanation again' : 'Run AI explanation'}
+        </button>
+      )}
+      {state.kind === 'done' && <p role="status" style={{ margin: '8px 0 0' }}>AI explanation finished in {state.seconds} s. Its status for each incident is shown below.</p>}
+      {state.kind === 'timeout' && <p role="status" style={{ margin: '8px 0 0' }}>AI timed out after {Math.round(timeoutMs / 1000)} s. The deterministic result is unchanged. The server may still finish this run in the background.</p>}
+      {state.kind === 'cancelled' && <p role="status" style={{ margin: '8px 0 0' }}>AI explanation cancelled. The deterministic result is unchanged. The server may still finish this run in the background.</p>}
+      {state.kind === 'failed' && <p role="alert" style={{ margin: '8px 0 0' }}>The AI explanation could not be completed ({state.message}). The deterministic result is unchanged.</p>}
+    </section>
   );
 };

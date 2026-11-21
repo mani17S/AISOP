@@ -11,7 +11,7 @@ services:
     container_name: aisop-postgres
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"  # loopback only: the database must not be reachable from the network
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-aisop}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aisop}

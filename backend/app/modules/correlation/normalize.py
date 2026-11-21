@@ -26,7 +26,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from app.modules.alerts.adapter_protocol import AlertAdapterRegistry, get_default_registry
+from app.modules.alerts.adapter_protocol import AlertAdapterRegistry, AlertTimestampError, get_default_registry
 from app.modules.correlation.models import CorrelationEvent, NormalizationResult, RejectedRecord
 from app.modules.evidence_domains.adapters import EvidenceFormatError, is_domain_record, parse_record
 from app.modules.evidence_domains.bridge import is_projectable, observation_to_event
@@ -382,6 +382,8 @@ def normalize_records(
                 rejected.append(RejectedRecord(record_index=index, reason="TIMESTAMP_MISSING_OR_INVALID", raw_sha256=digest))
                 continue
             events.append(_to_event(alert, obj, index, digest, asset_map, key))
+        except AlertTimestampError:
+            rejected.append(RejectedRecord(record_index=index, reason="TIMESTAMP_MISSING_OR_INVALID", raw_sha256=digest))
         except Exception as exc:  # noqa: BLE001 - classify, never leak the message
             rejected.append(RejectedRecord(record_index=index, reason=f"ADAPTER_ERROR:{type(exc).__name__}", raw_sha256=digest))
     return NormalizationResult(events=events, rejected=rejected, observations=observations)

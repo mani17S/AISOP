@@ -367,7 +367,8 @@ def test_post_reports_synthesize_invalid_time_window_422():
 
 
 def test_post_reports_format_bound_context_success():
-    """POST /api/v1/reports/format with bound context returns HTTP 200 with verified timeline."""
+    """POST /api/v1/reports/format with a client-supplied context but no server-stored record returns HTTP 200 as an UNVERIFIED report (T1-B D3):
+    the submitted timeline is withheld, not presented as a verified timeline."""
     inv_id = uuid.uuid4()
     ev_uuid = uuid.uuid4()
     ctx = _build_test_context(inv_id, ev_uuid)
@@ -385,8 +386,8 @@ def test_post_reports_format_bound_context_success():
     assert response.status_code == 200
     data = response.json()
     assert data["provenance"]["is_detached_format_mode"] is False
-    assert len(data["technical_report"]["investigation_timeline"]) == 1
-    assert data["technical_report"]["investigation_timeline"][0]["event_uuid"] == str(ev_uuid)
+    assert data["provenance"]["is_verified_investigation"] is False
+    assert data["technical_report"]["investigation_timeline"] == []
 
 
 def test_post_reports_format_hash_mismatch_422():
@@ -511,7 +512,7 @@ async def test_post_reports_synthesize_preserves_bound_context_entities_and_prov
 @pytest.mark.anyio
 
 async def test_post_reports_format_preserves_entities_and_threat_intel():
-    """POST /api/v1/reports/format preserves entities as bound observables and surfaces threat intel."""
+    """POST /api/v1/reports/format without a server-stored record is UNVERIFIED (T1-B D4): submitted entities and threat intel are withheld."""
     inv_id = uuid.uuid4()
     ev_uuid = uuid.uuid4()
 
@@ -546,16 +547,10 @@ async def test_post_reports_format_preserves_entities_and_threat_intel():
     assert response.status_code == 200
     data = response.json()
 
-    # Entities preserved as bound_telemetry observables
-    observables = data["detection_report"]["validated_observables"]
-    assert any(o["observable_value"] == "198.51.100.25" and o["provenance_type"] == "bound_telemetry" for o in observables)
-
-    # Threat intelligence preserved in technical report and executive summary
-    ti_enrichments = data["technical_report"]["threat_intelligence_enrichment"]
-    assert len(ti_enrichments) == 1
-    assert ti_enrichments[0]["observable"] == "198.51.100.25"
-    assert ti_enrichments[0]["verdict"] == "malicious"
-    assert "1 observable(s) enriched" in data["executive_brief"]["threat_intelligence_context"]
+    # Submitted entities are not presented as bound observables, and submitted threat intelligence is not presented as enrichment
+    assert data["detection_report"]["validated_observables"] == []
+    assert data["technical_report"]["threat_intelligence_enrichment"] == []
+    assert "withheld" in data["executive_brief"]["threat_intelligence_context"]
 
 
 @pytest.mark.anyio

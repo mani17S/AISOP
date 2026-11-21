@@ -48,14 +48,18 @@ check('favicon file exists', existsSync(join(ROOT, 'public', 'favicon.svg')));
 check('favicon linked in index.html', /rel="icon"[^>]*favicon/.test(html));
 check('privacy page exists', existsSync(join(SRC, 'pages', 'Legal.tsx')) && /PrivacyPolicy/.test(read(join(SRC, 'App.tsx'))));
 check('terms page exists', /TermsOfService/.test(read(join(SRC, 'App.tsx'))));
-check('privacy and terms linked in the UI', /href="\/privacy"/.test(read(join(SRC, 'components', 'Navbar.tsx'))) && /href="\/terms"/.test(read(join(SRC, 'components', 'Navbar.tsx'))));
+check('privacy and terms linked in the UI', /href="\/privacy"/.test(read(join(SRC, 'App.tsx'))) && /href="\/terms"/.test(read(join(SRC, 'App.tsx'))));
 
 // Owner-supplied facts that must never be invented
 const op = read(join(SRC, 'legal', 'operator.ts'));
-for (const field of ['name', 'contactEmail', 'jurisdiction', 'effectiveDate']) {
+for (const field of ['name', 'contactUrl', 'effectiveDate']) {
   const m = op.match(new RegExp(`${field}:\\s*'([^']*)'`));
   check(`operator.${field} filled in`, Boolean(m && m[1].trim()), 'src/legal/operator.ts');
 }
+check(
+  'governing law stated or the Terms say none is chosen',
+  /jurisdiction:\s*'[^']+'/.test(op) || /No governing law has been chosen/.test(read(join(SRC, 'pages', 'Legal.tsx'))),
+);
 
 // Custom domain: recorded by the owner once DNS is connected
 const domainFile = join(ROOT, '..', 'deploy', 'DOMAIN.txt');

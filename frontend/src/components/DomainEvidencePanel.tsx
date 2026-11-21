@@ -13,6 +13,8 @@
 
 import React, { useState } from 'react';
 import { api } from '../services/api';
+import { explainRecordCode } from '../utils/explain';
+import { ClassGlyph, EvidenceClassLegend, EvidenceClassMark } from './EvidenceClassMark';
 import {
   AnalystStatementView,
   ContradictionView,
@@ -36,25 +38,18 @@ const TIME: Record<string, string> = {
   out_of_range: 'Undated: event time out of range (none was invented)',
 };
 
-const TRUST: Record<string, string> = {
-  raw_observed: 'Observed (collector record)',
-  tool_asserted: 'Tool-asserted (forensic tool interpretation)',
-  analyst_observation: 'Analyst statement (context only)',
-  ti_context: 'External intelligence (context only)',
-  derived: 'Derived',
-  model_inference: 'AI inference',
-  analyst_confirmed: 'Analyst confirmed',
-};
 
 const fmt = (s?: string | null): string => (s ? new Date(s).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'Undated');
 
 export const EvidenceTable: React.FC<{ observations: DomainObservation[] }> = ({ observations }) => (
   <div className="table-container" aria-label="Case evidence and provenance">
+    <EvidenceClassLegend />
     <table>
+<caption className="visually-hidden">Case evidence with source, trust class, time status and raw SHA-256 prefix</caption>
       <thead>
         <tr>
-          <th>#</th><th>Type</th><th>Source system</th><th>Collection</th><th>Classification</th><th>Time</th>
-          <th>Trust</th><th>Corroboration</th><th>On timeline</th><th>Raw SHA-256 (prefix)</th>
+          <th scope="col">#</th><th scope="col">Type</th><th scope="col">Source system</th><th scope="col">Collection</th><th scope="col">Classification</th><th scope="col">Time</th>
+          <th scope="col">Trust</th><th scope="col">Corroboration</th><th scope="col">On timeline</th><th scope="col">Raw SHA-256 (prefix)</th>
         </tr>
       </thead>
       <tbody>
@@ -66,7 +61,7 @@ export const EvidenceTable: React.FC<{ observations: DomainObservation[] }> = ({
             <td>{o.collection_method}</td>
             <td>{CLASSIFICATION[o.classification] ?? o.classification}</td>
             <td>{o.event_time ? fmt(o.event_time) : TIME[o.time_status] ?? o.time_status}</td>
-            <td>{TRUST[o.trust_class] ?? o.trust_class}</td>
+            <td><EvidenceClassMark cls={o.trust_class} /></td>
             <td>{o.counts_for_corroboration ? 'Can corroborate' : 'Never corroborates'}</td>
             <td>{o.on_timeline ? 'yes' : 'no'}</td>
             <td className="font-mono">{o.raw_sha256.slice(0, 12)}</td>
@@ -88,7 +83,8 @@ export const GraphSection: React.FC<{ graph: GraphView }> = ({ graph }) => (
     {graph.edges.length > 0 && (
       <div className="table-container">
         <table>
-          <thead><tr><th>Subject</th><th>Relationship</th><th>Object</th><th>Independent support</th><th>Sources</th><th>Trust</th></tr></thead>
+<caption className="visually-hidden">Relationships stated directly by the evidence, with independent support</caption>
+          <thead><tr><th scope="col">Subject</th><th scope="col">Relationship</th><th scope="col">Object</th><th scope="col">Independent support</th><th scope="col">Sources</th><th scope="col">Trust</th></tr></thead>
           <tbody>
             {graph.edges.map((e, i) => (
               <tr key={`${e.subject}-${e.predicate}-${e.object}-${i}`}>
@@ -97,7 +93,7 @@ export const GraphSection: React.FC<{ graph: GraphView }> = ({ graph }) => (
                 <td className="font-mono">{e.object}</td>
                 <td>{e.independent_support}</td>
                 <td>{e.sources.join(', ')}</td>
-                <td>{e.trust.map((t) => TRUST[t] ?? t).join(', ')}</td>
+                <td>{e.trust.map((t) => <EvidenceClassMark key={t} cls={t} />)}</td>
               </tr>
             ))}
           </tbody>
@@ -111,7 +107,8 @@ export const GraphSection: React.FC<{ graph: GraphView }> = ({ graph }) => (
     ) : (
       <div className="table-container">
         <table>
-          <thead><tr><th>Basis</th><th>Shared entities</th><th>Seconds apart</th><th>Rationale</th></tr></thead>
+<caption className="visually-hidden">Evidence units that share an entity, with basis and time distance</caption>
+          <thead><tr><th scope="col">Basis</th><th scope="col">Shared entities</th><th scope="col">Seconds apart</th><th scope="col">Rationale</th></tr></thead>
           <tbody>
             {graph.correlations.map((c, i) => (
               <tr key={`${c.observations.join('-')}-${i}`}>
@@ -184,8 +181,9 @@ export const ContradictionSection: React.FC<{ items: ContradictionView[] }> = ({
       <p>These records conflict about the same proposition. The conflict is reported, not resolved.</p>
       <div className="table-container">
         <table>
+<caption className="visually-hidden">Conflicting records about the same proposition</caption>
           <thead>
-            <tr><th>Kind</th><th>Effect</th><th>Record 1</th><th>Record 2</th><th>Why</th><th>What would resolve it</th></tr>
+            <tr><th scope="col">Kind</th><th scope="col">Effect</th><th scope="col">Record 1</th><th scope="col">Record 2</th><th scope="col">Why</th><th scope="col">What would resolve it</th></tr>
           </thead>
           <tbody>
             {items.map((c, i) => (
@@ -211,14 +209,15 @@ export const ContradictionSection: React.FC<{ items: ContradictionView[] }> = ({
 
 export const IntelligenceSection: React.FC<{ items: EnrichmentView[] }> = ({ items }) => (
   <div aria-label="External intelligence">
-    <h5>External intelligence (context only, not observed in this case)</h5>
+    <h5><ClassGlyph cls="ti_context" /> External intelligence (context only, not observed in this case)</h5>
     {items.length === 0 ? (
       <p>No external intelligence was attached to this incident.</p>
     ) : (
       <>
         <div className="table-container">
           <table>
-            <thead><tr><th>Indicator</th><th>Source</th><th>Intelligence</th><th>Observed in</th></tr></thead>
+<caption className="visually-hidden">External intelligence indicators, context only</caption>
+            <thead><tr><th scope="col">Indicator</th><th scope="col">Source</th><th scope="col">Intelligence</th><th scope="col">Observed in</th></tr></thead>
             <tbody>
               {items.flatMap((en) => en.matches.map((m, i) => (
                 <tr key={`${en.entity}-${m.source}-${i}`}>
@@ -236,7 +235,7 @@ export const IntelligenceSection: React.FC<{ items: EnrichmentView[] }> = ({ ite
 
 export const AnalystStatements: React.FC<{ items: AnalystStatementView[] }> = ({ items }) => (
   <div aria-label="Analyst statements">
-    <h5>Analyst statements (context only, never corroboration)</h5>
+    <h5><ClassGlyph cls="analyst_observation" /> Analyst statements (context only, never corroboration)</h5>
     {items.length === 0 ? (
       <p>No analyst statement refers to this incident.</p>
     ) : (
@@ -316,7 +315,7 @@ export const DomainEvidenceImport: React.FC<{ caseId: string; caseClosed?: boole
           {result.quarantined_records.length > 0 && (
             <ul>
               {result.quarantined_records.map((q) => (
-                <li key={q.record_index}>Record {q.record_index} quarantined: <span className="font-mono">{q.reason}</span></li>
+                <li key={q.record_index}>Record {q.record_index} quarantined. {explainRecordCode(q.reason)} (<span className="font-mono">{q.reason}</span>)</li>
               ))}
             </ul>
           )}

@@ -165,10 +165,12 @@ class AlertIngestionService:
                 continue
 
             # Case C: New unique alert to normalize and persist
-            active_adapter = adapter or self.registry.find_matching_adapter(raw_alert)
-            if active_adapter is None:
-                # Fallback to generic_siem adapter
-                active_adapter = self.registry.get("generic_siem")
+            # Use the declared adapter only when it can actually parse this alert; otherwise detect one. There is no silent
+            # fallback to generic_siem: provenance must name the adapter that really parsed the record (review finding D-4).
+            if adapter is not None and adapter.can_adapt(raw_alert):
+                active_adapter = adapter
+            else:
+                active_adapter = self.registry.find_matching_adapter(raw_alert)
 
             if active_adapter is None:
                 errors.append(

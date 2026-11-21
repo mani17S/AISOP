@@ -10,8 +10,23 @@ strict models: everything the analyst submits is validated here.
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class MultiSourceReviewRequest(BaseModel):
+    """Body of POST /cases/{case_id}/investigations/multisource/review (case lead only).
+
+    The review is bound to the evidence fingerprint of the investigation the reviewer actually saw, so a review can never be
+    attached to a different or newer run.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    decision: Literal["approved", "rejected"]
+    evidence_fingerprint: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$", description="The evidence_fingerprint shown with the investigation under review.")
+    note: Optional[str] = Field(default=None, max_length=500, description="Optional reviewer note (untrusted text; always shown escaped).")
 
 
 class MultiSourceInvestigationRequest(BaseModel):

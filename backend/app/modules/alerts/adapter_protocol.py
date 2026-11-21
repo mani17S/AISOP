@@ -8,6 +8,7 @@ alert payloads into CanonicalAlert models.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
 from app.schemas.alert import CanonicalAlert
@@ -91,3 +92,20 @@ def get_default_registry() -> AlertAdapterRegistry:
     registry.register(GenericSiemAdapter())
     return registry
 
+
+
+class AlertTimestampError(ValueError):
+    """Raised when an alert carries no usable event time. The ingestion service reports it per alert; nothing is stored."""
+
+
+def require_event_time(value: Any) -> "datetime":
+    """Parse an alert's own event time. Never substitutes the ingestion time (project invariant: never invent a timestamp).
+
+    A missing, non-string or unparseable value raises ``AlertTimestampError`` with a fixed message (the value is not echoed).
+    """
+    if not isinstance(value, str) or not value.strip():
+        raise AlertTimestampError("ALERT_TIMESTAMP_MISSING_OR_INVALID: the alert has no usable event timestamp; it was not stored.")
+    try:
+        return datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        raise AlertTimestampError("ALERT_TIMESTAMP_MISSING_OR_INVALID: the alert has no usable event timestamp; it was not stored.") from None

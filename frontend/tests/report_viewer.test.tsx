@@ -213,7 +213,7 @@ describe('AISOP Phase 4: ReportViewer Component Verification', () => {
   it('renders technical report tab with timeline and claims', () => {
     const bundle = createBaseMockBundle();
     const html = renderToStaticMarkup(<ReportViewer bundle={bundle} initialTab="technical" />);
-    assert.ok(html.includes('Incident Timeline'), 'Timeline section must be rendered');
+    assert.ok(html.includes('Timeline'), 'Timeline section must be rendered');
     assert.ok(html.includes('process_creation'), 'Event type must be rendered');
     assert.ok(html.includes('network_connection'), 'Second event type must be rendered');
     assert.ok(html.includes('Factual Claims &amp; Evidence Provenance'), 'Claims section must be rendered');

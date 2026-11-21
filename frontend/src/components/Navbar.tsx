@@ -10,17 +10,36 @@ import { useAuth } from '../contexts/AuthContext';
 import { GlobalRole, HealthResponse } from '../types';
 import { api } from '../services/api';
 import { Dialog } from './Dialog';
+import { apiKeyShapeHint, normalizeApiKey } from '../utils/apiKey';
 
 interface NavbarProps {
   currentTab: string;
   onSelectTab: (tab: string) => void;
 }
 
+const UtcClock: React.FC = () => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span className="utc-clock" title="Current time in UTC">
+      UTC {now.toISOString().slice(11, 16)}
+    </span>
+  );
+};
+
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
-  const { globalRole, setRole, apiKey, setApiKey } = useAuth();
+  const { globalRole, setRole, apiKey, setApiKey, keyDialogOpen: isKeyModalOpen, setKeyDialogOpen: setIsKeyModalOpen } = useAuth();
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [keyInput, setKeyInput] = useState(apiKey);
+  const [showKey, setShowKey] = useState(false);
+  const keyHint = apiKeyShapeHint(keyInput);
+
+  useEffect(() => {
+    if (isKeyModalOpen) setKeyInput(apiKey);
+  }, [isKeyModalOpen, apiKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,7 +68,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
   }, []);
 
   const handleSaveKey = () => {
-    setApiKey(keyInput);
+    const cleaned = normalizeApiKey(keyInput);
+    setKeyInput(cleaned);
+    setApiKey(cleaned);
     setIsKeyModalOpen(false);
   };
 
@@ -63,7 +84,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
       <header className="navbar">
         <div className="navbar-brand">
           <span>AISOP</span>
-          <span className="brand-badge">SOC CORE</span>
         </div>
 
         <nav className="nav-links" aria-label="Primary">
@@ -93,14 +113,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
             aria-current={currentTab === 'evidence' ? 'page' : undefined}
             onClick={() => onSelectTab('evidence')}
           >
-            Evidence & Telemetry
+            Evidence
           </button>
           <button
             className={`nav-item ${currentTab === 'reports' ? 'active' : ''}`}
             aria-current={currentTab === 'reports' ? 'page' : undefined}
             onClick={() => onSelectTab('reports')}
           >
-            Investigation Reports
+            Reports
           </button>
         </nav>
 
@@ -110,8 +130,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
             <span>{health ? (health.status === 'ok' ? 'Online' : 'Degraded') : 'Connecting...'}</span>
           </div>
 
+          <div className="health-badge" title="Whether an API key is set in this tab">
+            <span>{apiKey ? 'Key set' : 'No key'}</span>
+          </div>
+
+          <UtcClock />
+
           <div className="role-selector" title="Client-side UI simulation only. Backend independently enforces actual permissions based on the authenticated principal / token.">
-            <span>UI Preview Role - Does not change backend permissions</span>
+            <span className="field-label" aria-hidden="true">View as</span>
+            <span className="visually-hidden">UI Preview Role - Does not change backend permissions</span>
             <select
               className="select-input"
               value={globalRole}
@@ -133,20 +160,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
               setIsKeyModalOpen(true);
             }}
           >
-            {apiKey ? 'Key Configured' : 'Set API Key'}
+            {apiKey ? 'Change key' : 'Set API key'}
           </button>
-
-          <div className="legal-links">
-            <a href="/privacy">Privacy</a>
-            <a href="/terms">Terms</a>
-          </div>
         </div>
       </header>
 
       {isKeyModalOpen && (
         <Dialog onClose={() => setIsKeyModalOpen(false)} labelledBy="dlg-api-key-title">
             <div className="modal-header">
-              <h3 className="modal-title" id="dlg-api-key-title">API Authentication Key</h3>
+              <h3 className="modal-title" id="dlg-api-key-title">API key</h3>
               <button
                 className="btn btn-secondary"
                 style={{ padding: '2px 8px' }}
@@ -158,17 +180,27 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
             </div>
             <div className="modal-body">
               <div className="alert-box alert-info">
-                Credentials are held in-memory / session storage only and never written to localStorage or sent to third-party endpoints. Backend independently authorizes all operations based on the active key.
+                Keys are issued by the operator of this deployment. The key is kept for this browser tab only and is cleared when you close it.
               </div>
               <div className="form-group">
-                <label className="form-label">X-API-Key or Bearer Token</label>
+                <label className="form-label">API key</label>
                 <input
-                  type="password"
+                  type={showKey ? 'text' : 'password'}
                   className="input-field"
-                  placeholder="Enter backend API key..."
+                  placeholder="Paste your API key"
                   value={keyInput}
                   onChange={(e) => setKeyInput(e.target.value)}
+                  aria-describedby="api-key-hint"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
+                <label style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', fontSize: '13px' }}>
+                  <input type="checkbox" checked={showKey} onChange={(e) => setShowKey(e.target.checked)} />
+                  Show key
+                </label>
+                <div id="api-key-hint" role="status" style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {keyHint ?? (keyInput.trim() ? `${normalizeApiKey(keyInput).length} characters` : '')}
+                </div>
               </div>
             </div>
             <div className="modal-footer">
@@ -180,10 +212,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
                   setIsKeyModalOpen(false);
                 }}
               >
-                Clear Key
+                Clear key
               </button>
               <button className="btn btn-primary" onClick={handleSaveKey}>
-                Save Key
+                Save key
               </button>
             </div>
         </Dialog>

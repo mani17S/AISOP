@@ -26,12 +26,16 @@ import {
 } from '../types';
 import { RoleGuard } from '../components/RoleGuard';
 import { Dialog } from '../components/Dialog';
+import { ExhibitTag } from '../components/ExhibitTag';
+import { SetupNotice, isAuthMessage } from '../components/SetupNotice';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AlertsProps {
   onNavigateToCase?: (caseId: string) => void;
 }
 
 export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
+  const { apiKey } = useAuth();
   // Alert queue state
   const [alerts, setAlerts] = useState<AlertSummaryItem[]>([]);
   const [total, setTotal] = useState<number>(0);
@@ -189,7 +193,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
       `Detection Timestamp: ${alert.timestamp}`,
     ];
     if (alert.source_identifier) {
-      descLines.push(`Source Sensor / Host: ${alert.source_identifier}`);
+      descLines.push(`Source Sensor or host: ${alert.source_identifier}`);
     }
     if ('raw_ref' in alert && alert.raw_ref) {
       descLines.push(`Raw Evidence SHA-256: ${alert.raw_ref}`);
@@ -339,10 +343,10 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
       <div className="page-header">
         <div>
           <h1>
-            Security Alert Triage & Ingestion
+            Alerts
           </h1>
           <p className="page-header-sub">
-            Multi-source vendor-neutral alert queue, atomic case promotion, and detection triage
+            Triage incoming alerts and promote them to cases
           </p>
         </div>
 
@@ -350,18 +354,19 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
           <RoleGuard allowedRoles={['security_admin', 'analyst_tier_2', 'analyst_tier_1']}>
             <button
               className="btn btn-primary"
+              disabled={!apiKey}
+              title={apiKey ? 'Ingest raw alerts from upstream SIEM or EDR adapters' : 'Set an API key first'}
               onClick={() => {
                 loadAdapters();
                 setIsIngestOpen(true);
               }}
-              title="Ingest raw alerts from upstream SIEM or EDR adapters"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              Ingest Alerts
+              Ingest alerts
             </button>
           </RoleGuard>
 
@@ -380,100 +385,118 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
 
       {/* ── Filter & Search Toolbar ─────────────────────────────────────────── */}
       <div className="filter-toolbar">
-        <input
-          type="text"
-          className="input-field"
-          style={{ width: '240px' }}
-          placeholder="Search title, description, ID..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <label className="field">
+          <span className="field-label">Search</span>
+          <input
+            type="text"
+            className="input-field"
+            style={{ width: '240px' }}
+            placeholder="Search title, description, ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
 
-        <select
-          className="select-input"
-          value={severityFilter}
-          onChange={(e) => {
-            setSeverityFilter(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">All Severities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-          <option value="informational">Informational</option>
-        </select>
+        <label className="field">
+          <span className="field-label">Severity</span>
+          <select
+            className="select-input"
+            value={severityFilter}
+            onChange={(e) => {
+              setSeverityFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">All severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="informational">Informational</option>
+          </select>
+        </label>
 
-        <select
-          className="select-input"
-          value={categoryFilter}
-          onChange={(e) => {
-            setCategoryFilter(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">All Categories</option>
-          <option value="malware">Malware</option>
-          <option value="initial_access">Initial Access</option>
-          <option value="execution">Execution</option>
-          <option value="persistence">Persistence</option>
-          <option value="privilege_escalation">Privilege Escalation</option>
-          <option value="defense_evasion">Defense Evasion</option>
-          <option value="credential_access">Credential Access</option>
-          <option value="discovery">Discovery</option>
-          <option value="lateral_movement">Lateral Movement</option>
-          <option value="command_and_control">Command & Control</option>
-          <option value="exfiltration">Exfiltration</option>
-          <option value="impact">Impact</option>
-          <option value="suspicious_activity">Suspicious Activity</option>
-          <option value="system_anomaly">System Anomaly</option>
-          <option value="policy_violation">Policy Violation</option>
-          <option value="other">Other</option>
-        </select>
+        <label className="field">
+          <span className="field-label">Category</span>
+          <select
+            className="select-input"
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">All categories</option>
+            <option value="malware">Malware</option>
+            <option value="initial_access">Initial Access</option>
+            <option value="execution">Execution</option>
+            <option value="persistence">Persistence</option>
+            <option value="privilege_escalation">Privilege Escalation</option>
+            <option value="defense_evasion">Defense Evasion</option>
+            <option value="credential_access">Credential Access</option>
+            <option value="discovery">Discovery</option>
+            <option value="lateral_movement">Lateral Movement</option>
+            <option value="command_and_control">Command & Control</option>
+            <option value="exfiltration">Exfiltration</option>
+            <option value="impact">Impact</option>
+            <option value="suspicious_activity">Suspicious Activity</option>
+            <option value="system_anomaly">System Anomaly</option>
+            <option value="policy_violation">Policy Violation</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
 
-        <select
-          className="select-input"
-          value={sourceTypeFilter}
-          onChange={(e) => {
-            setSourceTypeFilter(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">All Adapters</option>
-          <option value="generic_siem">Generic SIEM</option>
-          <option value="edr_malware">EDR Malware</option>
-          <option value="sysmon">Sysmon</option>
-          <option value="windows_security">Windows Security</option>
-          <option value="linux_auth">Linux Auth</option>
-          <option value="firewall_ids">Firewall / IDS</option>
-          <option value="cloud_audit">Cloud Audit</option>
-          <option value="email_phishing">Email Phishing</option>
-        </select>
+        <label className="field">
+          <span className="field-label">Adapter</span>
+          <select
+            className="select-input"
+            value={sourceTypeFilter}
+            onChange={(e) => {
+              setSourceTypeFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">All adapters</option>
+            <option value="generic_siem">Generic SIEM</option>
+            <option value="edr_malware">EDR Malware</option>
+            <option value="sysmon">Sysmon</option>
+            <option value="windows_security">Windows Security</option>
+            <option value="linux_auth">Linux Auth</option>
+            <option value="firewall_ids">Firewall / IDS</option>
+            <option value="cloud_audit">Cloud Audit</option>
+            <option value="email_phishing">Email Phishing</option>
+          </select>
+        </label>
 
-        <input
-          type="text"
-          className="input-field"
-          style={{ width: '160px' }}
-          placeholder="Provider (e.g. crowdstrike)"
-          value={providerFilter}
-          onChange={(e) => {
-            setProviderFilter(e.target.value);
-            setPage(1);
-          }}
-        />
+        <label className="field">
+          <span className="field-label">Provider</span>
+          <input
+            type="text"
+            className="input-field"
+            style={{ width: '160px' }}
+            placeholder="Provider (e.g. crowdstrike)"
+            value={providerFilter}
+            onChange={(e) => {
+              setProviderFilter(e.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
 
-        <input
-          type="text"
-          className="input-field"
-          style={{ width: '160px' }}
-          placeholder="Host / Sensor ID"
-          value={sourceIdFilter}
-          onChange={(e) => {
-            setSourceIdFilter(e.target.value);
-            setPage(1);
-          }}
-        />
+        <label className="field">
+          <span className="field-label">Host or sensor</span>
+          <input
+            type="text"
+            className="input-field"
+            style={{ width: '160px' }}
+            placeholder="Host / Sensor ID"
+            value={sourceIdFilter}
+            onChange={(e) => {
+              setSourceIdFilter(e.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
 
         {(search || severityFilter || categoryFilter || sourceTypeFilter || providerFilter || sourceIdFilter || startTimeFilter || endTimeFilter) && (
           <button
@@ -487,15 +510,15 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
       </div>
 
       {/* ── Status Messages ─────────────────────────────────────────────────── */}
-      {error && <div className="alert-box alert-error">{error}</div>}
+      {error && (isAuthMessage(error) ? <SetupNotice message={error} /> : <div className="alert-box alert-error" role="alert">{error}</div>)}
 
       {/* ── Alert Queue Table ───────────────────────────────────────────────── */}
       <div className="table-container">
         <div className="table-header-bar">
           <div className="table-header-title">
-            Alert Triage Queue
+            Alert queue
             <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-secondary)', marginLeft: '8px' }}>
-              ({loading ? 'Loading...' : `${total} alerts found`})
+              ({loading ? 'Loading...' : error ? 'Unavailable' : `${total} alerts found`})
             </span>
           </div>
 
@@ -521,7 +544,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
             Retrieving normalized alert events...
           </div>
-        ) : alerts.length === 0 ? (
+        ) : error ? null : alerts.length === 0 ? (
           <div className="empty-state-notice" style={{ margin: '20px' }}>
             No security alerts match the selected filter criteria.
           </div>
@@ -530,12 +553,12 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
             <thead>
               <tr>
                 <th style={{ width: '88px' }}>Severity</th>
-                <th>Alert Title & Upstream ID</th>
-                <th style={{ width: '128px' }}>Category & Adapter</th>
+                <th>Alert and source ID</th>
+                <th style={{ width: '152px' }}>Category and adapter</th>
                 <th style={{ width: '104px' }}>MITRE ATT&CK</th>
-                <th style={{ width: '184px' }}>Top Observables</th>
-                <th style={{ width: '120px' }}>Observed UTC</th>
-                <th style={{ width: '96px' }}>Case Status</th>
+                <th style={{ width: '184px' }}>Indicators</th>
+                <th style={{ width: '120px' }}>Observed (UTC)</th>
+                <th style={{ width: '96px' }}>Case</th>
                 <th style={{ width: '176px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -558,16 +581,12 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                         </span>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                      <span className="font-mono">{alert.source_alert_id}</span>
-                      <span>•</span>
-                      <span className="badge badge-provider">{alert.provider}</span>
-                      {alert.source_identifier && (
-                        <>
-                          <span>•</span>
-                          <span>{alert.source_identifier}</span>
-                        </>
-                      )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      <span className="font-mono"><ExhibitTag id={alert.id} /> {alert.source_alert_id}</span>
+                      <span>
+                        <span className="badge badge-provider">{alert.provider}</span>
+                        {alert.source_identifier ? ` from ${alert.source_identifier}` : ''}
+                      </span>
                     </div>
                   </td>
                   <td>
@@ -653,7 +672,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
         )}
 
         {/* ── Pagination Controls ───────────────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+        {!error && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-secondary)' }}>
           <div>
             Showing Page {page} of {totalPages} ({total} total alerts)
           </div>
@@ -675,7 +694,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
               Next
             </button>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* ── Alert Detail Modal ──────────────────────────────────────────────── */}
@@ -687,7 +706,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
         >
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h3 className="modal-title" id="dlg-alert-detail-title">Alert Triage Detail</h3>
+                <h3 className="modal-title" id="dlg-alert-detail-title">Alert detail</h3>
                 {alertDetail && (
                   <span className={`badge ${getSeverityBadgeClass(alertDetail.severity)}`}>
                     {alertDetail.severity}
@@ -742,13 +761,13 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                         </span>
                       </div>
                       <div className="detail-field">
-                        <span className="detail-field-label">Observed Timestamp (UTC)</span>
+                        <span className="detail-field-label">Observed Observed (UTC)</span>
                         <span className="detail-field-value">
                           {formatUtc(alertDetail.timestamp)}
                         </span>
                       </div>
                       <div className="detail-field">
-                        <span className="detail-field-label">Ingested Timestamp (UTC)</span>
+                        <span className="detail-field-label">Ingested Observed (UTC)</span>
                         <span className="detail-field-value">
                           {formatUtc(alertDetail.ingested_at)}
                         </span>

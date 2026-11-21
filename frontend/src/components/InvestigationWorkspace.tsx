@@ -32,6 +32,7 @@ import { Dialog } from './Dialog';
 import { AuditDetailsCell, AuditDetailsRow } from './AuditDetails';
 import { handleTabListKeyDown, tabButtonId, tabPanelId } from './tabs';
 import { CloseIcon } from './Icons';
+import { ExhibitTag } from './ExhibitTag';
 
 interface InvestigationWorkspaceProps {
   caseId: string;
@@ -233,7 +234,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
     }
   };
 
-  // Handle Close Case
+  // Handle Close case
   const handleCloseCase = async () => {
     if (!closureReason.trim()) return;
     setCloseSubmitting(true);
@@ -290,7 +291,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
       <div className="investigation-workspace">
         <div style={{ marginBottom: '16px' }}>
           <button className="btn btn-secondary" onClick={onBackToQueue}>
-            ← Back to Cases
+            Back to cases
           </button>
         </div>
         <div className="table-container" style={{ padding: '48px', textAlign: 'center' }}>
@@ -333,7 +334,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                 style={{ padding: '4px 10px', fontSize: '12px' }}
                 onClick={onBackToQueue}
               >
-                ← Back to Cases
+                Back to cases
               </button>
               <span className="font-mono" style={{ fontSize: '14px', color: 'var(--accent-teal)', fontWeight: 600 }}>
                 {caseDetail.case_number}
@@ -363,7 +364,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                 onClick={handleStartInvestigation}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                {synthesizing ? 'Synthesizing AI Investigation...' : 'Start AI Investigation'}
+                {synthesizing ? 'Synthesizing AI investigation...' : 'Start AI investigation'}
               </button>
             )}
 
@@ -372,7 +373,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                 className="btn btn-secondary"
                 onClick={() => onNavigateToReport(caseDetail.id)}
               >
-                View Full Report Bundle
+                Report bundle
               </button>
             )}
 
@@ -381,7 +382,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                 className="btn btn-danger"
                 onClick={() => setIsCloseOpen(true)}
               >
-                Close Case
+                Close case
               </button>
             )}
           </div>
@@ -401,7 +402,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           }}
         >
           <div>
-            Lead Analyst ID: <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{caseDetail.lead_analyst_id}</span>
+            Lead analyst: <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{caseDetail.lead_analyst_id}</span>
           </div>
           <div>
             Created: <span style={{ color: 'var(--text-primary)' }}>{formatUtc(caseDetail.created_at)}</span>
@@ -415,7 +416,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             </div>
           )}
           <div>
-            Linked Evidence Count: <span className="font-mono" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>{evidenceTotal}</span>
+            Linked evidence: <span className="font-mono" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>{evidenceTotal}</span>
           </div>
         </div>
       </div>
@@ -436,7 +437,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           }}
           onClick={() => setActiveTab('evidence')}
         >
-          Evidence Panel ({evidenceTotal})
+          Evidence ({evidenceTotal})
         </button>
         <button
           {...tabProps('findings')}
@@ -447,7 +448,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           }}
           onClick={() => setActiveTab('findings')}
         >
-          Investigation Findings {validationResult ? '(Available)' : ''}
+          Findings {validationResult ? '(Available)' : ''}
         </button>
         <button
           {...tabProps('context')}
@@ -458,7 +459,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           }}
           onClick={() => setActiveTab('context')}
         >
-          Investigation Context & Observables
+          Context and indicators
         </button>
         <button
           {...tabProps('multisource')}
@@ -469,7 +470,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           }}
           onClick={() => setActiveTab('multisource')}
         >
-          Multi-Source Investigation
+          Multi-source
         </button>
         <button
           {...tabProps('activity')}
@@ -480,7 +481,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           }}
           onClick={() => setActiveTab('activity')}
         >
-          Activity & Audit Log
+          Activity
         </button>
       </div>
 
@@ -502,7 +503,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                   setEvidencePage(1);
                 }}
               >
-                <option value="">All Event Types</option>
+                <option value="">All event types</option>
                 <option value="ProcessCreate">Process Create</option>
                 <option value="NetworkConnect">Network Connect</option>
                 <option value="FileCreate">File Create</option>
@@ -518,7 +519,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                   setEvidencePage(1);
                 }}
               >
-                <option value="">All Severities</option>
+                <option value="">All severities</option>
                 <option value="critical">Critical</option>
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
@@ -529,13 +530,13 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
 
             {canSynthesizeReports() && caseDetail.status !== 'closed' && (
               <button className="btn btn-secondary" onClick={() => setIsLinkOpen(true)}>
-                + Link Evidence by UUID
+                + Link evidence
               </button>
             )}
           </div>
 
           <div style={{ background: 'var(--bg-card)', padding: '10px 14px', borderRadius: '4px', marginBottom: '16px', fontSize: '12px', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-            <strong>Evidence Access Invariant:</strong> Raw evidence payloads reside strictly in offline forensic storage. The view below presents authorized, case-scoped normalized telemetry.
+            <strong>Evidence access:</strong> Raw evidence payloads reside strictly in offline forensic storage. The view below presents authorized, case-scoped normalized telemetry.
           </div>
 
           {evidenceError && <div className="alert-box alert-error">{evidenceError}</div>}
@@ -547,15 +548,15 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               </div>
             ) : evidenceItems.length === 0 ? (
               <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                No evidence events currently linked to this case. Use "Link Evidence by UUID" or promote an alert to attach evidence.
+                No evidence events currently linked to this case. Use "Link evidence" or promote an alert to attach evidence.
               </div>
             ) : (
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Observed (UTC)</th>
-                    <th>Event Type</th>
-                    <th>Source / Endpoint</th>
+                    <th>Event type</th>
+                    <th>Source</th>
                     <th>Action</th>
                     <th>Outcome</th>
                     <th>Severity</th>
@@ -569,8 +570,8 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                         {formatUtc(item.event_timestamp)}
                       </td>
                       <td>
-                        <span className="font-mono" style={{ fontSize: '12px', fontWeight: 600 }}>
-                          {item.event_type}
+                        <span className="font-mono" style={{ fontSize: '12px' }}>
+                          <ExhibitTag id={item.id} /> {item.event_type}
                         </span>
                       </td>
                       <td className="font-mono" style={{ fontSize: '12px' }}>
@@ -598,7 +599,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                           style={{ padding: '2px 8px', fontSize: '11px' }}
                           onClick={() => setInspectingEvidence(item)}
                         >
-                          Inspect Evidence
+                          Inspect evidence
                         </button>
                       </td>
                     </tr>
@@ -610,7 +611,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
         </div>
       )}
 
-      {/* ── Tab 2: Investigation Findings ────────────────────────────────── */}
+      {/* ── Tab 2: Findings ────────────────────────────────── */}
       {activeTab === 'findings' && (
         <div>
           {synthesisError && (
@@ -655,7 +656,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                 onClick={handleStartInvestigation}
                 disabled={synthesizing || caseDetail.status === 'closed'}
               >
-                Start AI Investigation
+                Start AI investigation
               </button>
 
               <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -668,7 +669,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           {synthesizing && (
             <div className="table-container" style={{ padding: '48px', textAlign: 'center' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                Synthesizing AI Investigation...
+                Synthesizing AI investigation...
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                 Applying 3-phase guardrail lifecycle: building canonical context snapshot, executing local inference,
@@ -719,7 +720,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                       style={{ fontSize: '12px' }}
                       onClick={() => onNavigateToReport(caseDetail.id)}
                     >
-                      View Report Bundle →
+                      View report bundle
                     </button>
                   )}
                 </div>
@@ -903,7 +904,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
         </div>
       )}
 
-      {/* ── Tab 3: Investigation Context & Observables ───────────────────── */}
+      {/* ── Tab 3: Context and indicators ───────────────────── */}
       {activeTab === 'context' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div
@@ -1016,10 +1017,10 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Timestamp (UTC)</th>
+                    <th>Observed (UTC)</th>
                     <th>Action</th>
                     <th>Actor</th>
-                    <th>Context Digest (SHA-256)</th>
+                    <th>Context digest (SHA-256)</th>
                     <th>Details</th>
                   </tr>
                 </thead>
@@ -1061,7 +1062,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
       )}
       </div>
 
-      {/* ── Modal: Inspect Evidence ──────────────────────────────────────── */}
+      {/* ── Modal: Inspect evidence ──────────────────────────────────────── */}
       {inspectingEvidence && (
         <Dialog onClose={() => setInspectingEvidence(null)} labelledBy="dlg-evidence-inspect-title" style={{ maxWidth: '720px' }}>
             <div className="modal-header">
@@ -1073,7 +1074,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             <div className="modal-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
                 <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Event Type:</span>{' '}
+                  <span style={{ color: 'var(--text-muted)' }}>Event type:</span>{' '}
                   <span className="font-mono" style={{ fontWeight: 600 }}>{inspectingEvidence.event_type}</span>
                 </div>
                 <div>
@@ -1159,11 +1160,11 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
         </Dialog>
       )}
 
-      {/* ── Modal: Close Case ────────────────────────────────────────────── */}
+      {/* ── Modal: Close case ────────────────────────────────────────────── */}
       {isCloseOpen && (
         <Dialog onClose={() => setIsCloseOpen(false)} labelledBy="dlg-workspace-close-title">
             <div className="modal-header">
-              <h3 className="modal-title" id="dlg-workspace-close-title">Close Case {caseDetail.case_number}</h3>
+              <h3 className="modal-title" id="dlg-workspace-close-title">Close case {caseDetail.case_number}</h3>
               <button className="btn btn-secondary" aria-label="Close dialog" onClick={() => setIsCloseOpen(false)}><CloseIcon /></button>
             </div>
             <div className="modal-body">

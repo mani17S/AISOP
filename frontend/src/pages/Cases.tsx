@@ -9,6 +9,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import { CaseResponse, CaseSeverity } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { SetupNotice, isAuthMessage } from '../components/SetupNotice';
 import { InvestigationWorkspace } from '../components/InvestigationWorkspace';
 import { Dialog } from '../components/Dialog';
 import { CloseIcon } from '../components/Icons';
@@ -126,7 +127,7 @@ export const Cases: React.FC<CasesProps> = ({
       setNewDescription('');
       fetchCases();
     } catch (err: any) {
-      setCreateError(err.message || 'Failed to create incident');
+      setCreateError(err.message || 'Failed to create case');
     } finally {
       setCreateSubmitting(false);
     }
@@ -160,14 +161,14 @@ export const Cases: React.FC<CasesProps> = ({
     <div className="cases-page">
       <div className="page-header">
         <div>
-          <h1>Incident & Case Management</h1>
+          <h1>Cases</h1>
           <p className="page-header-sub">
-            Strict RBAC scoping & cryptographic anti-enumeration protections
+            Cases you can access, by severity and status
           </p>
         </div>
         {canCreateCase() && (
           <button className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
-            New incident
+            New case
           </button>
         )}
       </div>
@@ -181,9 +182,9 @@ export const Cases: React.FC<CasesProps> = ({
             setPage(1);
           }}
         >
-          <option value="">All Statuses</option>
+          <option value="">All statuses</option>
           <option value="open">Open</option>
-          <option value="in_progress">In Progress</option>
+          <option value="in_progress">In progress</option>
           <option value="closed">Closed</option>
           <option value="archived">Archived</option>
         </select>
@@ -196,7 +197,7 @@ export const Cases: React.FC<CasesProps> = ({
             setPage(1);
           }}
         >
-          <option value="">All Severities</option>
+          <option value="">All severities</option>
           <option value="critical">Critical</option>
           <option value="high">High</option>
           <option value="medium">Medium</option>
@@ -205,27 +206,27 @@ export const Cases: React.FC<CasesProps> = ({
         </select>
       </div>
 
-      {error && <div className="alert-box alert-error" role="alert">{error}</div>}
+      {error && (isAuthMessage(error) ? <SetupNotice message={error} /> : <div className="alert-box alert-error" role="alert">{error}</div>)}
       {detailError && <div className="alert-box alert-error" role="alert">{detailError}</div>}
 
       <div className="table-container">
         <div className="table-header-bar">
-          <div className="table-header-title">Assigned Security Incidents ({total})</div>
+          <div className="table-header-title">{error ? 'Cases' : `Cases (${total})`}</div>
         </div>
 
         {loading ? (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
             Loading case records...
           </div>
-        ) : cases.length === 0 ? (
+        ) : error ? null : cases.length === 0 ? (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No incident records found.
+            No cases found.
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Case Number</th>
+                <th>Case number</th>
                 <th>Title</th>
                 <th>Severity</th>
                 <th>Status</th>
@@ -305,7 +306,7 @@ export const Cases: React.FC<CasesProps> = ({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                <div>Lead Analyst ID: <span className="font-mono">{selectedCase.lead_analyst_id}</span></div>
+                <div>Lead analyst: <span className="font-mono">{selectedCase.lead_analyst_id}</span></div>
                 <div>Created: <span>{new Date(selectedCase.created_at).toLocaleString()}</span></div>
               </div>
             </div>
@@ -340,7 +341,7 @@ export const Cases: React.FC<CasesProps> = ({
                     setIsCloseModalOpen(true);
                   }}
                 >
-                  Close Incident
+                  Close case
                 </button>
               )}
               <button className="btn btn-secondary" onClick={() => setSelectedCase(null)}>
@@ -355,13 +356,13 @@ export const Cases: React.FC<CasesProps> = ({
         <Dialog onClose={() => setIsCreateOpen(false)} labelledBy="dlg-case-create-title">
             <form onSubmit={handleCreateCase}>
               <div className="modal-header">
-                <h3 className="modal-title" id="dlg-case-create-title">Create Security Incident Case</h3>
+                <h3 className="modal-title" id="dlg-case-create-title">New case</h3>
                 <button type="button" className="btn btn-secondary" aria-label="Close dialog" onClick={() => setIsCreateOpen(false)}><CloseIcon /></button>
               </div>
               <div className="modal-body">
                 {createError && <div className="alert-box alert-error" role="alert">{createError}</div>}
                 <div className="form-group">
-                  <label className="form-label">Incident Title *</label>
+                  <label className="form-label">Title *</label>
                   <input
                     type="text"
                     className="input-field"
@@ -389,7 +390,7 @@ export const Cases: React.FC<CasesProps> = ({
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Incident Briefing / Description</label>
+                  <label className="form-label">Description</label>
                   <textarea
                     className="input-field"
                     rows={4}
@@ -416,7 +417,7 @@ export const Cases: React.FC<CasesProps> = ({
       {isCloseModalOpen && (
         <Dialog onClose={() => setIsCloseModalOpen(false)} labelledBy="dlg-case-close-title">
             <div className="modal-header">
-              <h3 className="modal-title" id="dlg-case-close-title">Close Case {selectedCase?.case_number}</h3>
+              <h3 className="modal-title" id="dlg-case-close-title">Close case {selectedCase?.case_number}</h3>
               <button className="btn btn-secondary" aria-label="Close dialog" onClick={() => setIsCloseModalOpen(false)}><CloseIcon /></button>
             </div>
             <div className="modal-body">

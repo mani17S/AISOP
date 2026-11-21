@@ -10,6 +10,7 @@ import { api } from '../services/api';
 import { HealthResponse, CaseResponse } from '../types';
 import { RoleGuard } from '../components/RoleGuard';
 import { useAuth } from '../contexts/AuthContext';
+import { SetupNotice } from '../components/SetupNotice';
 
 export interface DashboardProps {
   onNavigate: (tab: string) => void;
@@ -101,7 +102,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const renderCaseMetric = (count: number) => {
     if (loading) return '...';
-    if (errorType === 'auth') return 'Auth Required';
+    if (errorType === 'auth') return 'Key needed';
     if (errorType === 'forbidden') return 'Forbidden';
     if (errorType === 'api') return 'Unavailable';
     return count;
@@ -111,16 +112,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="dashboard-page">
       <header className="page-header">
         <div>
-          <h1>Security Operations Overview</h1>
+          <h1>Overview</h1>
           <p className="page-header-sub">
-            Local-First Human-in-the-Loop Investigation Workbench
+            Alerts, cases and evidence in one analyst-controlled workflow
             {health?.version ? ` · Platform v${health.version}` : ''}
-            {health?.environment ? ` [${health.environment}]` : ''}
+            {health?.environment ? `` : ''}
           </p>
         </div>
         <RoleGuard allowedRoles={['security_admin', 'analyst_tier_2', 'analyst_tier_1']}>
           <button
             className="btn btn-primary"
+            disabled={!apiKey}
+            title={apiKey ? undefined : 'Set an API key first'}
             onClick={() => {
               if (onCreateIncident) {
                 onCreateIncident();
@@ -129,87 +132,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
               }
             }}
           >
-            + Create New Incident
+            New case
           </button>
         </RoleGuard>
       </header>
 
-      {errorMessage && (
-        <div className={`alert-box ${errorType === 'auth' ? 'alert-info' : 'alert-error'}`}>
-          {errorMessage}
-        </div>
-      )}
+      {errorMessage && (errorType === 'auth'
+        ? <SetupNotice message={errorMessage} />
+        : <div className="alert-box alert-error" role="alert">{errorMessage}</div>)}
 
-      <div className="card-grid">
-        <div className="card">
-          <div className="card-title">Active Investigations</div>
-          <div
-            className="card-value"
-            style={{
-              fontSize: errorType ? '16px' : undefined,
-              color: errorType ? 'var(--text-secondary)' : undefined,
-            }}
-          >
-            {renderCaseMetric(openCases.length)}
-          </div>
-          <div className="card-subtitle">
-            {errorType ? 'Case telemetry query paused' : 'Based on the five most recent cases'}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">High & Critical Priority</div>
-          <div
-            className="card-value"
-            style={{
-              color: errorType ? 'var(--text-secondary)' : 'var(--severity-critical-text)',
-              fontSize: errorType ? '16px' : undefined,
-            }}
-          >
-            {renderCaseMetric(criticalCases.length)}
-          </div>
-          <div className="card-subtitle">
-            {errorType ? 'Case telemetry query paused' : 'Based on the five most recent cases'}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">Backend</div>
-          <div className="card-value status-readout">
-            <span className={`status-dot ${health ? (health.status === 'ok' ? 'ok' : 'degraded') : loading ? 'down' : 'degraded'}`} />
-            {health ? (health.status === 'ok' ? 'Online' : 'Degraded') : loading ? 'Connecting...' : 'Degraded'}
-          </div>
-          <div className="card-subtitle">
-            {health?.version ? `Version ${health.version}` : 'No health response received'}
-          </div>
-        </div>
-      </div>
-
-      <section className="workflow" aria-labelledby="workflow-title">
-        <h2 className="section-title" id="workflow-title">Investigation workflow</h2>
-        <ol className="workflow-lane">
-          {[
-            { tab: 'alerts', step: '1', name: 'Alerts', desc: 'Triage ingested alerts from every source' },
-            { tab: 'cases', step: '2', name: 'Cases', desc: 'Group evidence and run the investigation' },
-            { tab: 'evidence', step: '3', name: 'Evidence', desc: 'Inspect raw telemetry and its hash' },
-            { tab: 'reports', step: '4', name: 'Reports', desc: 'Review and export role-tailored reports' },
-          ].map((item) => (
-            <li key={item.tab}>
-              <button className="workflow-step" onClick={() => onNavigate(item.tab)}>
-                <span className="workflow-index font-mono">{item.step}</span>
-                <span className="workflow-name">{item.name}</span>
-                <span className="workflow-desc">{item.desc}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      </section>
-
+      <div className="dash-grid">
+        <div className="dash-main">
       <div className="table-container">
         <div className="table-header-bar">
-          <div className="table-header-title">Recent Security Cases</div>
+          <div className="table-header-title">Recent cases</div>
           <button className="btn btn-secondary" onClick={() => onNavigate('cases')}>
-            View All Cases
+            All cases
           </button>
         </div>
 
@@ -219,7 +157,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         ) : errorType === 'auth' ? (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Authentication required. Configure your API key to load case data.
+            No case data loaded.
           </div>
         ) : errorType === 'forbidden' ? (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -237,7 +175,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Case Number</th>
+                <th>Case number</th>
                 <th>Title</th>
                 <th>Severity</th>
                 <th>Status</th>
@@ -276,6 +214,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </tbody>
           </table>
         )}
+      </div>
+        </div>
+
+        <aside className="dash-side" aria-label="Status and workflow">
+          <section>
+            <h2 className="section-title">Status</h2>
+            <dl className="status-list">
+              <div>
+                <dt>Backend</dt>
+                <dd>
+                  <span className={`status-dot ${health ? (health.status === 'ok' ? 'ok' : 'degraded') : loading ? 'down' : 'degraded'}`} />
+                  {health ? (health.status === 'ok' ? 'Online' : 'Degraded') : loading ? 'Connecting...' : 'Degraded'}
+                </dd>
+              </div>
+              <div>
+                <dt>Version</dt>
+                <dd className="font-mono">{health?.version ?? 'Unavailable'}</dd>
+              </div>
+              <div>
+                <dt>Active investigations</dt>
+                <dd><div className="font-mono">{renderCaseMetric(openCases.length)}</div></dd>
+              </div>
+              <div>
+                <dt>High and critical priority</dt>
+                <dd><div className="font-mono">{renderCaseMetric(criticalCases.length)}</div></dd>
+              </div>
+            </dl>
+            <p className="status-note">
+              {errorType ? 'Case telemetry query paused' : 'Based on the five most recent cases'}
+            </p>
+          </section>
+
+        </aside>
       </div>
     </div>
   );

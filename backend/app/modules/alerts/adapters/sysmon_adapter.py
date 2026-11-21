@@ -12,6 +12,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.modules.evidence.hasher import compute_sha256
+from app.modules.alerts.adapter_protocol import require_event_time
 from app.schemas.alert import (
     AlertCategory,
     AlertEntity,
@@ -111,14 +112,7 @@ class SysmonAlertAdapter:
             or event_data.get("UtcTime")
             or data.get("timestamp")
         )
-        if time_created:
-            try:
-                # Handle ISO string
-                ts = datetime.fromisoformat(str(time_created).replace("Z", "+00:00"))
-            except Exception:
-                ts = datetime.now(timezone.utc)
-        else:
-            ts = datetime.now(timezone.utc)
+        ts = require_event_time(time_created)
 
         rule_name = str(event_data.get("RuleName", "") or "")
         image = str(event_data.get("Image", "") or "")

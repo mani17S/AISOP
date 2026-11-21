@@ -29,6 +29,9 @@ APPROVED_LOCAL_MODELS: frozenset[str] = frozenset({
     "llama3.1:8b",
     "llama3:latest",
     "mistral:latest",
+    # Small local model for low-memory machines (about 1 GB). Output still passes the same claim verification and
+    # falls back to the deterministic report when it cannot be verified.
+    "qwen2.5:1.5b",
 })
 
 # Prohibit remote URLs, cloud endpoints, or path traversal in model overrides
@@ -410,8 +413,23 @@ class InvestigationPromptBuilder:
             temperature=0.0,
             max_tokens=max_tokens,
             json_mode=True,
+            response_schema=self._output_schema(context, target_model),
             think=False,
         )
+
+    @staticmethod
+    def _output_schema(context: InvestigationContext, target_model: str) -> dict:
+        """
+        JSON Schema for constrained generation. System-owned fields are pinned to their known values so the model
+        only authors content; it cannot invent an investigation id or a model identifier.
+        """
+        schema = StructuredInvestigationOutput.model_json_schema()
+        props = schema.get("properties", {})
+        if "investigation_id" in props:
+            props["investigation_id"] = {"type": "string", "const": str(context.investigation_id)}
+        if "model_identifier" in props:
+            props["model_identifier"] = {"type": "string", "const": target_model}
+        return schema
 
     def build_retry_request(
         self,

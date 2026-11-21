@@ -74,7 +74,7 @@ def test_the_launcher_identity_matches_the_compose_metadata_on_disk():
     compose = (TESTS.parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
     assert f"container_name: {C.APPROVED_PG_CONTAINER}" in compose
     assert f"image: {C.APPROVED_PG_IMAGE}" in compose
-    assert f'"{C.APPROVED_PG_PORT}:5432"' in compose
+    assert f'"127.0.0.1:{C.APPROVED_PG_PORT}:5432"' in compose  # loopback only, never published on the LAN
     assert f"name: {C.APPROVED_PG_VOLUME}" in compose
 
 

@@ -64,6 +64,10 @@ class LLMRequest(BaseModel):
         default=False,
         description="If True, instructs the provider to enforce valid JSON formatting.",
     )
+    response_schema: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional JSON Schema. When set, the provider constrains generation to this structure (Ollama structured outputs) instead of free-form JSON, so small models cannot echo their input instead of answering.",
+    )
     think: bool | None = Field(
         default=False,
         description="If False, disables thinking/reasoning tokens for models that support it (e.g. qwen3:4b) to preserve token budget for structured JSON output.",

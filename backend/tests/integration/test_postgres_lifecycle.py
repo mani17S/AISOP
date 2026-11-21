@@ -351,6 +351,10 @@ async def test_postgres_ingestion_service_deduplication(
     - Intra-batch duplicate deduplication operates accurately.
     """
     service = IngestionService()
+    # The disposable database is shared with earlier PostgreSQL tests that may leave rows behind for review, so
+    # counts are asserted as deltas against a baseline taken here, never as absolute numbers.
+    base_raw = await postgres_session.scalar(select(func.count(RawEvidence.id)))
+    base_events = await postgres_session.scalar(select(func.count(NormalizedEventModel.id)))
 
     # 1. Ingest first submission
     req1 = IngestRequest(
@@ -372,8 +376,8 @@ async def test_postgres_ingestion_service_deduplication(
     count_events = await postgres_session.scalar(
         select(func.count(NormalizedEventModel.id))
     )
-    assert count_raw == 1
-    assert count_events == 1
+    assert count_raw == base_raw + 1
+    assert count_events == base_events + 1
 
     # 2. Ingest exact duplicate in a second batch
     resp2 = await service.ingest_batch(postgres_session, req1)
@@ -387,13 +391,13 @@ async def test_postgres_ingestion_service_deduplication(
 
     # Counts must remain unchanged
     count_raw_after = await postgres_session.scalar(select(func.count(RawEvidence.id)))
-    assert count_raw_after == 1
+    assert count_raw_after == base_raw + 1
 
     # 3. Direct PostgreSQL UniqueViolation & Nested SAVEPOINT Recovery Test
     # Simulate a concurrent race condition where a duplicate sha256_hash bypasses
     # in-memory cache and triggers PostgreSQL's unique constraint at flush.
     existing_hash = await postgres_session.scalar(
-        select(RawEvidence.sha256_hash).limit(1)
+        select(RawEvidence.sha256_hash).where(RawEvidence.source_identifier == "SEC-OPS-PG-01").limit(1)
     )
     duplicate_raw = RawEvidence(
         id=uuid.uuid4(),
@@ -452,8 +456,10 @@ async def test_postgres_ingestion_service_deduplication(
             },
         }
     }
-    # Clear test table for clean intra-batch count test
-    await postgres_session.execute(delete(RawEvidence))
+    # Remove only the rows THIS test created (never other tests' rows, which may be referenced by cases) for a clean intra-batch count
+    await postgres_session.execute(
+        delete(RawEvidence).where(RawEvidence.source_identifier.in_(["SEC-OPS-PG-01", "RACE-HOST", "RECOVERY-HOST"]))
+    )
     await postgres_session.commit()
 
     req_intra = IngestRequest(

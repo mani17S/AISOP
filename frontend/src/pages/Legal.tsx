@@ -1,80 +1,88 @@
 /**
  * Privacy Policy and Terms of Service pages.
  *
- * Statements about data handling describe what this codebase does. Operator identity comes from
- * src/legal/operator.ts and is never invented. These pages are not legal advice and need review by
- * qualified counsel before launch.
+ * Statements about data handling describe what this codebase does and can be checked in the browser:
+ * Application, Session Storage for the key; Network for third-party requests; Cookies for cookies.
+ * These pages are a student project's policies and have not had legal review.
  */
 
 import React from 'react';
 import { operator } from '../legal/operator';
 
 const Shell: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="legal-page">
-    <a className="legal-back" href="/">Back to AISOP</a>
-    <h1>{title}</h1>
-    <p className="legal-meta">
-      {operator.name ? `Operated by ${operator.name}.` : 'Operator not yet named.'}
-      {operator.effectiveDate ? ` Effective ${operator.effectiveDate}.` : ''}
-    </p>
-    {children}
-    <p className="legal-meta">
-      Questions:{' '}
-      {operator.contactEmail ? (
-        <a href={`mailto:${operator.contactEmail}`}>{operator.contactEmail}</a>
-      ) : (
-        'contact address not yet set'
-      )}
-    </p>
+  <div className="legal-shell">
+    <header className="legal-head">
+      <a className="lp-wordmark" href="/">AISOP</a>
+      <a className="legal-back" href="/app">Open the workbench</a>
+    </header>
+    <div className="legal-page">
+      <h1>{title}</h1>
+      <p className="legal-meta">
+        Operated by {operator.name}. Effective {operator.effectiveDate}.
+      </p>
+      {children}
+      <p className="legal-meta">
+        Questions or requests: <a href={operator.contactUrl}>{operator.contactUrl}</a>
+      </p>
+    </div>
+    <footer className="app-footer">
+      <span>AISOP</span>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/">Home</a>
+    </footer>
   </div>
 );
 
 export const PrivacyPolicy: React.FC = () => (
   <Shell title="Privacy Policy">
-    <h2>What AISOP is</h2>
     <p>
-      AISOP is a security operations workbench. Analysts load security telemetry and alerts, review the evidence, and
-      produce reports. It is built to run on infrastructure controlled by the operator named above.
+      AISOP is a security operations workbench. Analysts load alerts and telemetry, review the evidence and produce
+      reports. This deployment is a college project operated by the person named above.
     </p>
 
-    <h2>What the website stores in your browser</h2>
+    <h2>What this website stores in your browser</h2>
     <ul>
       <li>
-        The API key you enter is kept in this browser tab's session storage so a page refresh does not log you out. It
-        is cleared when the tab closes. It is never written to local storage and is sent only to the AISOP backend you
-        are using.
+        The API key you enter is kept in this browser tab's session storage so a page refresh does not sign you out. It
+        is cleared when the tab closes. It is not written to local storage and is sent only to the AISOP server.
       </li>
-      <li>The site sets no advertising or analytics cookies and loads no analytics, tracking or advertising scripts.</li>
+      <li>The site sets no cookies and loads no analytics, tracking or advertising scripts.</li>
       <li>Fonts are served by the site itself. The pages make no requests to third-party servers.</li>
     </ul>
 
-    <h2>What the AISOP backend stores</h2>
+    <h2>What the AISOP server stores</h2>
+    <p>The server stores the security data your organization chooses to ingest:</p>
+    <ul>
+      <li>raw alert and event payloads, with their SHA-256 hashes</li>
+      <li>normalized events and the entities extracted from them (IP addresses, hostnames, usernames, file hashes)</li>
+      <li>cases, analyst accounts and roles</li>
+      <li>an audit trail of investigation actions</li>
+    </ul>
     <p>
-      The backend stores the security data your organisation chooses to ingest: raw alert and event payloads, their
-      SHA-256 hashes, normalised events, extracted entities such as IP addresses, hostnames, usernames and file hashes,
-      cases, analyst accounts and roles, and an audit trail of investigation actions. This data can contain personal
-      data about people in your environment. It is held in the operator's own PostgreSQL database.
+      This data can contain personal data about people in your environment. It is held in the operator's PostgreSQL
+      database. This deployment is intended for sample data only.
     </p>
 
     <h2>AI features</h2>
     <p>
       Report drafting and investigation synthesis are optional and use a language model chosen by the operator. In the
-      default configuration the model runs locally and evidence is not sent to a third-party AI service. If an operator
-      connects an external model or threat intelligence service, the data sent to it is governed by that operator's
-      configuration and that service's own terms. AI output is labelled as inference and is reviewed by an analyst
-      before use.
+      default configuration the model runs locally and evidence is not sent to a third-party AI service. If an
+      operator connects an external model or threat intelligence service, the data sent to it is governed by that
+      operator's configuration and that service's own terms. AI output is labeled as inference and an analyst reviews
+      it before use.
     </p>
 
     <h2>Who can see data</h2>
     <p>
-      Access is controlled by analyst accounts, global roles and per-case assignments enforced by the backend. The role
-      selector in the interface is a preview aid only and does not change what the backend allows.
+      Access is controlled by analyst accounts, global roles and per-case assignments enforced by the server. The "View
+      as" selector in the header only changes what the interface shows. It does not change what the server allows.
     </p>
 
     <h2>Retention and deletion</h2>
     <p>
-      The operator decides how long data is kept. To request access to, correction of, or deletion of personal data
-      held in a deployment, contact the operator at the address on this page.
+      The operator decides how long data is kept. To ask for access to, correction of, or deletion of personal data
+      held in this deployment, contact the operator at the address above.
     </p>
 
     <h2>Changes</h2>
@@ -84,16 +92,22 @@ export const PrivacyPolicy: React.FC = () => (
 
 export const TermsOfService: React.FC = () => (
   <Shell title="Terms of Service">
+    <p>
+      These terms have not had legal review. This deployment is a college project provided for demonstration and
+      learning.
+    </p>
+
     <h2>Acceptance</h2>
     <p>
       By using this AISOP deployment you agree to these terms. If you do not agree, do not use it. If you use it for an
-      organisation, you confirm you may bind that organisation.
+      organization, you confirm you may bind that organization.
     </p>
 
-    <h2>Authorised use only</h2>
+    <h2>Authorized use only</h2>
     <p>
-      Use AISOP only on data and systems you are authorised to analyse. Do not use it to access, probe or disrupt
-      systems you do not own or have permission to test, and do not ingest data you have no right to process.
+      Use AISOP only on data and systems you are authorized to analyze. Do not use it to access, probe or disrupt
+      systems you do not own or have permission to test, and do not ingest data you have no right to process. Use
+      sample data only on this deployment.
     </p>
 
     <h2>Accounts and credentials</h2>
@@ -137,7 +151,7 @@ export const TermsOfService: React.FC = () => (
     <p>
       {operator.jurisdiction
         ? `These terms are governed by the laws of ${operator.jurisdiction}.`
-        : 'Governing law is not yet set.'}
+        : 'No governing law has been chosen for this project. If a dispute arises, the operator and the user will try to resolve it in good faith first.'}
     </p>
   </Shell>
 );
