@@ -190,6 +190,10 @@ class CaseResponse(BaseModel):
     severity: CaseSeverity = Field(description="Case severity")
     status: CaseStatus = Field(description="Current lifecycle status")
     lead_analyst_id: uuid.UUID = Field(description="Current lead analyst UUID")
+    lead_analyst_username: str | None = Field(
+        default=None,
+        description="Username of the current lead analyst. Set on case detail only; people with access to the case already see who leads it.",
+    )
     created_at: datetime = Field(description="Case creation timestamp (UTC)")
     updated_at: datetime = Field(description="Last metadata update timestamp (UTC)")
     closed_at: datetime | None = Field(default=None, description="Closure timestamp if terminal")

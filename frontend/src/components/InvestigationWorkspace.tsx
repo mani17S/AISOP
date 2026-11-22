@@ -413,7 +413,10 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
           }}
         >
           <div>
-            Lead analyst: <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{caseDetail.lead_analyst_id}</span>
+            Lead analyst:{' '}
+            <span style={{ color: 'var(--text-primary)' }} title={caseDetail.lead_analyst_id}>
+              {caseDetail.lead_analyst_username ?? caseDetail.lead_analyst_id}
+            </span>
           </div>
           <div>
             Created: <span style={{ color: 'var(--text-primary)' }}>{formatUtc(caseDetail.created_at)}</span>

@@ -573,6 +573,7 @@ class CaseService:
             if (case.closed_at is None or case.closed_at.tzinfo)
             else case.closed_at.replace(tzinfo=timezone.utc)
         )
+        lead_row = (await session.execute(select(Analyst.username).where(Analyst.id == lead_id))).scalars().first()
 
         return CaseResponse(
             id=case.id,
@@ -582,6 +583,7 @@ class CaseService:
             severity=CaseSeverity(case.severity),
             status=CaseStatus(case.status),
             lead_analyst_id=lead_id,
+            lead_analyst_username=lead_row,
             created_at=created,
             updated_at=updated,
             closed_at=closed,

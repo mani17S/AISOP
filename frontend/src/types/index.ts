@@ -77,6 +77,8 @@ export interface CaseResponse {
   severity: CaseSeverity;
   status: CaseStatus;
   lead_analyst_id: string;
+  /** Set on case detail by the server; absent on list and write responses. */
+  lead_analyst_username?: string | null;
   created_at: string;
   updated_at: string;
   closed_at: string | null;

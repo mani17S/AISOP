@@ -351,6 +351,23 @@ class TestCaseDetailAndAntiEnumeration:
     """Verify anti-enumeration: missing and unassigned cases return identical 404."""
 
     @pytest.mark.anyio
+    async def test_case_detail_shows_the_lead_analyst_name_not_only_an_id(self, app_instance, db_session):
+        token, analyst = await seed_analyst_with_token(
+            db_session, prefix="leadname11111111", username="dana_lead", global_role="analyst_tier_2"
+        )
+        transport = httpx.ASGITransport(app=app_instance)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post(
+                "/api/v1/cases", headers={"Authorization": f"Bearer {token}"}, json={"title": "Lead name case", "severity": "low"}
+            )
+            case_id = created.json()["id"]
+            detail = await client.get(f"/api/v1/cases/{case_id}", headers={"Authorization": f"Bearer {token}"})
+            assert detail.status_code == status.HTTP_200_OK
+            body = detail.json()
+            assert body["lead_analyst_id"] == str(analyst.id)
+            assert body["lead_analyst_username"] == "dana_lead"
+
+    @pytest.mark.anyio
     async def test_case_detail_anti_enumeration(self, app_instance, db_session):
         token_assigned, assigned_analyst = await seed_analyst_with_token(
             db_session, prefix="detailauth11111", username="assigned_user"
