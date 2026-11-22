@@ -16,6 +16,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { PrivacyPolicy, TermsOfService } from './pages/Legal';
 import { Landing } from './pages/Landing';
 import { NoKeyPage } from './components/NoKeyPage';
+import { RoleStrip } from './components/RoleStrip';
 import { useAuth } from './contexts/AuthContext';
 
 const ShellBody: React.FC = () => {
@@ -55,6 +56,7 @@ const ShellBody: React.FC = () => {
     <>
       <div className="app-container">
         <Navbar currentTab={currentTab} onSelectTab={handleSelectTab} />
+        <RoleStrip />
 
         <main className="main-content">
           <ErrorBoundary fallbackTitle="Application view error">

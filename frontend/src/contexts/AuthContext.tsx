@@ -33,9 +33,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+const VIEW_AS_KEY = 'aisop_view_as';
+const VALID_ROLES: GlobalRole[] = ['security_admin', 'analyst_tier_2', 'analyst_tier_1', 'auditor_viewer'];
+
+/** The previewed role is a per-tab convenience only. Reading it can fail (private mode), so it falls back silently. */
+const readStoredRole = (): GlobalRole => {
+  try {
+    const stored = sessionStorage.getItem(VIEW_AS_KEY);
+    if (stored && (VALID_ROLES as string[]).includes(stored)) return stored as GlobalRole;
+  } catch {
+    /* ignore */
+  }
+  return 'analyst_tier_2';
+};
+
+export const AuthProvider: React.FC<{ children: ReactNode; initialRole?: GlobalRole }> = ({ children, initialRole }) => {
   const [username, setUsername] = useState<string>('lead_analyst');
-  const [globalRole, setRole] = useState<GlobalRole>('analyst_tier_2');
+  const [globalRole, setRoleState] = useState<GlobalRole>(initialRole ?? readStoredRole());
+  const setRole = (role: GlobalRole) => {
+    setRoleState(role);
+    try {
+      sessionStorage.setItem(VIEW_AS_KEY, role);
+    } catch {
+      /* ignore */
+    }
+  };
   const [apiKey, setApiKeyState] = useState<string>(() => api.getApiKey());
   const [keyDialogOpen, setKeyDialogOpen] = useState<boolean>(false);
 
