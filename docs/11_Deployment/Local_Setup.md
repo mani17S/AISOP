@@ -8,9 +8,11 @@ PostgreSQL 17 with pgvector, from `docker-compose.yml` (host port 5433). Create 
 ```
 docker exec aisop-postgres psql -U <user> -d postgres -c "CREATE DATABASE <db>;"
 docker exec aisop-postgres psql -U <user> -d <db> -c "CREATE EXTENSION IF NOT EXISTS vector;"
-set DATABASE_URL=postgresql+psycopg://<user>:<password>@localhost:5433/<db>
+set DATABASE_URL=postgresql+psycopg://<user>:<password>@127.0.0.1:5433/<db>
 .venv\Scripts\python.exe -m alembic upgrade head
 ```
+
+Use `127.0.0.1` in the connection string, not `localhost`. On Windows with Docker Desktop, `localhost` can resolve to the IPv6 address first, and a new connection to it stalls until the connect timeout. Measured on 2026-11-22: eight simultaneous new connections to `127.0.0.1` took at most 0.13 s; the same test with `localhost` stalled for the full 60 s timeout in every round. This was the cause of the "130 second" stall when several investigations ran at once.
 
 ## 2. Local model (Ollama)
 Models are stored on D: so nothing is written to C:.

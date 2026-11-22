@@ -44,3 +44,12 @@ def test_cors_preflight_rejects_unknown_origin_and_unlisted_header(monkeypatch):
         },
     )
     assert odd_header.status_code == 400
+
+
+def test_default_database_address_is_ipv4_loopback_not_localhost():
+    """On Windows with Docker Desktop, `localhost` can resolve to ::1 first and a new connection then stalls for the
+    whole connect timeout (measured: 60 s per attempt). The default must name the IPv4 loopback address."""
+    from app.core.config import Settings
+
+    default = Settings.model_fields["DATABASE_URL"].default
+    assert "@127.0.0.1:" in default and "localhost" not in default

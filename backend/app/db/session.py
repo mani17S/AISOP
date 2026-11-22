@@ -33,11 +33,20 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(
-            settings.DATABASE_URL,
-            echo=settings.DATABASE_ECHO,
-            future=True,
-        )
+        engine_kwargs: dict[str, Any] = {"echo": settings.DATABASE_ECHO, "future": True}
+        if not settings.DATABASE_URL.startswith("sqlite"):
+            # A request can hold a route session while authentication and role checks open others, so the pool must
+            # be larger than the expected concurrency. pre_ping replaces connections that died (for example after a
+            # database restart) instead of failing the first request that picks one up.
+            engine_kwargs.update(
+                pool_size=settings.DB_POOL_SIZE,
+                max_overflow=settings.DB_MAX_OVERFLOW,
+                pool_timeout=settings.DB_POOL_TIMEOUT_SECONDS,
+                pool_pre_ping=True,
+            )
+            # Fail a stalled connection attempt in seconds instead of minutes.
+            engine_kwargs["connect_args"] = {"connect_timeout": 10}
+        _engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
     return _engine
 
 

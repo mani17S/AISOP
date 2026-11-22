@@ -84,7 +84,10 @@ class Settings(BaseSettings):
     )
 
     # ── Database (PostgreSQL) ────────────────────────────────────
-    DATABASE_URL: str = "postgresql+psycopg://aisop:aisop@localhost:5432/aisop_dev"
+    DB_POOL_SIZE: int = Field(default=10, gt=0, description="Persistent database connections per process")
+    DB_MAX_OVERFLOW: int = Field(default=20, ge=0, description="Extra connections allowed under load")
+    DB_POOL_TIMEOUT_SECONDS: int = Field(default=10, gt=0, description="Seconds a request waits for a free connection before failing")
+    DATABASE_URL: str = "postgresql+psycopg://aisop:aisop@127.0.0.1:5432/aisop_dev"
     DATABASE_ECHO: bool = False  # SQLAlchemy: echo SQL to stdout
 
     # ── Ollama (Local LLM — ADR-001) ────────────────────────────
