@@ -28,7 +28,7 @@ export const Landing: React.FC = () => (
         <a href="#keeps">What it keeps</a>
         <a href="https://github.com/mani17S/AISOP">Source code</a>
       </nav>
-      <a className="btn btn-primary" href="/app">Open the workbench</a>
+      <a className="lp-navlink" href="/app">Open the workbench</a>
     </header>
 
     <main>

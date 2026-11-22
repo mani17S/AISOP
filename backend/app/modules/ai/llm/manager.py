@@ -51,6 +51,7 @@ def _ollama_factory(cfg: Settings) -> LLMProvider:
         temperature=cfg.OLLAMA_TEMPERATURE,
         max_retries=cfg.OLLAMA_MAX_RETRIES,
         keep_alive=cfg.OLLAMA_KEEP_ALIVE,
+        num_ctx=getattr(cfg, "OLLAMA_NUM_CTX", None),
     )
 
 

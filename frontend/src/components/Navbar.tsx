@@ -130,10 +130,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
             <span>{health ? (health.status === 'ok' ? 'Online' : 'Degraded') : 'Connecting...'}</span>
           </div>
 
-          <div className="health-badge" title="Whether an API key is set in this tab">
-            <span>{apiKey ? 'Key set' : 'No key'}</span>
-          </div>
-
           <UtcClock />
 
           <div className="role-selector" title="Client-side UI simulation only. Backend independently enforces actual permissions based on the authenticated principal / token.">

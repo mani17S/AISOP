@@ -364,8 +364,11 @@ async def get_readiness(
         "status": "ok" if all_ok else "degraded",
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "checks": checks,
     }
+    # This route is unauthenticated. Component detail (database engine, pgvector version, schema, model name, provider
+    # error text) is infrastructure fingerprinting, so it is served only in development (API8:2023).
+    if settings.ENVIRONMENT == "development":
+        response["checks"] = checks
 
     if not all_ok:
         raise StructuredHttpError(503, SERVICE_UNAVAILABLE, "The service is not ready.", response)

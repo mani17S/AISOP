@@ -37,7 +37,7 @@ from app.modules.ai.guardrails.validator import (
     InvestigationValidationResult,
 )
 from app.modules.ai.context_builder.hasher import compute_context_sha256
-from app.modules.ai.prompt_builder.builder import InvestigationPromptBuilder
+from app.modules.ai.prompt_builder.builder import BOUNDED_MAX_TOKENS, InvestigationPromptBuilder
 from app.modules.ai.response_parser.parser import InvestigationResponseParser
 from app.modules.correlation.correlator import correlate, first_event_of_max_severity
 from app.modules.correlation.ledger import Ledger, verify_chain
@@ -431,6 +431,7 @@ async def _llm_for_incident(analysis: IncidentAnalysis, provider: Any, attack_re
             context,
             sufficiency_note=assessment.limitation_note(),
             model_override=getattr(provider, "model_name", None),  # use the configured model, not the context's recorded default
+            max_tokens=BOUNDED_MAX_TOKENS,  # the bounded schema keeps a valid answer far below this; see docs/06_AI/AI_Latency.md
         )
         raw = await GatedGenerator.generate(provider, request, assessment, context)
     except Exception as exc:  # noqa: BLE001 - provider failure or gate refusal: deterministic fallback

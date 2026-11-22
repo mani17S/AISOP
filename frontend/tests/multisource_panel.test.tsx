@@ -12,7 +12,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { VerificationNote } from '../src/components/VerificationNote';
-import { AiExplanationStep, ClaimVerificationNote, MultiSourcePanel, MultiSourceResultView, ReviewStep, VerdictBanner, reviewText } from '../src/components/MultiSourcePanel';
+import { AiExplanationStep, AiResultSection, AiRunStatus, ClaimVerificationNote, MultiSourcePanel, MultiSourceResultView, ReviewStep, VerdictBanner, formatElapsed, reviewText } from '../src/components/MultiSourcePanel';
+import { runWithDeadline } from '../src/utils/deadline';
 import { AuthProvider } from '../src/contexts/AuthContext';
 import { ClaimVerification, ClaimVerificationOutcome, MultiSourceClaim, MultiSourceInvestigation, MultiSourceRationale, MultiSourceSufficiency } from '../src/types';
 
@@ -354,6 +355,83 @@ describe('AI explanation step (optional, on demand, never blocks the determinist
     const src = readFileSync(new URL('../src/components/MultiSourcePanel.tsx', import.meta.url), 'utf8');
     assert.ok(!src.includes('Also run AI-assisted analysis'));
     assert.match(src, /use_llm: false, force/);                 // the deterministic start always requests the model off
+  });
+});
+
+describe('AI run is honest about time and keeps the deterministic result visible', () => {
+  const noAi = (): MultiSourceInvestigation => ({ ...data('sufficient'), use_llm: false, incidents: data('sufficient').incidents.map((i) => ({ ...i, llm: null, llm_status: 'not_requested' })) });
+  const withStatus = (status: string): MultiSourceInvestigation => {
+    const d = data('sufficient');
+    return { ...d, incidents: d.incidents.map((i) => ({ ...i, llm_status: status })) };
+  };
+
+  it('running status uses real elapsed time only: fixed wording, a timer, a Cancel, no percentage or progress bar', () => {
+    const html = render(<AiRunStatus elapsed={75} onCancel={() => {}} />);
+    assert.ok(html.includes('Local model running, this can take over a minute'));
+    assert.ok(html.includes('role="status"') && html.includes('aria-live="polite"'));
+    assert.ok(html.includes('role="timer"') && html.includes('aria-live="off"') && html.includes('Elapsed 1:15'));
+    assert.ok(html.includes('Cancel'));
+    assert.ok(!html.includes('%') && !html.includes('<progress') && !html.includes('role="progressbar"'));
+    assert.strictEqual(formatElapsed(0), '0:00');
+    assert.strictEqual(formatElapsed(61), '1:01');
+  });
+
+  it('the AI step asks for use_llm and force only on the analyst click, and disables other buttons while running', () => {
+    const src = readFileSync(new URL('../src/components/MultiSourcePanel.tsx', import.meta.url), 'utf8');
+    assert.match(src, /use_llm: true, force: true/);
+    assert.match(src, /disabled=\{busy \|\| aiRunning \|\| caseClosed\}/);          // start button
+    assert.match(src, /if \(cancelRef\.current\) return;/);                       // no duplicate request while active
+    const html = render(<AiExplanationStep caseId="c1" onResult={() => {}} />);
+    assert.ok(!html.includes('Local model running'));                              // not started automatically
+  });
+
+  it('cancel aborts the request (AbortController) and reports cancelled, so the deterministic result is kept', async () => {
+    let aborted = false;
+    const handle = runWithDeadline(
+      (signal) => new Promise<never>((_, reject) => signal.addEventListener('abort', () => { aborted = true; reject(new Error('aborted')); })),
+      60_000,
+    );
+    handle.cancel();
+    const outcome = await handle.result;
+    assert.strictEqual(outcome.kind, 'cancelled');
+    assert.ok(aborted);
+  });
+
+  it('timeout, cancel and failure each say what happened, keep the deterministic result and offer a way to run again', () => {
+    const timeout = render(<AiExplanationStep caseId="c1" onResult={() => {}} initialState={{ kind: 'timeout' }} />);
+    assert.ok(timeout.includes('AI timed out') && timeout.includes('deterministic result is unchanged') && timeout.includes('Retry AI explanation'));
+    const failed = render(<AiExplanationStep caseId="c1" onResult={() => {}} initialState={{ kind: 'failed', message: 'The server could not be reached.' }} />);
+    assert.ok(failed.includes('could not be completed (The server could not be reached.)') && failed.includes('role="alert"') && failed.includes('Retry AI explanation'));
+    const cancelled = render(<AiExplanationStep caseId="c1" onResult={() => {}} initialState={{ kind: 'cancelled' }} />);
+    assert.ok(cancelled.includes('AI explanation cancelled') && cancelled.includes('deterministic result is unchanged') && cancelled.includes('Run AI explanation'));
+  });
+
+  it('the AI result is a separate section labelled as not observed evidence', () => {
+    const html = render(<AiResultSection data={withStatus('validated')} />);
+    assert.ok(html.includes('AI-generated, not observed evidence'));
+    assert.ok(html.includes('is not') && html.includes('Scripted summary.'));
+    assert.ok(!html.includes('Evidence timeline'));                                // none of the deterministic view is repeated
+  });
+
+  it('shows the fallback reason in plain words when the backend fell back', () => {
+    const html = render(<AiResultSection data={withStatus('fallback:LLMConnectionError')} />);
+    assert.ok(html.includes('AI-generated, not observed evidence'));
+    assert.ok(html.includes('AI assistance was unavailable for this run') && html.includes('No AI result was generated'));
+    assert.ok(html.includes('fallback:LLMConnectionError'));
+  });
+
+  it('labels the stored deterministic result as the deterministic analysis', () => {
+    const html = render(<MultiSourcePanel caseId="11111111-1111-1111-1111-111111111111" initialResult={noAi()} />);
+    assert.ok(html.includes('Deterministic analysis') && html.includes('without a language model'));
+    assert.ok(!html.includes('AI-generated, not observed evidence'));              // no AI section until an AI run finishes
+    const stored = render(<MultiSourcePanel caseId="11111111-1111-1111-1111-111111111111" initialResult={data('sufficient')} />);
+    assert.ok(stored.includes('Stored investigation (includes an AI-assisted analysis)'));
+  });
+
+  it('new copy has no em dash', () => {
+    const src = readFileSync(new URL('../src/components/MultiSourcePanel.tsx', import.meta.url), 'utf8');
+    const added = src.slice(src.indexOf('export const useElapsedSeconds'));
+    assert.ok(!added.includes('—'));
   });
 });
 

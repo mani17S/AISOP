@@ -70,7 +70,9 @@ class OllamaProvider:
         max_retries: int = 3,
         keep_alive: str = "5m",
         client: httpx.AsyncClient | None = None,
+        num_ctx: int | None = None,
     ) -> None:
+        self._num_ctx = num_ctx
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout_seconds = timeout_seconds
@@ -141,6 +143,9 @@ class OllamaProvider:
 
         if request.max_tokens is not None:
             payload["options"]["num_predict"] = request.max_tokens
+
+        if self._num_ctx is not None:
+            payload["options"]["num_ctx"] = self._num_ctx
 
         return payload
 
@@ -291,8 +296,24 @@ class OllamaProvider:
         else:
             finish_reason = "incomplete"
 
+        if self._num_ctx is not None and total_tokens >= int(self._num_ctx * 0.9):
+            logger.warning(
+                "Ollama response used most of the configured context window; the prompt may have been truncated",
+                model=target_model,
+                num_ctx=self._num_ctx,
+                total_tokens=total_tokens,
+            )
+
+        # Latency breakdown (milliseconds) for operators: where the time went, as reported by Ollama itself.
+        load_ms = round(float(response_data.get("load_duration", 0) or 0) / 1_000_000.0, 2)
+        prompt_eval_ms = round(float(response_data.get("prompt_eval_duration", 0) or 0) / 1_000_000.0, 2)
+        eval_ms = round(float(response_data.get("eval_duration", 0) or 0) / 1_000_000.0, 2)
+
         logger.info(
             "Ollama inference completed successfully",
+            load_ms=load_ms,
+            prompt_eval_ms=prompt_eval_ms,
+            eval_ms=eval_ms,
             model=target_model,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,

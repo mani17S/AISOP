@@ -25,6 +25,17 @@ LIMITS: tuple[tuple[re.Pattern[str], int], ...] = (
     (re.compile(r"^/api/v1/evidence/ingest/?$"), 64 * 1024 * 1024),
 )
 
+#: Second, separate table (API4:2023) for write endpoints whose bodies are small structured JSON but whose schemas have no byte cap of
+#: their own (for example a free-text ``query_filter``). Applied by a second BodySizeLimitMiddleware instance in ``create_app``.
+SMALL_BODY_LIMITS: tuple[tuple[re.Pattern[str], int], ...] = (
+    (re.compile(r"^/api/v1/cases/?$"), 1024 * 1024),
+    (re.compile(r"^/api/v1/cases/[^/]+/?$"), 1024 * 1024),
+    (re.compile(r"^/api/v1/cases/[^/]+/(assignments|lead|close|synthesize|investigations/synthesize|reports/synthesize|investigations/multisource(/review)?)/?$"), 1024 * 1024),
+    (re.compile(r"^/api/v1/(investigations|reports)/synthesize/?$"), 1024 * 1024),
+    # The report formatter carries a full validation result plus its investigation context, the largest JSON body of this group.
+    (re.compile(r"^/api/v1/reports/format/?$"), 8 * 1024 * 1024),
+)
+
 
 class _TooLarge(Exception):
     pass
@@ -102,4 +113,4 @@ class BodySizeLimitMiddleware:
         await send({"type": "http.response.body", "body": detail})
 
 
-__all__ = ["BodySizeLimitMiddleware", "LIMITS"]
+__all__ = ["BodySizeLimitMiddleware", "LIMITS", "SMALL_BODY_LIMITS"]

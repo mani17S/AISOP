@@ -22,6 +22,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 
+class ProductionConfigError(RuntimeError):
+    """Refusal to start in production with an unsafe configuration. Messages never contain secret values."""
+
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
@@ -228,6 +232,21 @@ class Settings(BaseSettings):
     # ── CORS ─────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # ── API abuse controls (OWASP API2/API4 review) ──────────────
+    AUTH_BRUTE_FORCE_PROTECTION_ENABLED: bool = Field(
+        default=True,
+        description="Lock out a client address after repeated rejected API keys (in-memory, per process)",
+    )
+    AUTH_FAILURE_MAX_PER_IP: int = Field(
+        default=20, gt=0, description="Rejected credentials per client address within 5 minutes before lockout"
+    )
+    AUTH_LOCKOUT_SECONDS: int = Field(
+        default=60, gt=0, description="Initial lockout duration; doubles on each repeat lockout up to 15 minutes"
+    )
+    RATE_LIMIT_EXPENSIVE_PER_MINUTE: int = Field(
+        default=20, gt=0, description="Per-credential allowance for LLM-capable synthesis and report-export endpoints"
+    )
+
     @field_validator("API_AUTH_KEYS", mode="before")
     @classmethod
     def _parse_api_auth_keys(cls, v: Any) -> list[str]:
@@ -294,6 +313,33 @@ class Settings(BaseSettings):
             raise ValueError("API_AUTH_ENABLED cannot be False in production environment")
         return self
 
+    @model_validator(mode="after")
+    def _validate_cors_origins(self) -> Self:
+        if self.ENVIRONMENT in ("staging", "production") and any(o.strip() == "*" for o in self.CORS_ORIGINS):
+            raise ValueError("CORS_ORIGINS must list explicit origins (no wildcard) outside development")
+        return self
+
+    # ── MITRE D3FEND reference (optional, local, offline) ───────
+    DEFENSE_REFERENCE_PATH: str | None = Field(
+        default=None,
+        description=(
+            "Optional local directory holding the pinned MITRE D3FEND release files (d3fend-full-mappings.csv, d3fend.csv). "
+            "Unset = not configured (no countermeasure section, behaviour unchanged). Hash-verified, loaded lazily once, no network."
+        ),
+    )
+
+    # ── Ollama latency (opt-in; docs/06_AI/AI_Latency.md) ───────
+    OLLAMA_NUM_CTX: int | None = Field(
+        default=None,
+        ge=1024,
+        le=32768,
+        description=(
+            "Optional Ollama context window (tokens) sent as options.num_ctx. Unset = Ollama's own default (unchanged behaviour). "
+            "A smaller window decodes faster on CPU but Ollama silently drops the oldest prompt tokens that do not fit, so it must stay "
+            "above the largest prompt plus the output ceiling; the provider logs a warning when a response nears the window."
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -312,3 +358,30 @@ def get_settings() -> Settings:
     before constructing a new Settings with overridden env vars.
     """
     return Settings()
+
+
+_WEAK_DB_PASSWORDS = frozenset({"", "aisop", "password", "postgres", "changeme", "admin", "secret"})
+
+
+def validate_production_settings(settings: Settings) -> None:
+    """
+    Start-up gate for ENVIRONMENT=production (OWASP API8:2023). Raises ProductionConfigError when the database uses the
+    shipped demo credentials or another trivially weak password, or CORS_ORIGINS contains a wildcard (also rejected earlier by
+    the Settings validator). Does nothing outside production. The error names the problem only, never the credential.
+    """
+    if settings.ENVIRONMENT != "production":
+        return
+    from sqlalchemy.engine import make_url
+
+    problems: list[str] = []
+    try:
+        url = make_url(settings.DATABASE_URL)
+        password = url.password or ""
+        if password.lower() in _WEAK_DB_PASSWORDS or password == url.username:
+            problems.append("DATABASE_URL uses a default or weak database password")
+    except Exception:
+        problems.append("DATABASE_URL could not be parsed")
+    if any(o.strip() == "*" for o in settings.CORS_ORIGINS):
+        problems.append("CORS_ORIGINS contains a wildcard")
+    if problems:
+        raise ProductionConfigError("Refusing to start in production: " + "; ".join(problems) + ".")

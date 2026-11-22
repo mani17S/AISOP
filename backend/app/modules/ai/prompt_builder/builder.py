@@ -24,6 +24,22 @@ from app.schemas.investigation import InvestigationContext, StructuredInvestigat
 
 
 DEFAULT_MAX_TOKENS: int = 2048
+# Output ceiling for the per-incident multi-source call. The bounded schema below keeps a valid answer well under this;
+# the ceiling only limits a pathological generation (a truncated answer falls back to the deterministic report).
+BOUNDED_MAX_TOKENS: int = 1024
+# Schema bounds (same cardinality the prompt already requests: 1-2 claims, max 1 hypothesis, 1 alternative, 1-2 actions).
+OUTPUT_LIST_LIMITS: dict[str, int] = {
+    "claims": 2,
+    "mitre_attack_hypotheses": 1,
+    "alternative_explanations": 1,
+    "recommended_analyst_actions": 2,
+    "uncertainty_and_data_gaps": 3,
+}
+OUTPUT_SUMMARY_MAX_CHARS: int = 500
+OUTPUT_CLAIM_MAX_CHARS: int = 240
+OUTPUT_REASONING_MAX_CHARS: int = 300
+OUTPUT_LIST_ITEM_MAX_CHARS: int = 220
+OUTPUT_ASSERTIONS_MAX: int = 3
 APPROVED_LOCAL_MODELS: frozenset[str] = frozenset({
     "qwen3:4b",
     "llama3.1:8b",
@@ -422,6 +438,12 @@ class InvestigationPromptBuilder:
         """
         JSON Schema for constrained generation. System-owned fields are pinned to their known values so the model
         only authors content; it cannot invent an investigation id or a model identifier.
+
+        Latency (docs/06_AI/AI_Latency.md): on a CPU-only host decoding costs about 0.12 s per output token and prompt
+        processing is negligible, so output length is the lever. The schema therefore (1) bounds list sizes and string
+        lengths to the cardinality the prompt already asks for, and (2) leaves out fields only the platform may set
+        (``verification``, ``taxonomy``, ``generated_at``, ``claim_id``) so the model cannot emit them at all. Parsing and
+        validation are unchanged: every omitted field is optional and is still computed or discarded server-side.
         """
         schema = StructuredInvestigationOutput.model_json_schema()
         props = schema.get("properties", {})
@@ -429,7 +451,60 @@ class InvestigationPromptBuilder:
             props["investigation_id"] = {"type": "string", "const": str(context.investigation_id)}
         if "model_identifier" in props:
             props["model_identifier"] = {"type": "string", "const": target_model}
+        InvestigationPromptBuilder._bound_output_schema(schema)
         return schema
+
+    @staticmethod
+    def _bound_output_schema(schema: dict) -> None:
+        """In-place: cap list sizes and string lengths, drop platform-owned fields, prune unreferenced ``$defs``."""
+        props = schema.get("properties", {})
+        defs = schema.get("$defs", {})
+
+        def cap(node: dict | None, key: str, value: int) -> None:
+            if isinstance(node, dict):
+                node[key] = value
+
+        for name, limit in OUTPUT_LIST_LIMITS.items():
+            cap(props.get(name), "maxItems", limit)
+        cap(props.get("investigation_summary"), "maxLength", OUTPUT_SUMMARY_MAX_CHARS)
+        for name in ("alternative_explanations", "recommended_analyst_actions", "uncertainty_and_data_gaps"):
+            if isinstance(props.get(name), dict):
+                cap(props[name].get("items"), "maxLength", OUTPUT_LIST_ITEM_MAX_CHARS)
+
+        claim = defs.get("FactualClaimItem", {}).get("properties", {})
+        cap(claim.get("claim_text"), "maxLength", OUTPUT_CLAIM_MAX_CHARS)
+        if isinstance(claim.get("assertions"), dict):
+            for branch in claim["assertions"].get("anyOf", []):
+                if isinstance(branch, dict) and branch.get("type") == "array":
+                    branch["maxItems"] = OUTPUT_ASSERTIONS_MAX
+        hypothesis = defs.get("MitreAttackHypothesis", {}).get("properties", {})
+        cap(hypothesis.get("reasoning"), "maxLength", OUTPUT_REASONING_MAX_CHARS)
+
+        for field in ("verification", "claim_id"):
+            claim.pop(field, None)
+        hypothesis.pop("taxonomy", None)
+        props.pop("generated_at", None)
+        for node in (defs.get("FactualClaimItem"), defs.get("MitreAttackHypothesis")):
+            if isinstance(node, dict) and isinstance(node.get("required"), list):
+                node["required"] = [r for r in node["required"] if r not in ("verification", "claim_id", "taxonomy")]
+        if isinstance(schema.get("required"), list):
+            schema["required"] = [r for r in schema["required"] if r != "generated_at"]
+
+        # Keep only the definitions still reachable from the root (smaller grammar for the sampler to build).
+        def refs(node: Any) -> set[str]:
+            return set(re.findall(r"#/\$defs/(\w+)", json.dumps(node)))
+
+        keep: set[str] = set()
+        frontier = refs({k: v for k, v in schema.items() if k != "$defs"})
+        while frontier:
+            name = frontier.pop()
+            if name in keep or name not in defs:
+                continue
+            keep.add(name)
+            frontier |= refs(defs[name])
+        for name in list(defs):
+            if name not in keep:
+                del defs[name]
 
     def build_retry_request(
         self,

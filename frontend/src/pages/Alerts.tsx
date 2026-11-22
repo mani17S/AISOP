@@ -612,7 +612,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                         )}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>None</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} aria-label="None">-</span>
                     )}
                   </td>
                   <td>
@@ -626,7 +626,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>None</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} aria-label="None">-</span>
                     )}
                   </td>
                   <td>
@@ -655,7 +655,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                       </button>
                       <RoleGuard allowedRoles={['security_admin', 'analyst_tier_2', 'analyst_tier_1']}>
                         <button
-                          className="btn btn-primary"
+                          className="btn btn-secondary"
                           style={{ padding: '4px 8px', fontSize: '12px' }}
                           onClick={() => handleOpenPromote(alert)}
                           title="Promote alert to formal investigation case"

@@ -16,7 +16,9 @@ Invariants:
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import math
+import re
 import threading
 import time
 from typing import Callable, Sequence
@@ -26,6 +28,50 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.errors import RATE_LIMITED, build_body
+
+
+#: Endpoints that start LLM-capable or correlation-heavy work. They get a tighter per-credential bucket on top of the
+#: general one so a single key cannot queue unbounded local-model inference (API4:2023 / API6:2023).
+EXPENSIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("POST", re.compile(r"^/api/v1/cases/[^/]+/(investigations/synthesize|synthesize|reports/synthesize|investigations/multisource)/?$")),
+    ("GET", re.compile(r"^/api/v1/cases/[^/]+/reports/export/?$")),
+)
+
+#: A credentialed client is also charged to an aggregate per-address bucket this many times larger than its own, so
+#: rotating invalid or random keys from one address cannot mint unlimited fresh buckets.
+IP_AGGREGATE_MULTIPLIER = 4.0
+
+
+def _is_ip(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def resolve_client_ip(request: Request, trusted_proxies: Sequence[str] | set[str]) -> str:
+    """
+    Address of the real client. X-Forwarded-For is only honoured when the socket peer is a configured trusted proxy, and
+    is read from the right: each trusted proxy appends the address it saw, so the first entry that is not a trusted proxy
+    is the nearest untrusted hop. Entries further left are client-controlled and are ignored (API4/API8 spoofing).
+    A malformed entry stops the walk and the socket peer is used.
+    """
+    peer = request.client.host if request.client and request.client.host else "unknown"
+    if peer not in trusted_proxies:
+        return peer
+    forwarded = request.headers.get("X-Forwarded-For")
+    if not forwarded:
+        return peer
+    for entry in reversed([e.strip() for e in forwarded.split(",")]):
+        if not entry:
+            continue
+        if not _is_ip(entry):
+            return peer
+        if entry in trusted_proxies:
+            continue
+        return entry
+    return peer
 
 
 class ClientTokenBucket:
@@ -88,8 +134,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         max_buckets: int = 10000,
         cleanup_interval_seconds: float = 300.0,
         trusted_proxies: Sequence[str] | set[str] | None = None,
+        expensive_requests_per_minute: int = 20,
+        expensive_burst_capacity: int = 10,
     ) -> None:
         super().__init__(app)
+        self.expensive_capacity = float(max(1, expensive_burst_capacity))
+        self.expensive_refill_rate = float(max(1, expensive_requests_per_minute)) / 60.0
         self.enabled = enabled
         self.capacity = float(max(1, burst_capacity))
         self.refill_rate = float(max(1, requests_per_minute)) / 60.0
@@ -125,18 +175,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             digest = hashlib.sha256(api_key.strip().encode("utf-8")).hexdigest()[:16]
             return f"key:{digest}"
 
-        # 3. Client IP address
-        client_host = request.client.host if request.client and request.client.host else "unknown"
+        # 3. Client IP address (X-Forwarded-For only from verified trusted proxies, read from the right)
+        return f"ip:{self._resolve_client_ip(request)}"
 
-        # Only trust X-Forwarded-For if connecting client matches trusted_proxies
-        if client_host in self.trusted_proxies:
-            forwarded = request.headers.get("X-Forwarded-For")
-            if forwarded:
-                first_ip = forwarded.split(",")[0].strip()
-                if first_ip:
-                    return f"ip:{first_ip}"
+    def _resolve_client_ip(self, request: Request) -> str:
+        return resolve_client_ip(request, self.trusted_proxies)
 
-        return f"ip:{client_host}"
+    def _is_expensive(self, request: Request) -> bool:
+        return any(request.method == m and pat.match(request.url.path) for m, pat in EXPENSIVE_PATTERNS)
+
+    def _acquire(self, bucket_id: str, capacity: float, refill_rate: float, now: float) -> tuple[bool, float, float]:
+        """Charge one token to ``bucket_id`` (created on first use). Caller holds the lock. Returns (ok, retry_after, tokens_left)."""
+        bucket = self._buckets.get(bucket_id)
+        if bucket is None:
+            if len(self._buckets) >= self.max_buckets:
+                oldest_key = min(self._buckets.keys(), key=lambda k: self._buckets[k].last_activity)
+                del self._buckets[oldest_key]
+            bucket = ClientTokenBucket(capacity=capacity, refill_rate=refill_rate, now=now)
+            self._buckets[bucket_id] = bucket
+        ok, retry_after = bucket.try_acquire(1.0, now)
+        return ok, retry_after, bucket.tokens
 
     def _cleanup_stale_buckets(self, now: float) -> None:
         """
@@ -177,25 +235,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client_id = self._resolve_client_identifier(request)
         now = self.time_func()
+        has_credential = not client_id.startswith("ip:")
 
         with self._lock:
             self._cleanup_stale_buckets(now)
 
-            bucket = self._buckets.get(client_id)
-            if bucket is None:
-                if len(self._buckets) >= self.max_buckets:
-                    oldest_key = min(self._buckets.keys(), key=lambda k: self._buckets[k].last_activity)
-                    del self._buckets[oldest_key]
-
-                bucket = ClientTokenBucket(
-                    capacity=self.capacity,
-                    refill_rate=self.refill_rate,
-                    now=now,
+            acquired, retry_after, current_tokens = True, 0.0, 0
+            if has_credential:
+                # Aggregate per-address bucket first: it is what stops a client rotating random keys to dodge its own bucket.
+                ip_id = f"ipk:{self._resolve_client_ip(request)}"
+                acquired, retry_after, _ = self._acquire(
+                    ip_id, self.capacity * IP_AGGREGATE_MULTIPLIER, self.refill_rate * IP_AGGREGATE_MULTIPLIER, now
                 )
-                self._buckets[client_id] = bucket
-
-            acquired, retry_after = bucket.try_acquire(1.0, now)
-            current_tokens = max(0, int(bucket.tokens))
+            if acquired:
+                acquired, retry_after, tokens = self._acquire(client_id, self.capacity, self.refill_rate, now)
+                current_tokens = max(0, int(tokens))
+            if acquired and self._is_expensive(request):
+                acquired, retry_after, _ = self._acquire(f"exp:{client_id}", self.expensive_capacity, self.expensive_refill_rate, now)
 
         if not acquired:
             retry_sec = math.ceil(retry_after)

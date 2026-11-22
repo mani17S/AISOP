@@ -27,7 +27,8 @@ import {
   InvestigationValidationResult,
 } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { MultiSourcePanel } from './MultiSourcePanel';
+import { AI_EXPLANATION_TIMEOUT_MS, AiRunStatus, MultiSourcePanel, useElapsedSeconds } from './MultiSourcePanel';
+import { runWithDeadline } from '../utils/deadline';
 import { Dialog } from './Dialog';
 import { AuditDetailsCell, AuditDetailsRow } from './AuditDetails';
 import { handleTabListKeyDown, tabButtonId, tabPanelId } from './tabs';
@@ -98,6 +99,8 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
   );
   const [synthesizing, setSynthesizing] = useState<boolean>(false);
   const [synthesisError, setSynthesisError] = useState<string | null>(null);
+  const synthCancelRef = React.useRef<(() => void) | null>(null);
+  const synthElapsed = useElapsedSeconds(synthesizing);
   const [queryFilter, setQueryFilter] = useState<string>('');
 
   // Case Activity state
@@ -218,20 +221,28 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
 
   // Handle Human-Invoked AI Investigation
   const handleStartInvestigation = async () => {
+    if (synthCancelRef.current) return; // a run is already active: never send a duplicate request
     setSynthesizing(true);
     setSynthesisError(null);
-    try {
-      const result = await api.synthesizeCaseInvestigation(caseId, {
-        query_filter: queryFilter.trim() || undefined,
-      });
-      setValidationResult(result);
+    const handle = runWithDeadline(
+      (signal) => api.synthesizeCaseInvestigation(caseId, { query_filter: queryFilter.trim() || undefined }, signal),
+      AI_EXPLANATION_TIMEOUT_MS
+    );
+    synthCancelRef.current = handle.cancel;
+    const outcome = await handle.result;
+    synthCancelRef.current = null;
+    if (outcome.kind === 'done') {
+      setValidationResult(outcome.value);
       setActiveTab('findings');
       fetchActivity();
-    } catch (err: any) {
-      setSynthesisError(err.message || 'AI investigation synthesis failed.');
-    } finally {
-      setSynthesizing(false);
+    } else if (outcome.kind === 'failed') {
+      setSynthesisError(outcome.message || 'AI investigation synthesis failed.');
+    } else if (outcome.kind === 'timeout') {
+      setSynthesisError(`The local model did not answer within ${Math.round(AI_EXPLANATION_TIMEOUT_MS / 1000)} s, so the request was stopped. The server may still finish this run in the background. Use Retry to try again.`);
+    } else {
+      setSynthesisError('The AI investigation was cancelled. Nothing was changed. Use Retry to start it again.');
     }
+    setSynthesizing(false);
   };
 
   // Handle Close case
@@ -615,8 +626,13 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
       {activeTab === 'findings' && (
         <div>
           {synthesisError && (
-            <div className="alert-box alert-error" style={{ marginBottom: '16px' }}>
-              {synthesisError}
+            <div className="alert-box alert-error" role="alert" style={{ marginBottom: '16px', display: 'block' }}>
+              {synthesisError}{' '}
+              {canSynthesizeReports() && caseDetail.status !== 'closed' && caseDetail.status !== 'archived' && (
+                <button className="btn btn-secondary" disabled={synthesizing} onClick={handleStartInvestigation}>
+                  Retry
+                </button>
+              )}
             </div>
           )}
 
@@ -675,6 +691,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                 Applying 3-phase guardrail lifecycle: building canonical context snapshot, executing local inference,
                 and validating epistemic grounding against case telemetry.
               </p>
+              <AiRunStatus elapsed={synthElapsed} onCancel={() => synthCancelRef.current?.()} unchanged="The case evidence is unchanged." />
             </div>
           )}
 

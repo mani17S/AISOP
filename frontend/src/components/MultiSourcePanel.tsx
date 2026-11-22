@@ -318,6 +318,72 @@ const groundingLabel = (grounding: string, category: string): string => {
 /** Per-claim verification note (shared presentation lives in VerificationNote). */
 export const ClaimVerificationNote: React.FC<{ claim: MultiSourceClaim }> = ({ claim }) => <VerificationNote verification={claim.verification} />;
 
+/** The AI result (or the reason there is none) for one incident. Shown inside the stored result and in the separate AI section. */
+export const AiAnalysisBody: React.FC<{ inc: MultiSourceIncident }> = ({ inc }) => (
+  inc.llm === null ? (
+    <p>
+      {inc.llm_status === 'abstained'
+        ? 'Not run: the evidence is insufficient (or the sufficiency check failed), so the platform abstained.'
+        : inc.llm_status.startsWith('skipped:')
+        ? 'Not run for this incident: the per-run limit on AI analyses was reached. The deterministic analysis above is complete.'
+        : 'Not requested. Everything above is deterministic and was produced without a language model.'}
+    </p>
+  ) : (
+    <div>
+      {inc.llm_status === 'disabled' && (
+        <p>
+          <strong>AI assistance is disabled by configuration.</strong> No model was called and no AI result was generated; what follows is the deterministic
+          fallback, not AI output. The deterministic investigation above is complete and independent of AI.
+        </p>
+      )}
+      {inc.llm_status.startsWith('fallback:') && (
+        <p>
+          <strong>AI assistance was unavailable for this run</strong> (provider failure or invalid output). No AI result was generated; what follows is the
+          deterministic fallback. The deterministic investigation above is unaffected.
+        </p>
+      )}
+      <p>
+        Status: <span className="font-mono">{inc.llm_status}</span>; guardrail decision: <span className="font-mono">{inc.llm.decision}</span>.
+        {LEGACY_GROUNDING_EXPLANATION} Each AI claim is shown with its separate assertion-verification line below.
+      </p>
+      <p>{inc.llm.summary}</p>
+      <ul>
+        {inc.llm.claims.map((c) => (
+          <li key={c.claim_id}>
+            <strong>{groundingLabel(c.grounding, c.category)}</strong>: {c.text}{' '}
+            <span className="font-mono">[{c.category}, {c.grounding}, model-reported confidence {c.confidence}]</span>
+            <ClaimVerificationNote claim={c} />
+          </li>
+        ))}
+      </ul>
+      {inc.llm.uncertainty_and_data_gaps.length > 0 && (
+        <div>
+          <strong>Limitations and data gaps</strong>
+          <ul>{inc.llm.uncertainty_and_data_gaps.map((g) => <li key={g}>{g}</li>)}</ul>
+        </div>
+      )}
+    </div>
+  )
+);
+
+/** Language-model output from an on-demand run, kept apart from the deterministic analysis and labelled as not observed evidence. */
+export const AiResultSection: React.FC<{ data: MultiSourceInvestigation }> = ({ data }) => (
+  <section aria-label="AI-generated analysis" className="ai-result-section">
+    <h3><ClassGlyph cls="model_inference" /> AI-generated, not observed evidence</h3>
+    <p style={{ color: 'var(--text-secondary)' }}>
+      Produced by the local language model for evidence that already passed the sufficiency check. It does not change the deterministic analysis, is not
+      corroboration and is not a finding until an analyst confirms it against the evidence.
+    </p>
+    {data.incidents.length === 0 && <p>No incident was formed from the evidence, so no AI analysis was produced.</p>}
+    {data.incidents.map((inc, i) => (
+      <div key={inc.incident_id}>
+        <h4>Incident {i + 1} <span className="font-mono" style={{ fontSize: '12px' }}>{inc.incident_id.slice(0, 8)}</span></h4>
+        <AiAnalysisBody inc={inc} />
+      </div>
+    ))}
+  </section>
+);
+
 export const IncidentView: React.FC<{ inc: MultiSourceIncident; index: number }> = ({ inc, index }) => (
   <section style={{ marginBottom: '28px' }} aria-label={`Incident ${index + 1}`}>
     <h3 style={{ marginBottom: '8px' }}>
@@ -430,50 +496,7 @@ export const IncidentView: React.FC<{ inc: MultiSourceIncident; index: number }>
     {(inc.analyst_statements !== undefined || inc.graph) && <AnalystStatements items={inc.analyst_statements ?? []} />}
 
     <h4>AI-assisted analysis</h4>
-    {inc.llm === null ? (
-      <p>
-        {inc.llm_status === 'abstained'
-          ? 'Not run: the evidence is insufficient (or the sufficiency check failed), so the platform abstained.'
-          : inc.llm_status.startsWith('skipped:')
-          ? 'Not run for this incident: the per-run limit on AI analyses was reached. The deterministic analysis above is complete.'
-          : 'Not requested. Everything above is deterministic and was produced without a language model.'}
-      </p>
-    ) : (
-      <div>
-        {inc.llm_status === 'disabled' && (
-          <p>
-            <strong>AI assistance is disabled by configuration.</strong> No model was called and no AI result was generated; what follows is the deterministic
-            fallback, not AI output. The deterministic investigation above is complete and independent of AI.
-          </p>
-        )}
-        {inc.llm_status.startsWith('fallback:') && (
-          <p>
-            <strong>AI assistance was unavailable for this run</strong> (provider failure or invalid output). No AI result was generated; what follows is the
-            deterministic fallback. The deterministic investigation above is unaffected.
-          </p>
-        )}
-        <p>
-          Status: <span className="font-mono">{inc.llm_status}</span>; guardrail decision: <span className="font-mono">{inc.llm.decision}</span>.
-          {LEGACY_GROUNDING_EXPLANATION} Each AI claim is shown with its separate assertion-verification line below.
-        </p>
-        <p>{inc.llm.summary}</p>
-        <ul>
-          {inc.llm.claims.map((c) => (
-            <li key={c.claim_id}>
-              <strong>{groundingLabel(c.grounding, c.category)}</strong>: {c.text}{' '}
-              <span className="font-mono">[{c.category}, {c.grounding}, model-reported confidence {c.confidence}]</span>
-              <ClaimVerificationNote claim={c} />
-            </li>
-          ))}
-        </ul>
-        {inc.llm.uncertainty_and_data_gaps.length > 0 && (
-          <div>
-            <strong>Limitations and data gaps</strong>
-            <ul>{inc.llm.uncertainty_and_data_gaps.map((g) => <li key={g}>{g}</li>)}</ul>
-          </div>
-        )}
-      </div>
-    )}
+    <AiAnalysisBody inc={inc} />
 
     <h4>Investigation report</h4>
     <pre style={{ whiteSpace: 'pre-wrap', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '12px' }}>
@@ -565,6 +588,9 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<boolean>(!!initialResult);
+  // The AI run's own result is held apart from the deterministic one so the deterministic analysis never changes or disappears.
+  const [aiResult, setAiResult] = useState<MultiSourceInvestigation | null>(null);
+  const [aiRunning, setAiRunning] = useState<boolean>(false);
 
   const loadExisting = useCallback(async () => {
     try {
@@ -624,6 +650,7 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
   const start = async (force: boolean) => {
     setBusy(true);
     setError(null);
+    setAiResult(null);
     try {
       // The deterministic investigation never waits for the AI step: it is always requested with the model off.
       const data = await api.startMultiSourceInvestigation(caseId, { use_llm: false, force });
@@ -639,11 +666,11 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
   return (
     <div aria-label="Multi-source investigation">
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
-        <button className="btn btn-primary" disabled={busy || caseClosed} onClick={() => void start(false)}>
+        <button className="btn btn-primary" disabled={busy || aiRunning || caseClosed} onClick={() => void start(false)}>
           {busy ? 'Investigating...' : result ? 'Re-run multi-source investigation' : 'Start multi-source investigation'}
         </button>
         {result && (
-          <button className="btn btn-secondary" disabled={busy || caseClosed} onClick={() => void start(true)}>
+          <button className="btn btn-secondary" disabled={busy || aiRunning || caseClosed} onClick={() => void start(true)}>
             Force a new run
           </button>
         )}
@@ -653,7 +680,7 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
         The deterministic investigation uses only evidence linked to this case and needs no language model. Nothing here executes a response or containment action.
       </p>
       {error && <div className="alert-box alert-error" role="alert">{error}</div>}
-      {busy && <p role="status">Processing: normalizing evidence, correlating sources and evaluating sufficiency...</p>}
+      {busy && <p role="status">Processing: normalizing evidence, correlating sources and evaluating sufficiency. No language model is used in this step.</p>}
       {!result && loaded && !busy && !error && (
         <p role="status">No multi-source investigation has been run for this case yet. Select &quot;Start&quot; to analyse the linked evidence.</p>
       )}
@@ -661,15 +688,25 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
         <AiExplanationStep
           caseId={caseId}
           disabled={busy}
-          alreadyRun={result.use_llm}
+          alreadyRun={result.use_llm || aiResult !== null}
+          onRunningChange={setAiRunning}
           onResult={(data) => {
-            setResult(data);
+            setAiResult(data);
             setStale(false);
           }}
         />
       )}
+      {aiResult && <AiResultSection data={aiResult} />}
       {result && <ReviewStep caseId={caseId} fingerprint={result.evidence_fingerprint} caseClosed={caseClosed} canReview={canCloseCase()} />}
-      {result && <MultiSourceResultView data={result} stale={stale} />}
+      {result && (
+        <section aria-label={result.use_llm ? 'Stored investigation' : 'Deterministic analysis'}>
+          <h3>{result.use_llm ? 'Stored investigation (includes an AI-assisted analysis)' : 'Deterministic analysis'}</h3>
+          {!result.use_llm && (
+            <p style={{ color: 'var(--text-secondary)' }}>Produced by rules from the preserved evidence, without a language model. It is complete on its own.</p>
+          )}
+          <MultiSourceResultView data={result} stale={stale} />
+        </section>
+      )}
     </div>
   );
 };
@@ -767,7 +804,34 @@ export const ReviewStep: React.FC<{
 };
 
 /** The AI explanation is optional, on demand and never blocks the deterministic result shown above it. */
-export const AI_EXPLANATION_TIMEOUT_MS = 90_000;
+export const AI_EXPLANATION_TIMEOUT_MS = 180_000;
+
+/** Real elapsed seconds while `running` (wall clock, re-read each tick). There is no estimate and no percentage: the model reports no progress. */
+export const useElapsedSeconds = (running: boolean): number => {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!running) return undefined;
+    const t0 = Date.now();
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+  return elapsed;
+};
+
+export const formatElapsed = (seconds: number): string => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+/**
+ * Status line for a running local-model call. The words sit in a polite live region; the ticking counter is a separate
+ * timer element that is not announced every second.
+ */
+export const AiRunStatus: React.FC<{ elapsed: number; onCancel: () => void; unchanged?: string }> = ({ elapsed, onCancel, unchanged = 'The deterministic result is unchanged.' }) => (
+  <div className="ai-run-status">
+    <p role="status" aria-live="polite" style={{ margin: 0 }}>Local model running, this can take over a minute. {unchanged}</p>
+    <span role="timer" aria-live="off" className="font-mono">Elapsed {formatElapsed(elapsed)}</span>
+    <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+  </div>
+);
 
 type AiStepState = { kind: 'idle' } | { kind: 'running' } | { kind: 'done'; seconds: number } | { kind: 'timeout' } | { kind: 'cancelled' } | { kind: 'failed'; message: string };
 
@@ -776,24 +840,23 @@ export const AiExplanationStep: React.FC<{
   disabled?: boolean;
   alreadyRun?: boolean;
   onResult: (data: MultiSourceInvestigation) => void;
+  /** Lets the page disable its other buttons while this run is active. */
+  onRunningChange?: (running: boolean) => void;
   timeoutMs?: number;
-}> = ({ caseId, disabled, alreadyRun, onResult, timeoutMs = AI_EXPLANATION_TIMEOUT_MS }) => {
-  const [state, setState] = useState<AiStepState>({ kind: 'idle' });
-  const [elapsed, setElapsed] = useState(0);
+  /** Test seam: render a given state without a network call. */
+  initialState?: AiStepState;
+}> = ({ caseId, disabled, alreadyRun, onResult, onRunningChange, timeoutMs = AI_EXPLANATION_TIMEOUT_MS, initialState }) => {
+  const [state, setState] = useState<AiStepState>(initialState ?? { kind: 'idle' });
+  const elapsed = useElapsedSeconds(state.kind === 'running');
   const cancelRef = React.useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    if (state.kind !== 'running') return undefined;
-    const t0 = Date.now();
-    setElapsed(0);
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
-    return () => clearInterval(id);
-  }, [state.kind]);
-
   const run = async () => {
+    if (cancelRef.current) return;                 // a run is already active: never send a duplicate request
     setState({ kind: 'running' });
+    onRunningChange?.(true);
     const t0 = Date.now();
-    const handle = runWithDeadline((signal) => api.startMultiSourceInvestigation(caseId, { use_llm: true }, signal), timeoutMs);
+    // Started only by the analyst. force: the identical-evidence result stored by the deterministic run would otherwise be returned unchanged.
+    const handle = runWithDeadline((signal) => api.startMultiSourceInvestigation(caseId, { use_llm: true, force: true }, signal), timeoutMs);
     cancelRef.current = handle.cancel;
     const outcome = await handle.result;
     cancelRef.current = null;
@@ -805,27 +868,23 @@ export const AiExplanationStep: React.FC<{
     } else {
       setState({ kind: outcome.kind });
     }
+    onRunningChange?.(false);
   };
 
   return (
     <section aria-label="AI explanation" className="setup-notice alert-box alert-info" style={{ display: 'block', margin: '0 0 16px' }}>
       <strong><ClassGlyph cls="model_inference" /> AI explanation (optional)</strong>
       <p style={{ margin: '4px 0 8px' }}>
-        The investigation above is complete without it. A local language model runs on this machine and can be slow. It runs only if the evidence check allows it, and every claim it makes is checked against the evidence.
+        The investigation below is complete without it. A local language model runs on this machine and can be slow. It runs only if the evidence check allows it, and every claim it makes is checked against the evidence.
       </p>
       {state.kind === 'running' ? (
-        <div role="status">
-          AI explanation running, {elapsed} s. The result above is unchanged.{' '}
-          <button className="btn btn-secondary" onClick={() => cancelRef.current?.()}>
-            Cancel
-          </button>
-        </div>
+        <AiRunStatus elapsed={elapsed} onCancel={() => cancelRef.current?.()} />
       ) : (
         <button className="btn btn-primary" disabled={disabled} onClick={() => void run()}>
-          {alreadyRun || state.kind === 'done' ? 'Run AI explanation again' : 'Run AI explanation'}
+          {state.kind === 'timeout' || state.kind === 'failed' ? 'Retry AI explanation' : alreadyRun || state.kind === 'done' ? 'Run AI explanation again' : 'Run AI explanation'}
         </button>
       )}
-      {state.kind === 'done' && <p role="status" style={{ margin: '8px 0 0' }}>AI explanation finished in {state.seconds} s. Its status for each incident is shown below.</p>}
+      {state.kind === 'done' && <p role="status" style={{ margin: '8px 0 0' }}>AI explanation finished in {state.seconds} s. It is shown in its own section, labelled as AI-generated.</p>}
       {state.kind === 'timeout' && <p role="status" style={{ margin: '8px 0 0' }}>AI timed out after {Math.round(timeoutMs / 1000)} s. The deterministic result is unchanged. The server may still finish this run in the background.</p>}
       {state.kind === 'cancelled' && <p role="status" style={{ margin: '8px 0 0' }}>AI explanation cancelled. The deterministic result is unchanged. The server may still finish this run in the background.</p>}
       {state.kind === 'failed' && <p role="alert" style={{ margin: '8px 0 0' }}>The AI explanation could not be completed ({state.message}). The deterministic result is unchanged.</p>}

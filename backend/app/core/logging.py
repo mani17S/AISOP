@@ -43,6 +43,11 @@ SENSITIVE_KEYS: frozenset[str] = frozenset(
 
 # Regex patterns for redacting sensitive values embedded in log message strings
 REDACTION_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # A canonical AISOP API key wherever it appears (URL path, query value, free text): keep the shape, drop prefix and secret.
+    (
+        re.compile(r"aisop_(live|test)_[0-9a-fA-F]{16}_[0-9a-fA-F]{64}"),
+        r"aisop_\1_[REDACTED]",
+    ),
     (
         re.compile(r"(?i)\b(bearer\s+)[a-zA-Z0-9_\-\.]{8,}", re.IGNORECASE),
         r"\1[REDACTED]",

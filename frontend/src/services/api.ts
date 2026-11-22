@@ -40,7 +40,9 @@ import {
 } from '../types';
 
 import { normalizeApiKey } from '../utils/apiKey';
-import { apiErrorFromResponse, networkApiError, safeRequestId, unreadableResponseError } from './errors';
+import { ApiError, apiErrorFromResponse, networkApiError, safeRequestId, unreadableResponseError } from './errors';
+
+const AISOP_KEY_SHAPE = /aisop_(?:live|test)_[0-9a-f]{16}_[0-9a-f]{64}/g;
 
 class ApiClient {
   private inMemoryApiKey: string = '';
@@ -99,6 +101,21 @@ class ApiClient {
     return headers;
   }
 
+  /**
+   * Defense in depth (OWASP A02): a server message must never put the credential back on screen. The text that reaches the UI
+   * has the current key, and anything shaped like an AISOP key, replaced before it is shown or logged.
+   */
+  private withoutKey<E extends ApiError>(error: E): E {
+    const scrub = (text: string): string => {
+      let out = text.replace(AISOP_KEY_SHAPE, '[key removed]');
+      if (this.inMemoryApiKey.length >= 8) out = out.split(this.inMemoryApiKey).join('[key removed]');
+      return out;
+    };
+    error.message = scrub(error.message);
+    for (const field of error.fieldErrors ?? []) field.message = scrub(field.message);
+    return error;
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -129,7 +146,7 @@ class ApiClient {
       } catch {
         // Body is not JSON: a status-based safe message is used.
       }
-      throw apiErrorFromResponse(response.status, errorBody, requestIdHeader, response.headers.get('Retry-After'));
+      throw this.withoutKey(apiErrorFromResponse(response.status, errorBody, requestIdHeader, response.headers.get('Retry-After')));
     }
 
     try {
@@ -356,26 +373,30 @@ class ApiClient {
 
   public async synthesizeCaseInvestigation(
     caseId: string,
-    params: CaseInvestigationSynthesizeRequest = {}
+    params: CaseInvestigationSynthesizeRequest = {},
+    signal?: AbortSignal
   ): Promise<InvestigationValidationResult> {
     return this.request<InvestigationValidationResult>(
       `/api/v1/cases/${encodeURIComponent(caseId)}/investigations/synthesize`,
       {
         method: 'POST',
         body: JSON.stringify(params),
+        signal,
       }
     );
   }
 
   public async synthesizeCaseReports(
     caseId: string,
-    params: CaseInvestigationSynthesizeRequest = {}
+    params: CaseInvestigationSynthesizeRequest = {},
+    signal?: AbortSignal
   ): Promise<InvestigationReportBundle> {
     return this.request<InvestigationReportBundle>(
       `/api/v1/cases/${encodeURIComponent(caseId)}/reports/synthesize`,
       {
         method: 'POST',
         body: JSON.stringify(params),
+        signal,
       }
     );
   }

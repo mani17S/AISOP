@@ -155,6 +155,11 @@ def render_incident_report(result: "WorkflowResult", a: "IncidentAnalysis") -> s
         add("")
         add("Asserted by a source but NOT derived by any rule (treat as unverified): " + ", ".join(a.asserted_only) + ".")
     add("")
+    if a.mitre:  # optional offline MITRE D3FEND reference; empty unless DEFENSE_REFERENCE_PATH is configured
+        from app.modules.defense_reference import render_section
+
+        for line in render_section([m.technique_id for m in a.mitre], {m.technique_id: m.technique_name for m in a.mitre}):
+            add(line)
 
     if a.observations or a.analyst_notes:
         _render_domain_sections(add, a)

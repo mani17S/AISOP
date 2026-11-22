@@ -19,6 +19,8 @@ import {
 } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ReportViewer } from '../components/ReportViewer';
+import { AI_EXPLANATION_TIMEOUT_MS, AiRunStatus, useElapsedSeconds } from '../components/MultiSourcePanel';
+import { runWithDeadline } from '../utils/deadline';
 
 interface ReportsPageProps {
   initialCaseId?: string | null;
@@ -41,6 +43,8 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
   const [reportBundle, setReportBundle] = useState<InvestigationReportBundle | null>(null);
   const [synthesizing, setSynthesizing] = useState<boolean>(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const cancelRef = React.useRef<(() => void) | null>(null);
+  const elapsed = useElapsedSeconds(synthesizing);
 
   // Optional synthesis filters
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
@@ -92,6 +96,7 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
   const handleSynthesizeReport = async () => {
     if (!selectedCaseId) return;
 
+    if (cancelRef.current) return; // a run is already active: never send a duplicate request
     setSynthesizing(true);
     setReportError(null);
 
@@ -101,17 +106,21 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
     if (timeWindowStart.trim()) payload.time_window_start = new Date(timeWindowStart).toISOString();
     if (timeWindowEnd.trim()) payload.time_window_end = new Date(timeWindowEnd).toISOString();
 
-    try {
-      const bundle = await api.synthesizeCaseReports(selectedCaseId, payload);
-      setReportBundle(bundle);
-    } catch (err: any) {
-      setReportError(
-        err.message || 'Failed to synthesize investigation report. Check backend logs and case assignment.'
-      );
+    const handle = runWithDeadline((signal) => api.synthesizeCaseReports(selectedCaseId, payload, signal), AI_EXPLANATION_TIMEOUT_MS);
+    cancelRef.current = handle.cancel;
+    const outcome = await handle.result;
+    cancelRef.current = null;
+    if (outcome.kind === 'done') {
+      setReportBundle(outcome.value);
+    } else if (outcome.kind === 'failed') {
+      setReportError(outcome.message || 'Failed to synthesize investigation report. Check backend logs and case assignment.');
       setReportBundle(null);
-    } finally {
-      setSynthesizing(false);
+    } else if (outcome.kind === 'timeout') {
+      setReportError(`The local model did not answer within ${Math.round(AI_EXPLANATION_TIMEOUT_MS / 1000)} s, so the request was stopped. The server may still finish this run in the background. Use Retry to try again.`);
+    } else {
+      setReportError('Report synthesis was cancelled. Nothing was changed. Use Retry to start it again.');
     }
+    setSynthesizing(false);
   };
 
   return (
@@ -180,7 +189,7 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
                   disabled={synthesizing || !selectedCaseId}
                   onClick={handleSynthesizeReport}
                 >
-                  {synthesizing ? 'Synthesizing...' : reportBundle ? 'Re-Synthesize Bundle' : 'Synthesize Report'}
+                  {synthesizing ? 'Synthesizing...' : reportBundle ? 'Re-synthesize bundle' : 'Synthesize report'}
                 </button>
               ) : (
                 <span
@@ -251,8 +260,13 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
         )}
 
         {reportError && (
-          <div className="alert-box alert-error">
-            <strong>Report Synthesis Error:</strong> {reportError}
+          <div className="alert-box alert-error" role="alert" style={{ display: 'block' }}>
+            <strong>Report Synthesis Error:</strong> {reportError}{' '}
+            {canSynthesizeReports() && (
+              <button className="btn btn-secondary" disabled={synthesizing || !selectedCaseId} onClick={handleSynthesizeReport}>
+                Retry
+              </button>
+            )}
           </div>
         )}
 
@@ -264,7 +278,7 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
               Retrieving case-scoped evidence, querying local threat intelligence, assembling forensic context,
               and validating claims against cryptographic event hashes...
             </p>
-          </div>
+            <AiRunStatus elapsed={elapsed} onCancel={() => cancelRef.current?.()} unchanged="No report is changed until it finishes." />          </div>
         )}
 
         {!synthesizing && reportBundle && (
@@ -278,7 +292,6 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
 
         {!synthesizing && !reportBundle && !reportError && selectedCase && (
           <div className="empty-report-card">
-            <div className="empty-icon-shield">◈</div>
             <h3 className="empty-title">No Active Report Generated</h3>
             <p className="empty-text">
               Case <strong>{selectedCase.case_number}</strong> is selected with evidence telemetry linked. Click
@@ -287,7 +300,7 @@ export const Reports: React.FC<ReportsPageProps> = ({ initialCaseId }) => {
             </p>
             {canSynthesizeReports() ? (
               <button className="btn btn-primary" onClick={handleSynthesizeReport}>
-                Generate Report Bundle
+                Generate report bundle
               </button>
             ) : (
               <p className="empty-subtext">

@@ -14,7 +14,7 @@ Invariants:
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Sequence
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -22,9 +22,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Middleware that injects standard hardened HTTP security headers into all responses."""
 
-    def __init__(self, app, enabled: bool = True) -> None:
+    def __init__(self, app, enabled: bool = True, trusted_proxies: Sequence[str] | set[str] | None = None) -> None:
         super().__init__(app)
         self.enabled = enabled
+        self.trusted_proxies: set[str] = {"127.0.0.1", "::1"} if trusted_proxies is None else set(trusted_proxies)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response: Response = await call_next(request)
@@ -48,8 +49,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "base-uri 'self';"
             )
 
-        # HSTS on HTTPS / TLS or forwarded HTTPS
-        proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+        # API responses carry case and evidence data: never let a browser or shared proxy cache them.
+        if "Cache-Control" not in headers:
+            headers["Cache-Control"] = "no-store"
+
+        # HSTS only over real TLS. X-Forwarded-Proto is client-controlled unless it comes from a configured trusted proxy.
+        peer = request.client.host if request.client else None
+        proto = request.url.scheme
+        if peer in self.trusted_proxies:
+            proto = request.headers.get("X-Forwarded-Proto", proto)
         if proto == "https":
             headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 

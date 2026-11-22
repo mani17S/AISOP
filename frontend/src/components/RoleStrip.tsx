@@ -36,17 +36,20 @@ export const RoleStrip: React.FC = () => {
   const role = globalRole as GlobalRole;
   return (
     <section className="role-strip" aria-label="Interface preview for the selected role" data-role={role}>
-      <p className="role-strip-title">
-        Viewing as <strong>{ROLE_NAMES[role] ?? role}</strong>. {ROLE_NOTES[role] ?? ''}
-      </p>
-      <ul className="role-strip-list">
-        {abilities.map((a) => (
-          <li key={a.label} className={a.allowed ? 'can' : 'cannot'}>
-            <span className="role-strip-mark">{a.allowed ? 'Can' : 'Cannot'}</span> {a.label.toLowerCase()}
-          </li>
-        ))}
-      </ul>
-      <p className="role-strip-note">Preview only. The server decides what each API key may do.</p>
+      <details className="role-strip-details">
+        <summary className="role-strip-title">
+          Viewing as <strong>{ROLE_NAMES[role] ?? role}</strong>. Preview only. <span className="role-strip-more">What this role can do</span>
+        </summary>
+        <p className="role-strip-note-line">{ROLE_NOTES[role] ?? ''}</p>
+        <ul className="role-strip-list">
+          {abilities.map((a) => (
+            <li key={a.label} className={a.allowed ? 'can' : 'cannot'}>
+              <span className="role-strip-mark">{a.allowed ? 'Can' : 'Cannot'}</span> {a.label.toLowerCase()}
+            </li>
+          ))}
+        </ul>
+        <p className="role-strip-note">Preview only. The server decides what each API key may do.</p>
+      </details>
     </section>
   );
 };

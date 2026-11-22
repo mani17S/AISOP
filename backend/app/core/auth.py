@@ -8,14 +8,14 @@ in accordance with AISOP-POL-LOCAL-FIRST-ZERO-BILLING-001, OWASP A07, and API2:2
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
-from typing import Annotated
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, Any
 
-from fastapi import Depends, Header, HTTPException, status
-from app.core.errors import CodedHTTPException
+from fastapi import Depends, Header, HTTPException, Request, status
+from app.core.errors import RATE_LIMITED, CodedHTTPException
 from loguru import logger
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -28,7 +28,33 @@ from app.core.rbac import (
     parse_global_role,
 )
 from app.db.session import get_db_session_factory, isolated_session
+from app.middleware.rate_limit import resolve_client_ip
 from app.models.analyst import AnalystApiClient
+
+#: last_used_at is refreshed at most this often per key, so authentication stays read-only on the hot path.
+LAST_USED_REFRESH = timedelta(minutes=5)
+
+
+def _equal(a: str, b: str) -> bool:
+    """Constant-time equality for arbitrary text. compare_digest on str raises TypeError for non-ASCII, so compare bytes."""
+    return secrets.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
+def _utc(dt: datetime) -> datetime:
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+class AuthLockedOut(HTTPException):
+    """429 for a client address locked out after repeated rejected credentials (stable code RATE_LIMITED)."""
+
+    code = RATE_LIMITED
+
+    def __init__(self, retry_after: int) -> None:
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed authentication attempts. Try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
 
 
 class AuthenticatedClient(BaseModel):
@@ -90,6 +116,7 @@ async def verify_api_key(
     settings: Settings = Depends(get_settings),
     session_factory: Any = Depends(get_db_session_factory),
     session: Any = Depends(_get_optional_db_session),
+    request: Request = None,  # type: ignore[assignment]  (None only for direct calls in tests)
 ) -> AuthenticatedClient:
     """
     Central authentication dependency for protected AISOP API routes.
@@ -100,11 +127,13 @@ async def verify_api_key(
 
     Security Invariants:
     - Database-backed canonical token authentication (aisop_<env>_<16hex>_<64hex>).
-    - Constant-time secret digest comparison using `secrets.compare_digest`.
+    - Constant-time secret digest comparison using `secrets.compare_digest` (on bytes, so non-ASCII input is a 401, not a 500).
     - Fail-closed defaults: Inactive analysts, expired/revoked clients, unknown prefixes fail closed (401).
     - Safe error responses: Generic 401 messages that never leak keys, tokens, or configuration details.
     - Legacy static key rejection when `API_AUTH_ALLOW_LEGACY_KEYS=False`.
     - Conflicting credential rejection: Rejects conflicting credentials provided in both headers.
+    - Brute-force protection: repeated rejected credentials from one client address (or address and key prefix) are
+      answered with 429 and Retry-After before any database work (app.core.auth_throttle, API2/API4:2023).
     - Scoped Session Isolation: Database connection is scoped strictly to the token lookup
       operation and closed before subsequent route execution or inference begins (SEC-D243-002).
     """
@@ -118,6 +147,23 @@ async def verify_api_key(
     # If explicitly disabled in non-production environment
     if not settings.API_AUTH_ENABLED:
         return AuthenticatedClient(client_id="anonymous-dev", authenticated=False, analyst=None)
+
+    throttle = getattr(getattr(getattr(request, "app", None), "state", None), "auth_throttle", None)
+    client_ip = resolve_client_ip(request, settings.RATE_LIMIT_TRUSTED_PROXIES) if throttle is not None else None
+    key_prefix: str | None = None
+
+    def locked_out() -> None:
+        wait = throttle.retry_after(client_ip, key_prefix) if throttle is not None and client_ip is not None else 0
+        if wait:
+            raise AuthLockedOut(wait)
+
+    def failed() -> None:
+        """A credential was presented and refused: count it toward the lockout (called just before raising the 401)."""
+        if throttle is not None and client_ip is not None:
+            throttle.record_failure(client_ip, key_prefix)
+
+    if authorization is not None or x_api_key is not None:
+        locked_out()
 
     candidate_key: str | None = None
     auth_bearer_key: str | None = None
@@ -135,6 +181,7 @@ async def verify_api_key(
                     headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
                 )
         else:
+            failed()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication scheme. Bearer token required.",
@@ -153,7 +200,8 @@ async def verify_api_key(
 
     # 3. Handle conflict if both headers are present
     if auth_bearer_key is not None and x_api_header_key is not None:
-        if not secrets.compare_digest(auth_bearer_key, x_api_header_key):
+        if not _equal(auth_bearer_key, x_api_header_key):
+            failed()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Conflicting authentication credentials provided.",
@@ -174,9 +222,12 @@ async def verify_api_key(
     # 4. Canonical token evaluation (Database-backed)
     if is_canonical_token(candidate_key):
         env, prefix, _ = parse_canonical_token(candidate_key)
+        key_prefix = prefix
+        locked_out()  # now that the prefix is known, also honour the (address, prefix) lockout
 
         # Environment policy enforcement: test tokens strictly forbidden in staging and production
         if settings.ENVIRONMENT in ("staging", "production") and env == "test":
+            failed()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials.",
@@ -206,6 +257,21 @@ async def verify_api_key(
                         "analyst_global_role": analyst_rec.global_role if analyst_rec else None,
                         "analyst_is_active": analyst_rec.is_active if analyst_rec else False,
                     }
+                    # Last-use stamp: only for a fully valid credential, at most once per LAST_USED_REFRESH, and in this same
+                    # short session (no extra connection), so authentication keeps its single scoped session.
+                    now_utc = datetime.now(timezone.utc)
+                    last_used = client_record.last_used_at
+                    if (
+                        client_record.is_active
+                        and analyst_rec is not None
+                        and analyst_rec.is_active
+                        and (client_record.expires_at is None or now_utc <= _utc(client_record.expires_at))
+                        and _equal(hash_canonical_token(candidate_key), client_record.hashed_secret)
+                        and (last_used is None or now_utc - _utc(last_used) > LAST_USED_REFRESH)
+                    ):
+                        await auth_session.execute(
+                            update(AnalystApiClient).where(AnalystApiClient.id == client_record.id).values(last_used_at=now_utc)
+                        )
         except HTTPException:
             raise
         except Exception as exc:
@@ -220,6 +286,7 @@ async def verify_api_key(
             ) from None
 
         if auth_data is None or not auth_data["client_is_active"]:
+            failed()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials.",
@@ -229,12 +296,9 @@ async def verify_api_key(
         # Verify client expiry if set
         if auth_data["expires_at"] is not None:
             now_utc = datetime.now(timezone.utc)
-            expires_at = (
-                auth_data["expires_at"]
-                if auth_data["expires_at"].tzinfo is not None
-                else auth_data["expires_at"].replace(tzinfo=timezone.utc)
-            )
+            expires_at = _utc(auth_data["expires_at"])
             if now_utc > expires_at:
+                failed()
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid authentication credentials.",
@@ -243,7 +307,8 @@ async def verify_api_key(
 
         # Verify token digest using constant-time comparison
         expected_digest = hash_canonical_token(candidate_key)
-        if not secrets.compare_digest(expected_digest, auth_data["hashed_secret"]):
+        if not _equal(expected_digest, auth_data["hashed_secret"]):
+            failed()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials.",
@@ -252,6 +317,7 @@ async def verify_api_key(
 
         # Validate associated analyst record
         if not auth_data["analyst_id"] or not auth_data["analyst_is_active"]:
+            failed()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials.",
@@ -261,6 +327,7 @@ async def verify_api_key(
         try:
             parsed_role = parse_global_role(auth_data["analyst_global_role"])
         except ValueError:
+            failed()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials.",
@@ -275,6 +342,9 @@ async def verify_api_key(
             is_active=auth_data["analyst_is_active"],
         )
 
+        if throttle is not None and client_ip is not None:
+            throttle.record_success(client_ip, key_prefix)
+
         return AuthenticatedClient(
             client_id=auth_data["client_name"],
             authenticated=True,
@@ -284,6 +354,7 @@ async def verify_api_key(
     # 5. Non-canonical token handling (Legacy static keys)
     # Strictly reject legacy keys if API_AUTH_ALLOW_LEGACY_KEYS is False
     if not settings.API_AUTH_ALLOW_LEGACY_KEYS:
+        failed()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials.",
@@ -293,20 +364,25 @@ async def verify_api_key(
     # Legacy mode explicitly enabled: evaluate against configured valid keys
     parsed_keys = parse_configured_keys(settings.API_AUTH_KEYS)
     if not parsed_keys:
+        failed()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication failed. No valid credentials configured on server.",
             headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
         )
 
-    for client_id, secret_token in parsed_keys:
-        if secrets.compare_digest(candidate_key, secret_token):
-            return AuthenticatedClient(
-                client_id=client_id,
-                authenticated=True,
-                analyst=None,
-            )
+    matched: tuple[str, str] | None = None
+    for client_id, secret_token in parsed_keys:  # every configured key is compared (no early exit)
+        if _equal(candidate_key, secret_token) and matched is None:
+            matched = (client_id, secret_token)
+    if matched is not None:
+        return AuthenticatedClient(
+            client_id=matched[0],
+            authenticated=True,
+            analyst=None,
+        )
 
+    failed()
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication credentials.",

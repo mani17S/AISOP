@@ -19,7 +19,8 @@ services:
     volumes:
       - aisop_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aisop -d aisop_dev"]
+      # Follows POSTGRES_USER / POSTGRES_DB overrides: the doubled dollar is passed through compose and expanded inside the container.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
