@@ -18,6 +18,7 @@ from app.modules.ai.guardrails.validator import InvestigationOutputValidator
 from app.modules.ai.prompt_builder.builder import (
     BOUNDED_MAX_TOKENS,
     DEFAULT_MAX_TOKENS,
+    OUTPUT_CITATIONS_MAX,
     OUTPUT_LIST_LIMITS,
     InvestigationPromptBuilder,
 )
@@ -159,3 +160,66 @@ def test_each_sufficient_incident_gets_exactly_one_call_and_the_incident_cap_is_
     res = asyncio.run(run_workflow(intrusion_chain(), ASSETS, provider, max_llm_incidents=0))
     assert provider.calls == 0 and res.incidents[0].llm_status == "skipped:llm_incident_limit"
     assert uuid.UUID(str(res.incidents[0].incident.incident_id))
+
+
+def test_every_claim_must_cite_between_one_and_three_events_in_the_generation_schema():
+    # A small local model skips optional fields, so claims came back uncited and every one was graded unsupported.
+    # Requiring citations in the schema the model is constrained by lets the existing reference and containment checks run.
+    _, req = _request()
+    claim = req.response_schema["$defs"]["FactualClaimItem"]
+    assert "supporting_evidence_ids" in claim["required"]
+    ids = claim["properties"]["supporting_evidence_ids"]
+    assert ids["minItems"] == 1 and ids["maxItems"] == OUTPUT_CITATIONS_MAX
+
+
+def test_the_model_contract_itself_still_accepts_an_uncited_claim():
+    # Only the generation schema is stricter. The parsing contract is unchanged, so a provider that ignores the schema
+    # still yields a claim that is graded unsupported by the validator, not a parse failure.
+    from app.schemas.investigation import FactualClaimItem
+
+    claim = FactualClaimItem(claim_text="An uncited statement.", category="observed_fact", references_exist=False,
+                             grounding_status="unsupported", confidence=0.0)
+    assert claim.supporting_evidence_ids == []
+
+
+def test_prompt_asks_for_a_short_summary_so_it_is_not_cut_by_the_length_cap():
+    ctx, req = _request()
+    user = [m for m in req.messages if m.role.value == "user"][-1].content
+    assert "investigation_summary" in user and "two short sentences" in user
+
+
+def test_summary_and_action_caps_are_short_enough_that_a_compliant_answer_is_not_cut():
+    from app.modules.ai.prompt_builder.builder import OUTPUT_LIST_ITEM_MAX_CHARS, OUTPUT_SUMMARY_MAX_CHARS
+
+    assert OUTPUT_SUMMARY_MAX_CHARS <= 300 and OUTPUT_LIST_ITEM_MAX_CHARS <= 160 and OUTPUT_CITATIONS_MAX == 2
+    _, req = _request()
+    system = [m for m in req.messages if m.role.value == "system"][0].content
+    assert "under 250 characters" in system  # the contract example the model copies from asks for a short summary
+
+
+def test_text_cut_by_the_length_cap_is_trimmed_to_a_whole_sentence_or_marked_as_cut():
+    from app.modules.ai.response_parser.parser import trim_if_capped
+
+    cap = 120
+    two_then_cut = "Host WS-FIN-07 contacted 185.220.101.4 five times. The user jdoe logged on twice. The key address is 10.1.4.7 (3 occur"
+    assert len(two_then_cut) <= cap
+    padded = two_then_cut + "r" * (cap - len(two_then_cut))
+    assert len(padded) == cap
+    assert trim_if_capped(padded, cap) == "Host WS-FIN-07 contacted 185.220.101.4 five times. The user jdoe logged on twice."
+    # no sentence boundary: cut at a word and say so, never leave a half word or half address
+    one_long = "The process powershell.exe was observed running an encoded command from a workstation while " + "x" * 40
+    out = trim_if_capped(one_long[:cap], cap)
+    assert out.endswith("…") and "xxx" not in out
+    # shorter than the cap, or a complete sentence that happens to end at the cap, is left alone
+    assert trim_if_capped("A short sentence.", cap) == "A short sentence."
+    exact = ("a" * (cap - 1)) + "."
+    assert trim_if_capped(exact, cap) == exact
+
+
+def test_the_parser_trims_capped_fields_but_never_adds_or_changes_evidence_ids():
+    from app.modules.ai.prompt_builder.builder import OUTPUT_SUMMARY_MAX_CHARS
+    from app.modules.ai.response_parser.parser import trim_if_capped
+
+    s = ("Host WS-FIN-07 contacted 185.220.101.4 five times. " * 8)[:OUTPUT_SUMMARY_MAX_CHARS]
+    out = trim_if_capped(s, OUTPUT_SUMMARY_MAX_CHARS)
+    assert out in s and len(out) <= OUTPUT_SUMMARY_MAX_CHARS

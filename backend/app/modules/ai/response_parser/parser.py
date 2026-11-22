@@ -38,6 +38,21 @@ class ResponseParsingError(Exception):
     pass
 
 
+def trim_if_capped(text: Any, cap: int) -> Any:
+    """
+    Text that reaches the generation schema's length cap was cut by the sampler, mid-word or mid-address. Trim it back to
+    the last whole sentence; with no sentence boundary, cut at a word and add an ellipsis so the cut is visible. Shorter
+    text, and a complete sentence that happens to end exactly at the cap, are returned unchanged. Only ever shortens.
+    """
+    if not isinstance(text, str) or len(text) < cap or text.rstrip().endswith((".", "!", "?")):
+        return text
+    boundary = max(text.rfind(". "), text.rfind("! "), text.rfind("? "))
+    if boundary >= cap // 3:
+        return text[: boundary + 1]
+    space = text.rfind(" ")
+    return (text[:space] if space > 0 else text).rstrip(",;:( ") + "…"
+
+
 class InvestigationResponseParser:
     """
     Parses and preliminarily validates LLM responses into StructuredInvestigationOutput.
@@ -141,6 +156,29 @@ class InvestigationResponseParser:
             action=action,
         )
         return candidate
+
+    @staticmethod
+    def _trim_capped_text(data: dict[str, Any]) -> None:
+        """In place: trim free-text fields that hit their cap (see ``trim_if_capped``). Evidence ids are never touched."""
+        from app.modules.ai.prompt_builder.builder import (
+            OUTPUT_CLAIM_MAX_CHARS,
+            OUTPUT_LIST_ITEM_MAX_CHARS,
+            OUTPUT_REASONING_MAX_CHARS,
+            OUTPUT_SUMMARY_MAX_CHARS,
+        )
+
+        if "investigation_summary" in data:
+            data["investigation_summary"] = trim_if_capped(data["investigation_summary"], OUTPUT_SUMMARY_MAX_CHARS)
+        for name in ("alternative_explanations", "recommended_analyst_actions", "uncertainty_and_data_gaps"):
+            items = data.get(name)
+            if isinstance(items, list):
+                data[name] = [trim_if_capped(i, OUTPUT_LIST_ITEM_MAX_CHARS) for i in items]
+        for claim in data.get("claims") or []:
+            if isinstance(claim, dict) and "claim_text" in claim:
+                claim["claim_text"] = trim_if_capped(claim["claim_text"], OUTPUT_CLAIM_MAX_CHARS)
+        for hyp in data.get("mitre_attack_hypotheses") or []:
+            if isinstance(hyp, dict) and "reasoning" in hyp:
+                hyp["reasoning"] = trim_if_capped(hyp["reasoning"], OUTPUT_REASONING_MAX_CHARS)
 
     def clean_json_text(self, raw_content: str) -> str:
         """
@@ -331,6 +369,9 @@ class InvestigationResponseParser:
             data["overall_grounding_score"] = validated_count / len(raw_claims)
         else:
             data["overall_grounding_score"] = 0.0
+
+        # 6b. Text that ran into the generation schema's length cap is cut mid-word or mid-address; trim it back.
+        self._trim_capped_text(data)
 
         # 7. Model validation against Pydantic contract
         try:

@@ -46,3 +46,26 @@ Measured: all numbers above, on this one case and model. Not measured: the HTTP 
 ## Tests
 
 `backend/tests/unit/test_ai_latency_schema.py` (bounds, platform-owned fields absent, pinned ids, no dangling `$defs`, one bounded call per sufficient incident, no call for insufficient evidence, deterministic fallback on provider timeout, incident cap) and `test_ai_latency_provider.py` (`num_ctx` and `keep_alive` in the payload, default payload unchanged, settings default).
+
+## Update 2026-11-22: claims were uncited; fixed, and what it costs
+
+A look at the raw model exchange (a logging relay between the backend and Ollama, kept out of the repository) found three things on the live case with `qwen3:4b`:
+
+1. **Every claim was uncited, so every claim was graded unsupported.** `supporting_evidence_ids` and `assertions` were optional in the generation schema and the small model skipped both. The validator's reference-existence and information-containment checks only run on cited claims, so they never ran. Claims came back `unsupported`, confidence 0.0, grounding score 0.0, while the decision still read `pass` (no violation is raised for an honest unsupported claim). The platform ignored the model's own `validated_reference`, 0.95 confidence and 0.85 score, which is the intended behaviour.
+2. **Text was cut mid-word.** The summary ran into its 500 character cap ("The logon session wsfin"), and a cap in the middle of an IP address is a correctness risk in a report.
+3. **Requiring `assertions` does not work with this model.** In a replay it wrote free-text assertions instead of the `claim-assertion-v1` objects the verifier needs. That route was dropped.
+
+Changes (`prompt_builder/builder.py`, `response_parser/parser.py`): citations are required in the generation schema only (1 to 2 event ids per claim, `OUTPUT_CITATIONS_MAX = 2`); the parsing contract is unchanged, so a provider that ignores the schema still gives an uncited claim that is graded unsupported, not a parse error. The contract example asks for a summary under 250 characters; caps are now 300 (summary) and 160 (list items). `trim_if_capped` cuts any field that reached its cap back to the last whole sentence, or to a word with an ellipsis, and only ever shortens.
+
+Measured on the same case, through the HTTP endpoint (`POST .../investigations/multisource`, `use_llm=true`), `qwen3:4b`, `OLLAMA_NUM_CTX=3072`, one run each unless stated:
+
+| Variant | Wall time | Output tokens | Claims graded |
+| --- | --- | --- | --- |
+| Before this change | 40.5 s and 40.3 s | 482 | 2 unsupported, grounding 0.0 |
+| Citations required, 3 per claim, long summary | 59.5 s | 720 | 2 validated_reference, grounding 1.0 |
+| Citations required, 2 per claim, shorter caps | 48.3 s and 47.1 s | 577 | 2 validated_reference, grounding 1.0 |
+| Same, plus sentence trimming | 48.6 s | not recorded | 2 validated_reference, grounding 1.0; summary ends on a whole sentence |
+
+The price of grounded claims is about 8 seconds. What the grounding means: each claim cites events that exist in the context and the IPs, hashes and executables named in the claim appear in the cited events. It does not verify counts such as "8 different events", and it is not independent corroboration. Offline tests: `backend/tests/unit/test_ai_latency_schema.py`.
+
+Hardware note: this laptop has an RTX 3050 with 4 GB. Ollama places about 2.4 of the model's 3.4 GB in video memory (partial offload). A plain 120 token generation ran at 21 tokens per second; the investigation call ran at about 12 tokens per second with a 1.5 thousand token prompt and a JSON schema. The earlier 8 tokens per second figure in this document was measured at another time; why it differs from today's figures was not isolated (GPU memory pressure from other programs is one possibility, untested).

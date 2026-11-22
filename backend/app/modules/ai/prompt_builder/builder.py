@@ -35,11 +35,12 @@ OUTPUT_LIST_LIMITS: dict[str, int] = {
     "recommended_analyst_actions": 2,
     "uncertainty_and_data_gaps": 3,
 }
-OUTPUT_SUMMARY_MAX_CHARS: int = 500
+OUTPUT_SUMMARY_MAX_CHARS: int = 300
 OUTPUT_CLAIM_MAX_CHARS: int = 240
 OUTPUT_REASONING_MAX_CHARS: int = 300
-OUTPUT_LIST_ITEM_MAX_CHARS: int = 220
+OUTPUT_LIST_ITEM_MAX_CHARS: int = 160
 OUTPUT_ASSERTIONS_MAX: int = 3
+OUTPUT_CITATIONS_MAX: int = 2
 APPROVED_LOCAL_MODELS: frozenset[str] = frozenset({
     "qwen3:4b",
     "llama3.1:8b",
@@ -111,7 +112,7 @@ class InvestigationPromptBuilder:
         '  "investigation_id": "<context investigation_id UUID>",\n'
         '  "generated_at": "<ISO-8601 UTC timestamp>",\n'
         '  "model_identifier": "<model name string>",\n'
-        '  "investigation_summary": "<incident narrative, min 20 chars>",\n'
+        '  "investigation_summary": "<one or two short sentences, under 250 characters, min 20 chars>",\n'
         '  "claims": [\n'
         "    {\n"
         '      "claim_id": "<UUID>",\n'
@@ -388,11 +389,12 @@ class InvestigationPromptBuilder:
             "Analyze the following investigation context and produce an objective, grounded\n"
             "security investigation report adhering strictly to the required JSON schema.\n\n"
             "[CONCISE OUTPUT DIRECTIVES]:\n"
-            "1. Atomic Claims: At most one sentence per claim. Trace every observation to its event UUID.\n"
+            "1. Atomic Claims: At most one sentence per claim. Cite 1 or 2 event UUIDs from <telemetry_events> in 'supporting_evidence_ids' for every claim.\n"
             "2. Concise Hypotheses: At most two reasoning sentences per hypothesis. Clearly distinguish observed facts from tentative hypotheses.\n"
             "3. Brevity: Omit repeated event descriptions, generic introductions, and redundant conclusions.\n"
             "4. Data Gaps: Disclose missing evidence in uncertainty_and_data_gaps rather than inferring facts.\n"
-            "5. Bounded Cardinality: Exactly 1-2 atomic claims, max 1 hypothesis, 1 alternative explanation, and 1-2 advisory actions.\n\n"
+            "5. Bounded Cardinality: Exactly 1-2 atomic claims, max 1 hypothesis, 1 alternative explanation, and 1-2 advisory actions.\n"
+            "6. Summary: 'investigation_summary' is two short sentences. Do not repeat the claims in it.\n\n"
             f"{limitation_block}"
             f"{evidence_str}"
         )
@@ -479,6 +481,13 @@ class InvestigationPromptBuilder:
                     branch["maxItems"] = OUTPUT_ASSERTIONS_MAX
         hypothesis = defs.get("MitreAttackHypothesis", {}).get("properties", {})
         cap(hypothesis.get("reasoning"), "maxLength", OUTPUT_REASONING_MAX_CHARS)
+        # Citations are required in the generation schema only (the parsing contract is unchanged): a small model skips an
+        # optional field, and an uncited claim is graded unsupported before the containment checks can run.
+        if isinstance(claim.get("supporting_evidence_ids"), dict):
+            claim["supporting_evidence_ids"].update({"minItems": 1, "maxItems": OUTPUT_CITATIONS_MAX})
+            claim_def = defs.get("FactualClaimItem", {})
+            if isinstance(claim_def.get("required"), list) and "supporting_evidence_ids" not in claim_def["required"]:
+                claim_def["required"].append("supporting_evidence_ids")
 
         for field in ("verification", "claim_id"):
             claim.pop(field, None)
