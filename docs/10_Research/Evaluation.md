@@ -37,3 +37,16 @@ B0 naive correlation (any two records sharing an entity corroborate); B1 B0 plus
 
 ## Threats to validity
 Synthetic, author-built data; the author also wrote the rules and the labels; small sample; scenario families are uneven (the held-out split lacks some independence cases); no real-world prevalence.
+
+## 2026-11-22: scoring script and development-split run (label-independent)
+Added `backend/evaluation_tools/score_sufficiency_baselines.py (kept outside backend/scripts so that production-reachable code never imports the evaluator)` (runs B0, B1 and the AISOP gate, rule `suff-v4`, on one split; held-out only with an explicit `--held-out` flag and a run-once warning; computes false-sufficient rate with a 95% Wilson interval and abstention rate only if `datasets/sufficiency_eval/labels.json` exists, schema in the script docstring) and `datasets/sufficiency_eval/labels_template.csv` (67 development rows, label and notes columns empty). Tests: `backend/tests/unit/test_score_sufficiency_baselines.py` (7 tests; with `test_evaluation_baselines.py`, 12 passed). `labels.json` does not exist; no label was written by anyone.
+
+Run on the development split (67 cases, manifest verified), per-case verdicts in `D:\AISOP-Backups\AISOP_Dev_Logs\20261122_sufficiency_baselines\verdicts_dev.csv`:
+
+| Arm | SUFFICIENT | LIMITED | INSUFFICIENT |
+|---|---|---|---|
+| B0 | 29 | 0 | 38 |
+| B1 | 24 | 0 | 43 |
+| AISOP (suff-v4) | 11 | 52 | 4 |
+
+Agreement counts: B0 SUFFICIENT where AISOP is not, 18; B1 SUFFICIENT where AISOP is not, 13; AISOP SUFFICIENT where B0 or B1 is not, 0 and 0; verdict identical to AISOP, 15 for B0 and 15 for B1; B0 equals B1 on 62 cases. These are behaviour counts, not accuracy: with no labels they do not show which arm is right, and false-sufficient rate against labels is not computed. Held-out split not run.

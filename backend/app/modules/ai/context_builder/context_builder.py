@@ -50,7 +50,7 @@ MAX_CONTEXT_CHARS: int = 8750
 
 # Match illegal XML 1.0 control characters (except \t, \n, \r)
 _ILLEGAL_XML_CHARS_RE = re.compile(
-    r"[\x01-\x08\x0b\x0c\x0e-\x1f\x7f-\x84\x86-\x9f]"
+    r"[\x01-\x08\x0b\x0c\x0e-\x1f\x7f-\x84\x86-\x9f￾￿]"
 )
 
 

@@ -17,6 +17,7 @@ import time
 import uuid
 from typing import Any
 
+from app.core.errors import safe_exception_text
 from app.core.logging import redact_sensitive_data
 from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
 from app.modules.alerts.adapter_protocol import AlertAdapterRegistry, get_default_registry
@@ -167,10 +168,21 @@ class AlertIngestionService:
             # Case C: New unique alert to normalize and persist
             # Use the declared adapter only when it can actually parse this alert; otherwise detect one. There is no silent
             # fallback to generic_siem: provenance must name the adapter that really parsed the record (review finding D-4).
-            if adapter is not None and adapter.can_adapt(raw_alert):
-                active_adapter = adapter
-            else:
-                active_adapter = self.registry.find_matching_adapter(raw_alert)
+            # Adapters inspect attacker-controlled fields; a wrongly typed value must reject this one record, never the batch.
+            try:
+                if adapter is not None and adapter.can_adapt(raw_alert):
+                    active_adapter = adapter
+                else:
+                    active_adapter = self.registry.find_matching_adapter(raw_alert)
+            except Exception:  # noqa: BLE001 - hostile record shape; reported per alert with a fixed message
+                errors.append(
+                    AlertIngestError(
+                        alert_index=idx,
+                        error="The alert has an unexpected structure and could not be matched to an adapter.",
+                        raw_sample=_safe_sample(raw_alert),
+                    )
+                )
+                continue
 
             if active_adapter is None:
                 errors.append(
@@ -272,7 +284,7 @@ class AlertIngestionService:
                     errors.append(
                         AlertIngestError(
                             alert_index=idx,
-                            error=f"IntegrityError during alert ingestion: {ie}",
+                            error=safe_exception_text(ie, "A database integrity error occurred while storing this alert."),
                             raw_sample=_safe_sample(raw_alert),
                         )
                     )
@@ -280,7 +292,7 @@ class AlertIngestionService:
                 errors.append(
                     AlertIngestError(
                         alert_index=idx,
-                        error=f"Error processing alert: {exc}",
+                        error="Error processing alert: " + safe_exception_text(exc, "the alert could not be processed."),
                         raw_sample=_safe_sample(raw_alert),
                     )
                 )

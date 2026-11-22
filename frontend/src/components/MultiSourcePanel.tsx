@@ -61,7 +61,12 @@ const VERDICT_STYLE: Record<string, { color: string; label: string; message: str
   },
 };
 
-const formatUtc = (s?: string | null): string => (s ? new Date(s).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : '-');
+const formatUtc = (s?: string | null): string => {
+  if (!s) return '-';
+  const d = new Date(s);
+  // An unparseable timestamp must render as unknown, never throw and take the whole panel down.
+  return Number.isNaN(d.getTime()) ? 'Unknown time' : d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+};
 
 const shortId = (id: string): string => id.slice(0, 8);
 

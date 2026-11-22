@@ -8,7 +8,7 @@ alert payloads into CanonicalAlert models.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Protocol, runtime_checkable
 
 from app.schemas.alert import CanonicalAlert
@@ -106,6 +106,15 @@ def require_event_time(value: Any) -> "datetime":
     if not isinstance(value, str) or not value.strip():
         raise AlertTimestampError("ALERT_TIMESTAMP_MISSING_OR_INVALID: the alert has no usable event timestamp; it was not stored.")
     try:
-        return datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        # A zoned time whose UTC conversion is out of range (year 1 with a positive offset, year 9999 with a negative one)
+        # would store fine and then raise OverflowError in every investigation that converts it. Reject it here; times
+        # that convert cleanly are kept exactly as supplied, never clamped or replaced.
+        if parsed.tzinfo is not None:
+            try:
+                parsed.astimezone(timezone.utc)
+            except OverflowError:
+                raise ValueError("out of range") from None
+        return parsed
     except ValueError:
         raise AlertTimestampError("ALERT_TIMESTAMP_MISSING_OR_INVALID: the alert has no usable event timestamp; it was not stored.") from None

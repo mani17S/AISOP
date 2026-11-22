@@ -2685,3 +2685,125 @@ h1,
 @media (prefers-contrast: more) {
   .class-glyph { border-width: 2px; }
 }
+
+/* ── Responsive hardening (375 to 1440): no page-level horizontal scroll ─── */
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+.app-container,
+.main-content {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .navbar-brand {
+    margin-right: auto;
+  }
+
+  .nav-controls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .page-header {
+    flex-wrap: wrap;
+  }
+
+  .case-selector-group {
+    flex-wrap: wrap;
+  }
+
+  .case-select {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .navbar {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .nav-controls {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .nav-controls .role-selector {
+    flex: 1 1 200px;
+    min-width: 0;
+  }
+
+  .nav-controls .role-selector .select-input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .nav-links {
+    gap: 0;
+  }
+
+  .nav-item {
+    padding: 0 8px;
+  }
+
+  /* Wide tables scroll inside their container instead of crushing columns. */
+  .data-table {
+    min-width: 640px;
+  }
+
+  .modal-dialog {
+    width: calc(100% - 32px);
+    max-width: 600px;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .page-header .btn-group {
+    flex-wrap: wrap;
+  }
+}
+
+/* The alerts ledger has 920px of fixed columns plus a flexible alert column; below about 1320px it scrolls inside its container. */
+@media (max-width: 1319px) {
+  .alerts-table {
+    min-width: 1220px;
+  }
+}
+
+/* The brand, navigation and header controls need about 1220px on one row; below that the navigation takes its own row. */
+@media (max-width: 1279px) {
+  .navbar {
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    padding: 12px 24px;
+  }
+
+  .nav-links {
+    order: 3;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 767px) {
+  .navbar {
+    padding: 12px 16px;
+  }
+}

@@ -328,10 +328,10 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px', marginBottom: '8px' }}>
               <button
                 className="btn btn-secondary"
-                style={{ padding: '4px 10px', fontSize: '12px' }}
+                style={{ padding: '4px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}
                 onClick={onBackToQueue}
               >
                 Back to cases
