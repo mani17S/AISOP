@@ -183,7 +183,8 @@ export const AisopDemo: React.FC = () => {
           heading="A case keeps its evidence together"
           callouts={[
             { text: 'Linked evidence is listed with UTC time, source and severity' },
-            { text: 'Findings separate what was observed from what was inferred' },
+            { text: 'A sufficiency check runs before any AI and reports its reasons' },
+            { text: 'AI output is checked claim by claim, and shown as inference' },
             { text: 'AI synthesis runs only when an analyst starts it' },
           ]}
         />
