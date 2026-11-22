@@ -30,8 +30,8 @@ def test_configured_num_ctx_is_sent_as_an_option():
     assert payload["options"]["num_ctx"] == 3072
 
 
-def test_settings_default_is_unset_and_the_factory_passes_it_through():
-    assert Settings(_env_file=None).OLLAMA_NUM_CTX is None
+def test_settings_default_window_is_8192_and_the_factory_passes_a_configured_one_through():
+    assert Settings(_env_file=None).OLLAMA_NUM_CTX == 8192  # the default window holds the whole prompt; see test_ollama_truncation_guard
     cfg = Settings(_env_file=None, OLLAMA_NUM_CTX=3072, LLM_ENABLED=True)
     provider = get_llm_provider(cfg)
     assert provider._build_payload(_request())["options"]["num_ctx"] == 3072

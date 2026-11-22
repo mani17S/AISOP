@@ -547,3 +547,39 @@ def test_schema_validation_and_backward_compatibility():
     assert isinstance(struct_out, InvestigationContext)
     assert len(struct_out.events) == 1
     assert struct_out.events[0].source_identifier == "WORKSTATION-01"
+
+
+# ---------------------------------------------------------------------------
+# Threat-intelligence cap (reputation lookups must not crowd out observed events)
+# ---------------------------------------------------------------------------
+
+def _ti(observable: str, verdict: ContextTIVerdict, confidence: float) -> ContextTIFindingItem:
+    return ContextTIFindingItem(
+        observable=observable,
+        observable_type="ipv4",
+        verdict=verdict,
+        threat_state=ContextTIThreatState.ACTIVE,
+        confidence=confidence,
+        tags=["anonymization_proxy", "exit_relay", "proxy", "feed_tag_" + ("t" * 40)],
+    )
+
+
+def test_threat_intel_is_capped_so_it_cannot_crowd_out_observed_events():
+    from app.modules.ai.context_builder.context_builder import MAX_CONTEXT_TI_FINDINGS
+
+    t0 = datetime(2026, 11, 20, 9, 0, 0, tzinfo=timezone.utc)
+    root_id = uuid.uuid4()
+    events = [make_test_event(event_uuid=root_id, timestamp=t0, summary="Root event " + "R" * 500)]
+    for i in range(1, 8):
+        events.append(make_test_event(event_uuid=uuid.uuid4(), timestamp=t0 + timedelta(minutes=i), summary=f"Event {i} " + "E" * 500))
+    findings = [_ti(f"203.0.113.{i}", ContextTIVerdict.UNKNOWN, 0.1) for i in range(1, 11)]
+    findings.append(_ti("198.51.100.9", ContextTIVerdict.MALICIOUS, 0.9))
+    findings.append(_ti("198.51.100.8", ContextTIVerdict.SUSPICIOUS, 0.5))
+
+    context = build_investigation_context(events=events, root_event_id=root_id, threat_intel=findings)
+
+    assert len(context.threat_intel) == MAX_CONTEXT_TI_FINDINGS
+    kept = [f.observable for f in context.threat_intel]
+    assert "198.51.100.9" in kept and "198.51.100.8" in kept, "most severe findings are kept first"
+    assert len(context.events) == 8, "all observed events survive once threat intelligence is capped"
+    assert any("threat intelligence findings omitted" in f for f in context.uncertainty_flags), "the cap is disclosed"

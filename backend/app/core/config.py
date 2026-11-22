@@ -338,15 +338,16 @@ class Settings(BaseSettings):
         ),
     )
 
-    # ── Ollama latency (opt-in; docs/06_AI/AI_Latency.md) ───────
+    # ── Ollama context window (docs/06_AI/AI_Latency.md) ───────
     OLLAMA_NUM_CTX: int | None = Field(
-        default=None,
+        default=8192,
         ge=1024,
         le=32768,
         description=(
-            "Optional Ollama context window (tokens) sent as options.num_ctx. Unset = Ollama's own default (unchanged behaviour). "
-            "A smaller window decodes faster on CPU but Ollama silently drops the oldest prompt tokens that do not fit, so it must stay "
-            "above the largest prompt plus the output ceiling; the provider logs a warning when a response nears the window."
+            "Ollama context window (tokens) sent as options.num_ctx. The application's prompt is about 5 400 tokens and the "
+            "answer up to 1 024, so the window must exceed that: when a prompt does not fit, Ollama silently keeps only the last "
+            "half of the window and the model answers without its instructions. The provider refuses such an answer. "
+            "Default 8192. A larger window needs more GPU memory: on a 4 GB GPU use a small model (see AI_Latency.md)."
         ),
     )
 

@@ -322,6 +322,22 @@ class OllamaProvider:
         else:
             finish_reason = "incomplete"
 
+        # Fail closed on a silently truncated prompt. When the prompt does not fit, Ollama keeps only the last half of the
+        # window (measured: num_ctx 3072 read 1538 of 5366 tokens; 4096 read 2050), so the model answers without its
+        # instructions or most of the evidence. Two signals: the exact half-window signature for the configured window,
+        # and a prompt read as far fewer tokens than its text length can account for (about 2.6 characters per token
+        # measured on this prompt; 6 is a deliberately loose bound so ordinary prompts are never refused).
+        prompt_chars = sum(len(m.content) for m in request.messages)
+        half_window_signature = self._num_ctx is not None and abs(prompt_tokens - (self._num_ctx // 2 + 2)) <= 4
+        far_too_few_tokens = prompt_chars >= 4000 and prompt_tokens < prompt_chars / 6
+        if prompt_tokens and (far_too_few_tokens or (half_window_signature and prompt_chars >= 4000)):
+            raise LLMResponseError(
+                "The prompt was larger than the model's context window and was silently truncated by Ollama; the answer "
+                "was discarded. Raise OLLAMA_NUM_CTX above the prompt size plus the output ceiling (about 8192 for this "
+                "application) or use a smaller model.",
+                details={"prompt_chars": prompt_chars, "prompt_tokens": prompt_tokens, "num_ctx": self._num_ctx},
+            )
+
         if self._num_ctx is not None and total_tokens >= int(self._num_ctx * 0.9):
             logger.warning(
                 "Ollama response used most of the configured context window; the prompt may have been truncated",

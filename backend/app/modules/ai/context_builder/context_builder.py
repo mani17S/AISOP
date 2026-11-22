@@ -48,6 +48,11 @@ from loguru import logger
 # Maximum character budget for the canonicalized substantive evidence body (P_evidence)
 MAX_CONTEXT_CHARS: int = 8750
 
+# Threat-intelligence findings are enrichment, not observed evidence. They were pruned last, so a dozen lookups could
+# fill the budget and push every optional observed event out of the model's context (one event of ten survived on a
+# demo case). At most this many enter the context, most severe and most confident first; the rest are disclosed.
+MAX_CONTEXT_TI_FINDINGS: int = 4
+
 # Match illegal XML 1.0 control characters (except \t, \n, \r)
 _ILLEGAL_XML_CHARS_RE = re.compile(
     r"[\x01-\x08\x0b\x0c\x0e-\x1f\x7f-\x84\x86-\x9f￾￿]"
@@ -764,6 +769,11 @@ class InvestigationContextBuilder:
         # 4. Normalize enrichment items
         raw_ti = threat_intel or []
         normalized_ti: list[ContextTIFindingItem] = [_normalize_ti_item(ti) for ti in raw_ti]
+        ti_omitted_count = max(0, len(normalized_ti) - MAX_CONTEXT_TI_FINDINGS)
+        if ti_omitted_count:
+            normalized_ti = sorted(
+                normalized_ti, key=lambda ti: (-_verdict_score(ti.verdict), -ti.confidence, ti.observable)
+            )[:MAX_CONTEXT_TI_FINDINGS]
         raw_kc = knowledge_chunks or []
         normalized_kc: list[ContextKnowledgeChunkItem] = list(raw_kc)
 
@@ -844,6 +854,11 @@ class InvestigationContextBuilder:
         if events_omitted_count > 0 and len(omitted_event_ids) > 0:
             flags.append(
                 f"TRUNCATION: Context pruned to fit {max_context_chars} character budget ({events_omitted_count} events omitted)"
+            )
+
+        if ti_omitted_count:
+            flags.append(
+                f"TRUNCATION: {ti_omitted_count} threat intelligence findings omitted (limit {MAX_CONTEXT_TI_FINDINGS} per context)"
             )
 
         # Partial retrieval / unknown scope

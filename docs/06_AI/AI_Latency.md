@@ -69,3 +69,29 @@ Measured on the same case, through the HTTP endpoint (`POST .../investigations/m
 The price of grounded claims is about 8 seconds. What the grounding means: each claim cites events that exist in the context and the IPs, hashes and executables named in the claim appear in the cited events. It does not verify counts such as "8 different events", and it is not independent corroboration. Offline tests: `backend/tests/unit/test_ai_latency_schema.py`.
 
 Hardware note: this laptop has an RTX 3050 with 4 GB. Ollama places about 2.4 of the model's 3.4 GB in video memory (partial offload). A plain 120 token generation ran at 21 tokens per second; the investigation call ran at about 12 tokens per second with a 1.5 thousand token prompt and a JSON schema. The earlier 8 tokens per second figure in this document was measured at another time; why it differs from today's figures was not isolated (GPU memory pressure from other programs is one possibility, untested).
+
+## Correction 2026-11-22: the 3072 window silently cut the prompt, so the earlier speed figures are not like for like
+
+The sections above recommend `OLLAMA_NUM_CTX=3072` and report about 55 s. That setting was not safe, and part of the speed came from the model reading less. Measured by sending the same 14 229 character prompt (5 366 tokens) with different windows and reading `prompt_eval_count`:
+
+| `num_ctx` | Prompt tokens actually read | Share of the prompt |
+| --- | --- | --- |
+| 3072 | 1 538 | 29 % |
+| 4096 (Ollama's usual default) | 2 050 | 38 % |
+| 6144 | 5 366 | 100 % |
+| 8192 | 5 366 | 100 % |
+
+Ollama keeps the last half of the window and drops the start, which is where the system instructions and the output contract sit. At 3072 and at the default window the model never saw them. Effects seen on the live case: claims were uncited or cited made-up identifiers, and report synthesis fell back to the deterministic report after a 38 to 56 s wait, because no claim was validated. The warning the provider already had (response within 90 % of the window) never fired, because truncation leaves about half the window free.
+
+What changed: the default `OLLAMA_NUM_CTX` is now 8192; the provider refuses an answer when the prompt was truncated (it recognises the half-window signature for the configured window, and a prompt read as far fewer tokens than its text allows), so the pipeline falls back to the deterministic result with the reason in the log (`LLMResponseError`); tests in `backend/tests/unit/test_ollama_truncation_guard.py`. Separately, threat-intelligence findings are capped at 4 per context (`MAX_CONTEXT_TI_FINDINGS`), most severe first and disclosed, because the builder pruned them last and thirteen findings had pushed nine of ten observed events out of the report path's context.
+
+Same request, full window, this laptop (RTX 3050 with 4 GB, Ollama partial offload for the larger model):
+
+| Model | Window | Wall time | Output speed | Citations |
+| --- | --- | --- | --- | --- |
+| qwen3:4b | 6656 | 174 s (prompt read in 5.3 s, 789 tokens at 4.9 tokens/s, mostly on the CPU) | 4.9 tokens/s | 3 of 3 real events, claims correct |
+| qwen2.5:1.5b | 8192 | 6.0 s warm, 13.1 s with model load (575 tokens at 97 tokens/s) | 97 tokens/s | 2 of 2 real events, summary correct |
+
+Through the HTTP endpoints with qwen2.5:1.5b at 8192 (one run each unless stated): multi-source investigation 9.0 s then 6.5 s (decision pass, grounding 1.0, one claim citing two real events, summary a single whole sentence); case synthesis 6.3 s (decision remediated, one violation recorded by the guardrails, grounding 1.0); report synthesis 7.1 s with no fallback (grounding 1.0). With the window deliberately set to 3072 the same calls fell back to the deterministic result and the log named the cause.
+
+What this does not show: quality across many cases (one case, one run each); the 4B model's answers at a window it can serve quickly; behaviour on a machine with more video memory, where the 4B model would be much faster. The smaller model's output is shorter and less nuanced. Every claim is still checked by the same deterministic validator, and the model's own confidence and grounding values are ignored.
