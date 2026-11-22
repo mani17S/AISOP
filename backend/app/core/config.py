@@ -328,6 +328,16 @@ class Settings(BaseSettings):
         ),
     )
 
+    LLM_MAX_CONCURRENCY: int = Field(
+        default=1,
+        ge=1,
+        le=8,
+        description=(
+            "Maximum model calls in flight at once in this process. A local CPU model serves one request at a time, so extra "
+            "callers wait here instead of all running together and all timing out. Raise it only for a server with spare capacity."
+        ),
+    )
+
     # ── Ollama latency (opt-in; docs/06_AI/AI_Latency.md) ───────
     OLLAMA_NUM_CTX: int | None = Field(
         default=None,

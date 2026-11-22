@@ -10,7 +10,9 @@ and health check probing.
 
 from __future__ import annotations
 
+import asyncio
 import time
+import weakref
 from typing import Any
 
 import httpx
@@ -51,6 +53,25 @@ def _is_transient_network_error(exc: BaseException) -> bool:
     ):
         return True
     return False
+
+
+_GATES: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore]" = weakref.WeakKeyDictionary()
+
+
+def _configured_limit() -> int:
+    from app.core.config import get_settings
+
+    return max(1, int(get_settings().LLM_MAX_CONCURRENCY))
+
+
+def _inference_gate() -> asyncio.Semaphore:
+    """One gate per event loop, shared by every provider instance (the application builds a provider per request)."""
+    loop = asyncio.get_running_loop()
+    gate = _GATES.get(loop)
+    if gate is None:
+        gate = asyncio.Semaphore(_configured_limit())
+        _GATES[loop] = gate
+    return gate
 
 
 class OllamaProvider:
@@ -150,6 +171,11 @@ class OllamaProvider:
         return payload
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
+        """Run one inference, waiting for a free slot first. The request timeout starts only once the call is sent."""
+        async with _inference_gate():
+            return await self._generate_unguarded(request)
+
+    async def _generate_unguarded(self, request: LLMRequest) -> LLMResponse:
         """
         Execute non-streaming inference via Ollama /api/chat.
 

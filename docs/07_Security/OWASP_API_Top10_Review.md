@@ -199,3 +199,8 @@ Not verified: behaviour behind a real reverse proxy and TLS; PostgreSQL-specific
 3. API4: no in-flight concurrency cap for LLM calls; no application-level request timeout; the evidence-link body is uncapped by design of an existing test.
 4. API8: `Server: uvicorn` header; trailing-slash 307 redirects; the throttle and rate limiter are in-memory per process.
 5. API8: the development configuration still serves docs, the schema and full readiness detail unauthenticated; production settings (`ENVIRONMENT=production`) close all three.
+
+## Follow-up 2026-11-22: cap on concurrent model calls
+
+The earlier review left "no cap on in-flight LLM calls" open. `LLM_MAX_CONCURRENCY` (default 1, range 1 to 8) now limits model calls in flight per process, using one gate per event loop shared by every provider instance (`backend/app/modules/ai/providers/ollama/provider.py`). Extra callers wait for a slot; the request timeout starts only when the call is sent, so a queue no longer makes every caller time out together. Pinned by `backend/tests/unit/test_llm_concurrency.py` (four simultaneous calls reach the model one at a time; a higher limit is honoured). Offline-tested only. The limit is per process, like the other throttles.
+

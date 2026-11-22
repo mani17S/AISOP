@@ -61,3 +61,14 @@ Also required and not scriptable: review of the Privacy Policy and Terms of Serv
 ## 5a. Sources fetched 2026-11-19
 
 developers.cloudflare.com (Pages limits, serving pages, custom domains); neon.com (pricing, pgvector); render.com/docs/free; koyeb.com/docs/faqs/pricing; supabase.com billing docs; freedns.afraid.org; dnshe.com; free-for-dev README (local copy). Failed or unread: oracle.com free tier (403), domain.digitalplat.org (403), nic.ua pp.ua terms.
+
+## 4. State as deployed (recorded 2026-11-22; credentials are held outside the repository, in `D:\AISOP-Control`)
+
+| Part | State | Evidence |
+|---|---|---|
+| Database | **Render Postgres** (PostgreSQL 18.7, Oregon) used instead of Neon. All 4 migrations applied; pgvector available. Two demo identities (`viva_analyst`, `viva_sensor`) expiring 2026-12-02; one synthetic intrusion case with 10 alerts, investigated deterministically. | Read back through the API on 2026-11-22 |
+| Frontend | **Cloudflare Pages**, project `aisop-demo`, `https://aisop-demo.pages.dev`, deployed by direct upload (wrangler on D:). Built with `VITE_API_BASE_URL=https://aisop-api.onrender.com`. Landing, `/privacy`, `/terms` and `/app` return 200 with the security headers. | Probed with curl |
+| API | **Not deployed.** The Render API key supplied lacks `services.read_write`, so the web service must be created in the dashboard with the name `aisop-api` (or the frontend rebuilt for another address). | Render API returned 403 `insufficient_token_scope` |
+
+Notes: from a distant machine each query to the Oregon database takes about 0.5 s, so bulk loading must run from inside the region or use a small dataset; the hosted API runs in the same region and does not have this delay. The free Render database has an expiry date shown in the dashboard; check it before the defence. The hosted API runs with the AI disabled.
+
