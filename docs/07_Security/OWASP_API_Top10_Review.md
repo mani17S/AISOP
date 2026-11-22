@@ -194,9 +194,9 @@ Not verified: behaviour behind a real reverse proxy and TLS; PostgreSQL-specific
 
 ## Open items
 
-1. API1/API6: any investigator or lead can link any event id to their own case (see API1). Needs a product decision; propose as a new ADR.
+1. API1/API6: any investigator or lead can link any event id to their own case (see API1). Decided: ADR-014 (approved 2026-11-22, Option A): the evidence pool is shared by design (single-tenant), every link is already audited, and the id-existence test is an accepted residual risk.
 2. API2: no HTTP key-management API; rotation and revocation are operator-script only; keys can be issued without expiry.
-3. API4: no in-flight concurrency cap for LLM calls; no application-level request timeout; the evidence-link body is uncapped by design of an existing test.
+3. API4: no application-level request timeout (the in-flight cap on model calls was added, see the follow-up below); the evidence-link body is uncapped by design of an existing test.
 4. API8: `Server: uvicorn` header; trailing-slash 307 redirects; the throttle and rate limiter are in-memory per process.
 5. API8: the development configuration still serves docs, the schema and full readiness detail unauthenticated; production settings (`ENVIRONMENT=production`) close all three.
 
