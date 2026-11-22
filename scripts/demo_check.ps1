@@ -73,7 +73,7 @@ if ($WarmUp) {
   try {
     $m = (Invoke-RestMethod "http://127.0.0.1:$Port/api/v1/health/ready" -TimeoutSec 15).checks.llm_provider.model
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    Invoke-RestMethod "http://127.0.0.1:11434/api/generate" -Method Post -ContentType "application/json" -Body (@{ model = $m; prompt = ""; keep_alive = "30m" } | ConvertTo-Json) -TimeoutSec 180 | Out-Null
+    Invoke-RestMethod "http://127.0.0.1:11434/api/generate" -Method Post -ContentType "application/json" -Body (@{ model = $m; prompt = ""; keep_alive = "30m"; options = @{ num_ctx = 8192 } } | ConvertTo-Json) -TimeoutSec 180 | Out-Null
     Item "language model warm ($m, kept 30 min)" $true ("loaded in {0:N1} s" -f $sw.Elapsed.TotalSeconds)
   } catch { Item "language model warm-up" $false "Ollama not reachable on 127.0.0.1:11434" }
 }

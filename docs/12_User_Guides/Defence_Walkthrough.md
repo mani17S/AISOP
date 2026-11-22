@@ -8,11 +8,11 @@ Read section 6 ("Do not claim") before you rehearse anything else.
 
 | Item | Number | Source |
 |---|---|---|
-| Backend unit tests collected | 3,171 (run today: `.venv\Scripts\python.exe -m pytest --collect-only -q backend/tests/unit`) | collection count, not a pass count |
+| Backend unit tests, full run | 3,631 passed, 1 skipped, 1 expected failure (a documented limitation, `xfail`), 0 failed (`.venv\Scripts\python.exe -m pytest backend/tests/unit -q`, run 2026-11-22 after the last backend change) | run today |
 | Backend integration tests collected | 124 (run today) | collection count |
 | Last recorded full unit run | 3,142 passed, 1 skipped, 0 failed (saved log `D:\AISOP-Backups\AISOP_Dev_Logs_20261120\day6_unit.log`, via `CLAIM_LIST_AUDIT.md`); `docs/10_Research/Evaluation.md` quotes 3,166 passed on a later run | saved log |
 | Key suites run today (10 files: sufficiency gate, gated generation, multisource workflow, stage 5 adversarial, independence, reliability matrix, OWASP probes, review, export gate, claim verifier) | 313 passed, 1 skipped, 1 failed | run today |
-| The 1 failure today | `test_sufficiency_gated_generation.py::test_the_ablation_module_is_not_reachable_from_production_code` fails because `backend/scripts/score_sufficiency_baselines.py` mentions `sufficiency_evaluator`. Fix or explain this before the panel (see section 6). | run today |
+| The earlier failing test | `test_the_ablation_module_is_not_reachable_from_production_code` failed because the scoring script mentioned `sufficiency_evaluator`. Fixed by moving it to `backend/evaluation_tools/`; it passes in the full run above. | run today |
 | Alert adapters in the default registry | 8 (`backend/app/modules/alerts/adapter_protocol.py: get_default_registry`) | code |
 | Source-agnostic domain adapters | 6 named (identity, cloud_audit, network, email, forensic, analyst) plus an "unclassified" fallback (`backend/app/modules/evidence_domains/adapters.py`) | code |
 | ATT&CK rules | 13: 6 in `backend/app/modules/correlation/mitre.py` (`attack-map-v1`) and 7 in `backend/app/modules/evidence_domains/domain_attack.py` | code |
@@ -25,8 +25,9 @@ Read section 6 ("Do not claim") before you rehearse anything else.
 | OWASP-mapped probes | 33 offline cases, 18 of 18 live probes | `docs/07_Security/Security_Test_Findings.md` |
 | 200-alert batch ingest | about 2 s | saved log `live_e2e_result_nonsuper.json` |
 | Deterministic investigation, demo case | 0.6 to 0.7 s (14 records, 2 incidents) | saved log `AI_LATENCY_RECORD.md` |
-| Optional AI explanation | about 8 s warm, 12 to 13 s cold; one of two incidents falls back (RTX 3050 4 GB, `qwen2.5:1.5b`) | saved log `AI_LATENCY_RECORD.md` |
-| Frontend tests | 199 of 199 per the saved log; not re-run today | saved log |
+| Optional AI, through the live API on the demo case (RTX 3050 4 GB, `qwen2.5:1.5b`, 8192 window) | AI investigation 6.5 to 14.3 s; case synthesis 6.3 s; report synthesis 6.9 to 7.1 s with no fallback. One case, one or two runs each, so this is a demo timing, not a benchmark. | `docs/06_AI/AI_Latency.md`, correction of 2026-11-22 |
+| Larger local model | `qwen3:4b` reading the whole prompt took 174 s on this 4 GB GPU (mostly CPU); its answers were correct. Not used for the demo. | same document |
+| Frontend tests | 256 of 256 passed (run 2026-11-22) | run today |
 
 ## 1. Ten minute walkthrough script
 
@@ -105,7 +106,7 @@ If something fails live: say so, restart with `scripts\demo_check.ps1 -Start` (a
 11. **How do you know the evidence was not altered?** Every raw record is stored verbatim with a SHA-256; the workflow ledger is a hash chain that detects edits, deletions and reordering (`correlation/ledger.py: verify_chain`). It is tamper-evident since submission, not immutable, and tail truncation is detected only against a trusted head. Show: `Panel_Viva_Walkthrough.md` section 3b, the tamper test in `test_multisource_workflow.py`.
 12. **Is there real human approval?** For the multi-source report, yes: export returns 409 until the case lead approves the exact current result, and approval goes stale if evidence changes (`.../multisource/review`, `.../multisource/export`). For the case-synthesis report path, no. Detection-rule approval does not exist because Detection Engineering is design only (ADR-012). Show: `test_multisource_review.py`, `test_multisource_export_gate.py`.
 13. **How secure is it?** An OWASP-mapped probe suite was run (33 offline cases, 18 of 18 live), two findings fixed, others disclosed. It is not a penetration test. Open items: two dev-server dependency advisories (vite, esbuild) deliberately not upgraded in the window, API key held in browser session storage, in-memory rate limit, hosted database credentials not yet rotated. Show: `docs/07_Security/Security_Test_Findings.md`. Do not say "pentested".
-14. **Why a 1.5B local model, and is it any good?** It fits a 4 GB GPU and keeps data local. It is weak: it often fails the strict JSON check and one of two demo incidents falls back to the deterministic report. The design works because the fallback exists. I have not benchmarked model quality (0 of 19 live benchmark scenarios captured). Show: `AI_LATENCY_RECORD.md`, `docs/04_Testing/AI_Model_Benchmark_Report.md`.
+14. **Why a 1.5B local model, and is it any good?** It fits a 4 GB GPU and keeps data local. It is small and its answers are short and less nuanced. Today I found and fixed a real fault that made it look worse than it is: the prompt is about 5,400 tokens, and Ollama silently cut it to about a quarter at the window I had set, so the model never saw its instructions. With a window that holds the whole prompt the model cites real events and the report no longer falls back. The provider now refuses an answer from a truncated prompt, and the pipeline falls back to the deterministic report with the cause logged. A larger model (`qwen3:4b`) answered correctly but took 174 s on this GPU. I have not benchmarked model quality (0 of 19 live benchmark scenarios captured, and the live numbers above are one case). Show: `docs/06_AI/AI_Latency.md`, `backend/tests/unit/test_ollama_truncation_guard.py`.
 15. **What would you do next, and what is out of scope?** First: label the 67 development cases, score B0, B1 and AISOP, then the held-out split once, and report results including failures. Then the literature and product review. Detection Engineering (Sigma rules, never auto-deployed) is designed in ADR-012 but not built. GRC and compliance workflows are out of scope. Show: `Evaluation.md` "Next steps".
 
 ## 4. Be able to explain these without notes
@@ -135,9 +136,9 @@ If something fails live: say so, restart with `scripts\demo_check.ps1 -Start` (a
 - That the multi-alert crash is fixed (never reproduced), or any production, enterprise or scale readiness.
 - That all reports require human approval (only the multi-source export does), or that any rule is approved or deployed (Detection Engineering is not built).
 - That ADR-008 to ADR-012 are approved (they are PROPOSED), or that ADR-012 is implemented.
-- That the AI is fast, accurate or correct (about 8 s warm, one of two incidents falls back, no quality benchmark).
+- That the AI is accurate or correct. It is fast on the demo case (about 7 to 14 s with the 1.5B model) but there is no quality benchmark; the grounding checks confirm that cited events exist and that IPs, hashes and executables named in a claim appear in them, not that a count or an interpretation is right.
 - That threat intelligence enriches investigations (the multi-source path makes no TI call; R10 asserts zero outbound requests).
 - "Pentested with PentAGI", "35/35 PostgreSQL", "zero vulnerabilities" (only the pinned Python list is clean; two npm dev-server advisories are open).
-- That every test passes today. At the time of writing one test failed (fixed since by moving the scoring script out of backend/scripts) (`test_the_ablation_module_is_not_reachable_from_production_code`, caused by `backend/scripts/score_sufficiency_baselines.py` mentioning `sufficiency_evaluator`). Resolve it, or state it truthfully, before the panel.
+- That every test passes after any further change. The full backend run on 2026-11-22 passed (3,631); rerun it after any edit before saying so.Resolve it, or state it truthfully, before the panel.
 - That you wrote all the code by hand.
 - Any paper citation you have not read yourself.
