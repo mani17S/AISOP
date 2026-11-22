@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
+import { TimeZoneProvider } from './contexts/TimeZoneContext';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './pages/Dashboard';
 import { Alerts } from './pages/Alerts';
@@ -94,7 +95,9 @@ const ShellBody: React.FC = () => {
 
 const AppShell: React.FC = () => (
   <AuthProvider>
-    <ShellBody />
+    <TimeZoneProvider>
+      <ShellBody />
+    </TimeZoneProvider>
   </AuthProvider>
 );
 

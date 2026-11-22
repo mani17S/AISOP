@@ -55,6 +55,9 @@ class TestSanitizedNormalizedEventSummary:
             "severity",
             "source_type",
             "source_identifier",
+            # Added 2026-11-22 on purpose: a timestamp only (when AISOP ingested the record), already returned to the same
+            # roles by the alert endpoints. Needed to show event time and ingestion time side by side.
+            "raw_ingested_at",
         }
         assert set(data.keys()) == expected_keys
         # Explicit exclusion of sensitive unredacted fields

@@ -34,6 +34,8 @@ import { AuditDetailsCell, AuditDetailsRow } from './AuditDetails';
 import { handleTabListKeyDown, tabButtonId, tabPanelId } from './tabs';
 import { CloseIcon } from './Icons';
 import { ExhibitTag } from './ExhibitTag';
+import { useTimeZone } from '../contexts/TimeZoneContext';
+import { formatInstant } from '../utils/time';
 
 interface InvestigationWorkspaceProps {
   caseId: string;
@@ -65,6 +67,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
   initialCaseError,
 }) => {
   const { canCloseCase, canSynthesizeReports } = useAuth();
+  const { zone } = useTimeZone();
 
   // Case detail state
   const [caseDetail, setCaseDetail] = useState<CaseResponse | null>(initialCaseDetail || null);
@@ -271,15 +274,11 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
     tabIndex: activeTab === tab ? 0 : -1,
   });
 
+  // Written in the zone chosen in the header (UTC by default), always naming the zone. An unparseable value is shown as received.
   const formatUtc = (dateStr?: string | null): string => {
     if (!dateStr) return 'N/A';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
-    } catch {
-      return dateStr;
-    }
+    const out = formatInstant(dateStr, zone);
+    return out === 'Unknown' ? dateStr : out;
   };
 
   const getSeverityBadgeClass = (sev: string): string => {
@@ -568,7 +567,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Observed (UTC)</th>
+                    <th>Generated</th>
                     <th>Event type</th>
                     <th>Source</th>
                     <th>Action</th>
@@ -1037,7 +1036,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Observed (UTC)</th>
+                    <th>Recorded</th>
                     <th>Action</th>
                     <th>Actor</th>
                     <th>Context digest (SHA-256)</th>

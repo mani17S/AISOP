@@ -57,6 +57,8 @@ export interface NormalizedEventSummary {
   event_id: string;
   event_timestamp?: string;
   observed_timestamp?: string;
+  /** When AISOP ingested the record (UTC). Different from event_timestamp, the time the source generated it. */
+  raw_ingested_at?: string | null;
   event_type: string;
   source_type?: string;
   source_identifier?: string;

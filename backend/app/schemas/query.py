@@ -73,6 +73,13 @@ class NormalizedEventSummary(BaseModel):
     source_identifier: str | None = Field(
         default=None, description="Host/endpoint identifier"
     )
+    raw_ingested_at: datetime | None = Field(
+        default=None,
+        description=(
+            "When AISOP ingested the parent raw evidence (UTC). A different fact from event_timestamp, which is when the "
+            "source generated the event; the two are never merged or substituted."
+        ),
+    )
     normalized_payload: dict[str, Any] = Field(
         description="Full canonical event payload"
     )
@@ -85,9 +92,6 @@ class NormalizedEventDetail(NormalizedEventSummary):
 
     raw_sha256_hash: str | None = Field(
         default=None, description="SHA-256 hash of parent raw evidence"
-    )
-    raw_ingested_at: datetime | None = Field(
-        default=None, description="Ingestion timestamp of parent raw evidence"
     )
     entities: list[ExtractedEntityItem] = Field(
         default_factory=list, description="Entities extracted from this event"
@@ -144,6 +148,7 @@ class SanitizedNormalizedEventSummary(BaseModel):
     - severity
     - source_type
     - source_identifier
+    - raw_ingested_at (when AISOP ingested it; a timestamp only, already given by the alert endpoints)
 
     Explicitly excludes:
     - raw_evidence_id (prevents unscoped traversal to raw payloads)
@@ -166,6 +171,10 @@ class SanitizedNormalizedEventSummary(BaseModel):
     source_identifier: str | None = Field(
         default=None, description="Host/endpoint identifier"
     )
+    raw_ingested_at: datetime | None = Field(
+        default=None,
+        description="When AISOP ingested the record (UTC). Different from event_timestamp, which is when the source generated it.",
+    )
 
     @classmethod
     def from_event_summary(
@@ -184,6 +193,7 @@ class SanitizedNormalizedEventSummary(BaseModel):
                 severity=event["severity"],
                 source_type=event.get("source_type"),
                 source_identifier=event.get("source_identifier"),
+                raw_ingested_at=event.get("raw_ingested_at"),
             )
         return cls(
             id=event.id,
@@ -196,6 +206,7 @@ class SanitizedNormalizedEventSummary(BaseModel):
             severity=event.severity,
             source_type=event.source_type,
             source_identifier=event.source_identifier,
+            raw_ingested_at=event.raw_ingested_at,
         )
 
 

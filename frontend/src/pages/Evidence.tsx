@@ -10,6 +10,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import { NormalizedEventSummary } from '../types';
 import { ExhibitTag } from '../components/ExhibitTag';
+import { TimePair } from '../components/TimePair';
 import { SetupNotice, isAuthMessage } from '../components/SetupNotice';
 
 export interface EvidenceProps {
@@ -18,17 +19,6 @@ export interface EvidenceProps {
   initialLoading?: boolean;
   initialError?: string | null;
 }
-
-const formatTimestamp = (rawTs?: string | null): string => {
-  if (!rawTs) return 'N/A';
-  try {
-    const d = new Date(rawTs);
-    if (isNaN(d.getTime())) return String(rawTs);
-    return d.toISOString().replace('T', ' ').slice(0, 19);
-  } catch {
-    return String(rawTs);
-  }
-};
 
 export const Evidence: React.FC<EvidenceProps> = ({
   initialEvents,
@@ -166,7 +156,7 @@ export const Evidence: React.FC<EvidenceProps> = ({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Observed (UTC)</th>
+                <th>Generated and ingested</th>
                 <th>Type and provider</th>
                 <th>Source host</th>
                 <th>Severity</th>
@@ -177,7 +167,6 @@ export const Evidence: React.FC<EvidenceProps> = ({
             <tbody>
               {events.map((evt) => {
                 const rawTimestamp = evt.event_timestamp || evt.observed_timestamp;
-                const displayTime = formatTimestamp(rawTimestamp);
                 const eventEntities = Array.isArray(evt.entities) ? evt.entities : [];
                 const summaryText =
                   evt.summary ||
@@ -188,8 +177,8 @@ export const Evidence: React.FC<EvidenceProps> = ({
 
                 return (
                   <tr key={evt.id}>
-                    <td className="font-mono" style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
-                      {displayTime}
+                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                      <TimePair eventTime={rawTimestamp} ingestedAt={evt.raw_ingested_at} />
                     </td>
                     <td>
                       <span className="event-type"><ExhibitTag id={evt.id} /> {evt.event_type || 'event'}</span>

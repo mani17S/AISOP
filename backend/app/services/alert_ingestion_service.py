@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from datetime import timezone
 from typing import Any
 
 from app.core.errors import safe_exception_text
@@ -217,7 +218,14 @@ class AlertIngestionService:
                         raw_evidence_id=db_raw.id,
                         event_id=canonical_alert.source_alert_id,
                         event_type=canonical_event.event_type,
-                        event_timestamp=canonical_alert.timestamp,
+                        # A time with a zone is stored as the same instant in UTC, so the result does not depend on how the
+                        # database handles zones (SQLite drops the offset). A zone-less time is left exactly as supplied:
+                        # Stage 7B assumes and flags it, and this code does not decide a zone.
+                        event_timestamp=(
+                            canonical_alert.timestamp.astimezone(timezone.utc)
+                            if canonical_alert.timestamp.tzinfo is not None
+                            else canonical_alert.timestamp
+                        ),
                         provider=canonical_alert.provider,
                         action="alert_triggered",
                         outcome="success",

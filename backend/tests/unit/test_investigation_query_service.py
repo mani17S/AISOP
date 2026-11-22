@@ -386,3 +386,40 @@ async def test_single_event_and_evidence_retrieval(db_session, query_service):
     assert evidence_by_hash is not None
     assert evidence_by_hash.id == raw.id
     assert len(evidence_by_hash.normalized_events) == 1
+
+
+@pytest.mark.anyio
+async def test_event_list_carries_both_the_event_time_and_the_ingestion_time(db_session, query_service):
+    """An alert generated at 22:00 IST (16:30 UTC) and ingested at 02:00 IST the next day (20:30 UTC) shows both, unmerged."""
+    generated = datetime(2026, 11, 10, 16, 30, tzinfo=timezone.utc)
+    ingested = datetime(2026, 11, 10, 20, 30, tzinfo=timezone.utc)
+    raw = await _create_test_raw_evidence(db_session)
+    raw.ingested_at = ingested
+    await _create_test_event(db_session, raw, "E-1", "logon", generated)
+    await db_session.commit()
+
+    item = (await query_service.query_events(db_session)).items[0]
+
+    def aware(d):
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+    assert aware(item.event_timestamp) == generated
+    assert item.raw_ingested_at is not None and aware(item.raw_ingested_at) == ingested
+    assert aware(item.raw_ingested_at) - aware(item.event_timestamp) == timedelta(hours=4)
+
+
+@pytest.mark.anyio
+async def test_the_shared_triage_projection_keeps_the_ingestion_time_and_still_hides_the_payload(db_session, query_service):
+    from app.schemas.query import SanitizedNormalizedEventSummary
+
+    ingested = datetime(2026, 11, 10, 20, 30, tzinfo=timezone.utc)
+    raw = await _create_test_raw_evidence(db_session)
+    raw.ingested_at = ingested
+    await _create_test_event(db_session, raw, "E-2", "logon", datetime(2026, 11, 10, 16, 30, tzinfo=timezone.utc))
+    await db_session.commit()
+
+    sanitized = SanitizedNormalizedEventSummary.from_event_summary((await query_service.query_events(db_session)).items[0])
+    dumped = sanitized.model_dump()
+
+    assert sanitized.raw_ingested_at is not None and sanitized.raw_ingested_at.replace(tzinfo=timezone.utc) == ingested
+    assert "normalized_payload" not in dumped and "raw_evidence_id" not in dumped

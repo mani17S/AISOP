@@ -216,6 +216,7 @@ class InvestigationQueryService:
                 source_identifier=(
                     e.raw_evidence.source_identifier if e.raw_evidence else None
                 ),
+                raw_ingested_at=e.raw_evidence.ingested_at if e.raw_evidence else None,
                 normalized_payload=e.normalized_payload,
             )
             for e in events

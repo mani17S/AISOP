@@ -29,6 +29,9 @@ import { Dialog } from '../components/Dialog';
 import { ExhibitTag } from '../components/ExhibitTag';
 import { SetupNotice, isAuthMessage } from '../components/SetupNotice';
 import { useAuth } from '../contexts/AuthContext';
+import { useTimeZone } from '../contexts/TimeZoneContext';
+import { TimePair } from '../components/TimePair';
+import { describeIngestionLag, formatInstant } from '../utils/time';
 
 interface AlertsProps {
   onNavigateToCase?: (caseId: string) => void;
@@ -36,6 +39,7 @@ interface AlertsProps {
 
 export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
   const { apiKey } = useAuth();
+  const { zone } = useTimeZone();
   // Alert queue state
   const [alerts, setAlerts] = useState<AlertSummaryItem[]>([]);
   const [total, setTotal] = useState<number>(0);
@@ -309,17 +313,6 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
     );
   };
 
-  // Format UTC date cleanly
-  const formatUtc = (dateStr: string): string => {
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
-    } catch {
-      return dateStr;
-    }
-  };
-
   const getSeverityBadgeClass = (sev: string): string => {
     switch (sev.toLowerCase()) {
       case 'critical':
@@ -557,7 +550,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                 <th style={{ width: '152px' }}>Category and adapter</th>
                 <th style={{ width: '104px' }}>MITRE ATT&CK</th>
                 <th style={{ width: '184px' }}>Indicators</th>
-                <th style={{ width: '120px' }}>Observed (UTC)</th>
+                <th style={{ width: '272px' }}>Generated and ingested</th>
                 <th style={{ width: '96px' }}>Case</th>
                 <th style={{ width: '176px', textAlign: 'right' }}>Actions</th>
               </tr>
@@ -630,9 +623,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                     )}
                   </td>
                   <td>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      {formatUtc(alert.timestamp)}
-                    </span>
+                    <TimePair eventTime={alert.timestamp} ingestedAt={alert.ingested_at} />
                   </td>
                   <td>
                     {alert.has_case ? (
@@ -761,16 +752,22 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                         </span>
                       </div>
                       <div className="detail-field">
-                        <span className="detail-field-label">Observed Observed (UTC)</span>
+                        <span className="detail-field-label">Generated at the source (event time)</span>
                         <span className="detail-field-value">
-                          {formatUtc(alertDetail.timestamp)}
+                          {formatInstant(alertDetail.timestamp, zone)}
+                          {zone !== 'UTC' && <span className="time-also"> ({formatInstant(alertDetail.timestamp, 'UTC')})</span>}
                         </span>
                       </div>
                       <div className="detail-field">
-                        <span className="detail-field-label">Ingested Observed (UTC)</span>
+                        <span className="detail-field-label">Ingested by AISOP</span>
                         <span className="detail-field-value">
-                          {formatUtc(alertDetail.ingested_at)}
+                          {formatInstant(alertDetail.ingested_at, zone)}
+                          {zone !== 'UTC' && <span className="time-also"> ({formatInstant(alertDetail.ingested_at, 'UTC')})</span>}
                         </span>
+                      </div>
+                      <div className="detail-field">
+                        <span className="detail-field-label">Gap between the two</span>
+                        <span className="detail-field-value">{describeIngestionLag(alertDetail.timestamp, alertDetail.ingested_at).text}</span>
                       </div>
                       <div className="detail-field">
                         <span className="detail-field-label">Raw Evidence Digest (SHA-256)</span>

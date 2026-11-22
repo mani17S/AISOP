@@ -7,6 +7,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTimeZone } from '../contexts/TimeZoneContext';
+import { DisplayZone, ZONES, zoneLabel } from '../utils/time';
 import { GlobalRole, HealthResponse } from '../types';
 import { api } from '../services/api';
 import { Dialog } from './Dialog';
@@ -31,6 +33,7 @@ const UtcClock: React.FC = () => {
 };
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
+  const { zone, setZone } = useTimeZone();
   const { globalRole, setRole, apiKey, setApiKey, keyDialogOpen: isKeyModalOpen, setKeyDialogOpen: setIsKeyModalOpen } = useAuth();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [keyInput, setKeyInput] = useState(apiKey);
@@ -131,6 +134,23 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
           </div>
 
           <UtcClock />
+
+          <div className="role-selector" title="Choose the time zone used to write times on screen. The server stores every time in UTC.">
+            <span className="field-label" aria-hidden="true">Times in</span>
+            <span className="visually-hidden">Time zone used to display times</span>
+            <select
+              className="select-input"
+              value={zone}
+              onChange={(e) => setZone(e.target.value as DisplayZone)}
+              aria-label="Time zone used to display times"
+            >
+              {ZONES.map((z) => (
+                <option key={z} value={z}>
+                  {zoneLabel(z)}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="role-selector" title="Client-side UI simulation only. Backend independently enforces actual permissions based on the authenticated principal / token.">
             <span className="field-label" aria-hidden="true">View as</span>
