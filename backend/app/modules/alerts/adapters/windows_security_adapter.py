@@ -96,13 +96,15 @@ class WindowsSecurityAdapter:
         computer = str(
             system.get("Computer")
             or event_data.get("WorkstationName")
+            or event_data.get("Hostname")
             or data.get("computer")
             or data.get("host")
             or "WINDOWS-ENDPOINT"
         )
 
         # Time extraction
-        time_created = system.get("TimeCreated", {}).get("@SystemTime") or data.get("timestamp")
+        flat_time = data.get("TimeCreated") if isinstance(data.get("TimeCreated"), str) else None  # flat forwarder export
+        time_created = system.get("TimeCreated", {}).get("@SystemTime") or data.get("timestamp") or flat_time or data.get("@timestamp")
         ts = require_event_time(time_created)
 
         target_user = str(

@@ -61,6 +61,13 @@ class SysmonAlertAdapter:
         if raw_data.get("provider", "").lower() == "microsoft-windows-sysmon":
             return True
 
+        # Flat exports from Windows event forwarders (Winlogbeat, NXLog) carry the channel and source name at the top level.
+        if (
+            str(raw_data.get("Channel", "")).lower() == "microsoft-windows-sysmon/operational"
+            or str(raw_data.get("SourceName", "")).lower() == "microsoft-windows-sysmon"
+        ):
+            return True
+
         return False
 
     def adapt(
@@ -95,6 +102,7 @@ class SysmonAlertAdapter:
         computer = str(
             system.get("Computer")
             or event_data.get("Computer")
+            or event_data.get("Hostname")
             or data.get("computer")
             or data.get("host")
             or "UNKNOWN-HOST"

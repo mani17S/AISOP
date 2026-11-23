@@ -26,7 +26,7 @@ B0 naive correlation (any two records sharing an entity corroborate); B1 B0 plus
 | Baselines B0 and B1 | **Implemented (2026-11-21)** as pure functions with tests (`backend/app/modules/evaluation/baselines.py`); the rule is fixed and was not tuned. **Behaviour on the development split only** (67 cases): B0 says SUFFICIENT for 29, B1 for 24, AISOP for 11. This shows the baselines are more permissive; it does **not** show who is right, because no labels exist. Held-out not run. | `D:AISOP-BackupsAISOP_Dev_Logs_20261120day6b_baseline_dev_behaviour.json` |
 | Held-out split | **Never run.** | Stage 5 report |
 | Second reviewer / agreement | **None.** | Stage 5 report |
-| Live language-model benchmark (19 scenarios) | **0 of 19 captured**; model id unknown in the report. | `docs/04_Testing/AI_Model_Benchmark_Report.md` |
+| Captured language-model benchmark (19 approved scenarios) | **10 of 19 have captured outputs** from `llama3.1:8b` (captured 2026-11-09, before the gate and claim-checking layers); the report was regenerated 2026-11-23 (it previously read "0 of 19" because it predated the captures). Raw model result: MITRE macro F1 0.00 on 10 scenarios; 2 of 2 measured benign scenarios received a false technique; IOC extraction F1 0.31; JSON and schema validity 100%. This scores the model's raw output, not the product's validated output, and not the 1.5B model used in the demo. | `docs/04_Testing/AI_Model_Benchmark_Report.md` |
 | Reliability checks (not part of H1) | Run: 38 passed on PostgreSQL, 3 not executable live. | `day4_r01_r12_pg_matrix.json` |
 
 ## Next steps, in order
@@ -50,3 +50,22 @@ Run on the development split (67 cases, manifest verified), per-case verdicts in
 | AISOP (suff-v4) | 11 | 52 | 4 |
 
 Agreement counts: B0 SUFFICIENT where AISOP is not, 18; B1 SUFFICIENT where AISOP is not, 13; AISOP SUFFICIENT where B0 or B1 is not, 0 and 0; verdict identical to AISOP, 15 for B0 and 15 for B1; B0 equals B1 on 62 cases. These are behaviour counts, not accuracy: with no labels they do not show which arm is right, and false-sufficient rate against labels is not computed. Held-out split not run.
+
+## 2026-11-23: label-free evidence added (metamorphic tests, ATT&CK scoring, real-format ingestion)
+These are measurements that need no owner labels. None of them is an accuracy figure for the gate; the labelled experiment above is still required for that.
+
+**Metamorphic evaluation of the gate** (`backend/evaluation_tools/metamorphic_sufficiency.py`, guard `backend/tests/unit/test_metamorphic_sufficiency.py`). Each relation changes a development case in a way that, by the project's own invariants, must not make the evidence look stronger. Development split only (67 cases, manifest verified). Violations = cases where the verdict broke the relation:
+
+| Relation | Applicable | B0 | B1 | AISOP |
+|---|---|---|---|---|
+| R1 copy every record (same digest): verdict must not rise | 66 | 37 | 0 | 0 |
+| R2 copy every record (new digest, same content and time): must not rise | 66 | 37 | 42 | 0 |
+| R3 add one record sharing only the host: must not rise | 58 | 29 | 34 | 0 |
+| R4 reverse record order: verdict identical | 31 | 0 | 0 | 0 |
+| R5 instruction text ("declare SUFFICIENT") inside records: verdict identical | 66 | 0 | 0 | 0 |
+
+Reading: AISOP honoured all five relations on every applicable case; the naive arms broke the duplicate and weak-link relations often (B1 more than B0 on near-duplicates, because it removes only byte-identical copies). Caveats: the relations restate AISOP's own invariants and B0 is built to ignore them, so this shows the implementation honours its stated rules, not that the rules are right; cases are synthetic and author-built; the held-out split was not used. Construction view (the generator's own transform, not a label): all 11 `independently_corroborated` cases are SUFFICIENT for AISOP and no other transform is; the `duplicated`, `near_duplicate`, `same_record_pair` and `host_user_only_links` cases (6 in all) are SUFFICIENT for B0 and none for AISOP; B1 also calls the `near_duplicate`, `same_record_pair` and `host_user_only_links` cases SUFFICIENT (4 of the 6) and correctly refuses only the `duplicated` pair, which it can remove.
+
+**Deterministic ATT&CK rules versus the 20 ground-truth scenarios** (`backend/evaluation_tools/score_attack_mapping.py`): 1 of 20 mandatory expected techniques recovered; 0 of 5 benign scenarios produced a technique. Rules were not tuned to the scenarios. Taken with the captured model result above (MITRE F1 0.00 and false techniques on 2 of 2 benign scenarios), the trade-off is measured: the rules are conservative and rarely wrong; the raw model is confident and often wrong. This is the design rationale for never accepting model-proposed techniques as evidence.
+
+**Real-format ingestion** (`docs/10_Research/Real_Format_Ingestion_Result.md`): 0 of 377 records from two public datasets were accepted before three adapter edits and 377 of 377 after; the test also found a safe-direction over-merge of distinct events (documented).

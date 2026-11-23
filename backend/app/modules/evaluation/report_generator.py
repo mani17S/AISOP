@@ -27,7 +27,7 @@ class BenchmarkReportGenerator:
         if val is None:
             return "N/A *(unmeasured / 0 denominator)*"
         if percentage:
-            return f"{val:.1f}%"
+            return f"{val * 100:.1f}%"  # callers pass a fraction in [0, 1] (benign_false_positive_rate)
         return f"{val:.4f}"
 
     def generate_markdown_report(self, summary: BenchmarkRunSummary) -> str:

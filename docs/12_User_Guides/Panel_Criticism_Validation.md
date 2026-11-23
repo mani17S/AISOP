@@ -69,6 +69,15 @@ Reading of the result:
 - Frontend runtime: `react` and `react-dom` MIT; three fonts under OFL-1.1 (bundled font files, licence permits redistribution with the font). Dev dependencies listed as MIT or Apache-2.0.
 - Not covered: transitive frontend packages beyond the declared ones, and the licences of the models (Qwen, nomic-embed-text, Llama 3.3 via Cloudflare). Check each model's licence terms before stating them. This reads declared metadata; it is not legal advice.
 
+## Work done after this record was first written (2026-11-23, same day)
+| Criticism | What was added | New evidence | Closure estimate (was) |
+|---|---|---|---|
+| Novelty and evaluation of evidence | Metamorphic evaluation of the gate; regenerated captured-model benchmark; ATT&CK scorer | AISOP broke 0 of 5 stated relations on the 67 development cases, the naive baselines broke the duplicate relations on 37 to 42 of 66; raw `llama3.1:8b` MITRE F1 0.00 with false techniques on 2 of 2 benign scenarios; rules 1 of 20 with 0 false techniques on benign | 50 (was 45); evaluation evidence 40 (was 28). Still no labelled accuracy; the relations restate the project's own invariants |
+| SOC architecture understanding | `docs/03_System_Design/SOC_Placement_and_Vocabulary.md` | Value-chain diagram, tool classes, vocabulary mapped to source objects, 60-second script | 68 (was 55). Documents only; not yet rehearsed or questioned |
+| Multi-source ingestion | Three adapter edits; real public samples; 10-record attributed fixture; 4 tests | 0 of 377 real records accepted before, 377 of 377 after; over-merge of distinct events found and documented | 68 (was 60). One forwarder shape only; no real Suricata or vendor EDR export |
+| UI / AI-generated code | `docs/12_User_Guides/Code_Guide_and_Live_Change.md` | Three files with where-to-find-it, AI use stated plainly, live change verified (10 named tests fail, restored with no diff) | 64 (was 58). Perception cannot be proven away; depends on the owner explaining it aloud |
+Also fixed: the benchmark report printed a benign false-positive rate of 2 of 2 as "1.0%" (now 100.0%, with a test). Full backend suite after these changes: 3,742 passed, 1 skipped, 1 expected failure (25 new tests). These closure figures are reviewer estimates in the 2026-11-23 review's own scale, not measurements.
+
 ## What still needs the owner (nothing here can be done by an assistant honestly)
 1. Label the 67 development cases, then run the scorer and report the result either way.
 2. Read in full: Joren et al. (arXiv 2411.06037), Zomlot et al. (AISec 2011), Dong et al. (PVLDB 2009), DeepFaith (arXiv 2607.24348), and the two arXiv papers cited in the review, before citing any of them.
