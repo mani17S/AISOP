@@ -33,5 +33,12 @@ Before, on the same widths: 59 to 65 under 44 px at phone and tablet sizes, 139 
 ## Not done, not claimed
 - No real-device test, no other browsers, no assistive-technology test, no peer usability test.
 - Accessibility beyond target size, text size and overflow (contrast, focus order, announcements) was not re-audited here; earlier phases tested contrast in the unit suite.
-- The header still stacks into several rows on phones; it fits but it is tall. A compact mobile header is future work.
-- Dense tables on tablets show one card per row at full width; a two-column card grid at 600 to 1023 px would use space better.
+- The header still stacks into several rows on phones; it fits but it is tall (a first compaction is in the second pass below; a full redesign is future work).
+- Tablet cards were one per row at full width in the first pass; the second pass below puts them in two columns from 640 px.
+
+## Second pass (same day): header, tablet grid and a defect the first pass left
+- **Where the content starts.** Measured as the distance from the top of the page to the main content: 264 px on a 390 px phone (31% of an 844 px screen) and 268 px at 768 px before; 240 px on a 390 px phone after (the live UTC clock is hidden on phones because the time-zone selector beside it already names the zone, and "Signed in as" stays for screen readers only). At 768 px it is unchanged at 268 px. Final values by width: 284 px at 320 and 360, 240 px at 375, 390 and 430, 268 px at 768 and 820, 174 px at 1024, 122 px at 1280 and above. This is a modest gain, not a redesign; the header still takes four rows on a phone.
+- **Two-column card grid** for stacked tables between 640 and 1023 px, so tablets use their width.
+- **A defect found by looking at a zoomed screenshot, not by a number.** The dashboard's "All cases" button looked clipped on phones. The cause was the right-edge fade added earlier to tell a reader that a wide table scrolls; it applied to every table container, including ones that hold no scrolling table. It now applies only to a container that holds a table which really scrolls (`:has(table:not(.table-stack))`). The automated audit could not see this, which is a limit of the method: a fade over a control is not overflow, not a target-size failure and not small text.
+- Tests: three more rules pinned in `frontend/tests/responsive_layout.test.tsx` (11 tests in that file; frontend suite 301 of 301).
+- Final audit at all 11 sizes: 0 pages overflowing, 0 targets under 24 px, 0 text under 12 px, and 0 targets under 44 px at every phone and tablet width.

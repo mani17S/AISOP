@@ -63,3 +63,18 @@ describe('the role strip does not repeat the account the header shows', () => {
     assert.ok(!strip.includes('Signed in as'), 'the header owns the account name');
   });
 });
+
+describe('compact phone header, tablet grid and the scroll cue (second pass, 2026-11-23)', () => {
+  it('hides the live clock on phones and keeps "Signed in as" for screen readers only', () => {
+    assert.match(css, /@media \(max-width: 767px\) \{\s*\/\*[^*]*\*\/\s*\.navbar \.utc-clock \{\s*display: none;/);
+    assert.match(css, /\.nav-controls \.signed-in \.field-label \{\s*position: absolute;/);
+  });
+  it('shows stacked cards in two columns between 640px and 1023px', () => {
+    assert.match(css, /@media \(min-width: 640px\) and \(max-width: 1023px\) \{\s*\.table-stack tbody \{\s*display: grid;\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  });
+  it('fades the right edge only on a container that holds a table that really scrolls', () => {
+    assert.match(css, /\.table-container:has\(table:not\(\.table-stack\)\) \{\s*-webkit-mask-image: linear-gradient/);
+    const afterFirst = css.slice(css.lastIndexOf('The right-edge fade tells a reader'));
+    assert.match(afterFirst, /\.table-container \{\s*-webkit-mask-image: none;/);
+  });
+});

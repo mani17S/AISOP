@@ -76,7 +76,16 @@ Reading of the result:
 | SOC architecture understanding | `docs/03_System_Design/SOC_Placement_and_Vocabulary.md` | Value-chain diagram, tool classes, vocabulary mapped to source objects, 60-second script | 68 (was 55). Documents only; not yet rehearsed or questioned |
 | Multi-source ingestion | Three adapter edits; real public samples; 10-record attributed fixture; 4 tests | 0 of 377 real records accepted before, 377 of 377 after; over-merge of distinct events found and documented | 68 (was 60). One forwarder shape only; no real Suricata or vendor EDR export |
 | UI / AI-generated code | `docs/12_User_Guides/Code_Guide_and_Live_Change.md` | Three files with where-to-find-it, AI use stated plainly, live change verified (10 named tests fail, restored with no diff) | 64 (was 58). Perception cannot be proven away; depends on the owner explaining it aloud |
-Also fixed: the benchmark report printed a benign false-positive rate of 2 of 2 as "1.0%" (now 100.0%, with a test). Full backend suite after these changes: 3,742 passed, 1 skipped, 1 expected failure (25 new tests). These closure figures are reviewer estimates in the 2026-11-23 review's own scale, not measurements.
+Also fixed: the benchmark report printed a benign false-positive rate of 2 of 2 as "1.0%" (now 100.0%, with a test). Full backend suite after these changes: 3,742 passed, 1 skipped, 1 expected failure (25 new tests); later the same day, after the ablation, labelling tool and second UI pass: 3,754 passed, 1 skipped, 1 expected failure and 301 of 301 frontend tests. These closure figures are reviewer estimates in the 2026-11-23 review's own scale, not measurements.
+
+## Second addition (2026-11-23, later the same day)
+| Criticism | What was added | Closure estimate (was) |
+|---|---|---|
+| Novelty and evidence evaluation | Ablation arms B2 to B4 and `ablation_sufficiency.py`; `Contribution_Statement.md` (claim, measured evidence, what is not shown, threats to validity); ADR-017 (PROPOSED) for vantage-level independence | Novelty 54 (was 50); evidence evaluation 48 (was 46). The ablation also showed that four simple rules reproduce the gate's SUFFICIENT set on the development cases, so what the full gate adds is the LIMITED tier, whose correctness needs labels |
+| SOC architecture | Unchanged this round | 72 |
+| Ingestion | Unchanged this round (second real source not built; declined) | 72 |
+| UI and AI-code concern | Second UI pass (compact phone header, two-column tablet cards, a scroll-fade defect fixed), second verified live-change drill (5 named tests fail when the brute-force threshold changes) | 76 (was 74) |
+These are reviewer estimates in the review's own scale. Novelty cannot honestly pass the high 50s, and evidence evaluation the high 40s, until the 67 labels exist.
 
 ## What still needs the owner (nothing here can be done by an assistant honestly)
 1. Label the 67 development cases, then run the scorer and report the result either way.

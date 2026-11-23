@@ -100,6 +100,7 @@ const MEASURE = `(() => {
   out.textUnder12px = uniq(tiny).slice(0, 8); out.textUnder12pxCount = tiny.length;
   const nav = [...document.querySelectorAll('nav.nav-links button, nav.nav-links a')].map((b) => { const r = b.getBoundingClientRect(); return { t: b.textContent.trim(), ok: r.width > 0 && r.left >= -1 && r.right <= vw + 1 }; });
   out.scrollRegions = [...document.querySelectorAll('body *')].filter((e) => { const o = getComputedStyle(e).overflowX; return (o === 'auto' || o === 'scroll') && e.scrollWidth > e.clientWidth + 1 && visible(e); }).map((e) => sel(e) + ' ' + e.clientWidth + '<' + e.scrollWidth);
+  const mainEl = document.querySelector('main, .main-content'); out.heightAboveContent = mainEl ? Math.round(mainEl.getBoundingClientRect().top + window.scrollY) : null;
   out.navItems = nav.length; out.navItemsNotFullyVisible = nav.filter((n) => !n.ok).map((n) => n.t);
   const imgs = [...document.images].filter((i) => visible(i) && i.getBoundingClientRect().right > vw + 1).length;
   out.imagesOverflowing = imgs;
