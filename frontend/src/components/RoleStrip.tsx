@@ -40,7 +40,7 @@ export const RoleStrip: React.FC = () => {
         <summary className="role-strip-title">
           {identity ? (
             <>
-              Signed in as <strong>{identity.username}</strong>, {ROLE_NAMES[role] ?? role}. Set by the server from your API key.{' '}
+              Your role: <strong>{ROLE_NAMES[role] ?? role}</strong>.{' '}
             </>
           ) : (
             <>
@@ -58,7 +58,7 @@ export const RoleStrip: React.FC = () => {
           ))}
         </ul>
         <p className="role-strip-note">
-          {identity ? 'The server decides every request from your key, whatever this screen shows.' : 'Preview only. The server decides what each API key may do.'}
+          {identity ? 'Set by the server from your API key. The server decides every request from your key, whatever this screen shows.' : 'Preview only. The server decides what each API key may do.'}
         </p>
       </details>
     </section>

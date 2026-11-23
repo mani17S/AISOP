@@ -1403,7 +1403,7 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
   max-width: 240px;
@@ -1415,7 +1415,7 @@ body {
 .observable-type-tag {
   color: var(--accent-text);
   font-weight: 600;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .modal-dialog-large {
@@ -2909,7 +2909,7 @@ body {
 }
 
 .observable-type-tag {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* ── Design review fixes (2026-11-22): one primary per view, a quieter role strip, a table-edge cue ─ */
@@ -3335,4 +3335,110 @@ body {
 .signed-in-role {
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+/* ── Responsive and touch pass (2026-11-23), driven by scripts/ui_audit.mjs ─────────────────────────
+   Measured before: navigation tabs 36px tall on touch, short footer and landing links under 44px, the role-strip
+   disclosure under 24px, 11px text, and two wide tables that scrolled sideways inside a phone screen. */
+
+/* Tablets count as touch: 44px controls and navigation below 1024px, and on any coarse pointer. */
+@media (pointer: coarse), (max-width: 1023px) {
+  :root {
+    --control-height: 44px;
+  }
+
+  .nav-item,
+  .lp .btn {
+    min-height: 44px;
+  }
+}
+
+/* A one-word link still needs a real target: 44px tall, and 44px wide for short words. */
+.lp-navlink,
+.lp-wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.app-footer a,
+.legal-back {
+  min-width: 44px;
+  justify-content: center;
+  padding-inline: 8px;
+}
+
+/* The role strip's summary is the only way to open the detail, so it is a full-size target. */
+.role-strip-details summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  min-height: 44px;
+}
+
+/* Data tables become stacked cards below 1024px. Each cell carries its own label (data-label), so nothing scrolls sideways
+   and nothing is cut off. The header row stays in the document for screen readers. */
+@media (max-width: 1023px) {
+  .data-table.table-stack {
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .table-stack,
+  .table-stack tbody,
+  .table-stack tr,
+  .table-stack td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-stack tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .table-stack td {
+    display: grid;
+    grid-template-columns: minmax(84px, 120px) minmax(0, 1fr);
+    gap: 4px 12px;
+    align-items: start;
+    padding: 6px 16px;
+    border: 0;
+    height: auto;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+
+  .data-table.table-stack td:first-child,
+  .data-table.table-stack td:last-child {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .table-stack td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .table-stack td .btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 479px) {
+  .table-stack td {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
 }

@@ -542,7 +542,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
             No security alerts match the selected filter criteria.
           </div>
         ) : (
-          <table className="data-table alerts-table">
+          <table className="data-table alerts-table table-stack">
             <thead>
               <tr>
                 <th style={{ width: '88px' }}>Severity</th>
@@ -558,12 +558,12 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
             <tbody>
               {alerts.map((alert) => (
                 <tr key={alert.id}>
-                  <td>
+                  <td data-label="Severity">
                     <span className={`badge ${getSeverityBadgeClass(alert.severity)}`}>
                       {alert.severity}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Alert">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                         {alert.title}
@@ -582,7 +582,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                       </span>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Category">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span className="badge badge-category">{alert.category}</span>
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -590,7 +590,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                       </span>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="MITRE ATT&CK">
                     {alert.mitre_attack && alert.mitre_attack.length > 0 ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {alert.mitre_attack.slice(0, 2).map((ref, i) => (
@@ -608,7 +608,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} aria-label="None">-</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Indicators">
                     {alert.top_observables && alert.top_observables.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {alert.top_observables.slice(0, 2).map((obs, i) => (
@@ -622,10 +622,10 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} aria-label="None">-</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Times">
                     <TimePair eventTime={alert.timestamp} ingestedAt={alert.ingested_at} />
                   </td>
-                  <td>
+                  <td data-label="Case">
                     {alert.has_case ? (
                       <span className="badge badge-open" title={`Linked to ${alert.case_count} case(s)`}>
                         Linked ({alert.case_count})
@@ -634,7 +634,7 @@ export const Alerts: React.FC<AlertsProps> = ({ onNavigateToCase }) => {
                       <span className="badge badge-closed">Unassigned</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td data-label="Actions" style={{ textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: '6px' }}>
                       <button
                         className="btn btn-secondary"

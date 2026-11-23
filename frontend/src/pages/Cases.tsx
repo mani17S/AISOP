@@ -223,7 +223,7 @@ export const Cases: React.FC<CasesProps> = ({
             No cases found.
           </div>
         ) : (
-          <table className="data-table">
+          <table className="data-table table-stack">
             <thead>
               <tr>
                 <th>Case number</th>
@@ -237,18 +237,18 @@ export const Cases: React.FC<CasesProps> = ({
             <tbody>
               {cases.map((c) => (
                 <tr key={c.id}>
-                  <td className="font-mono">{c.case_number}</td>
-                  <td style={{ fontWeight: 500 }}>{c.title}</td>
-                  <td>
+                  <td data-label="Case" className="font-mono">{c.case_number}</td>
+                  <td data-label="Title" style={{ fontWeight: 500 }}>{c.title}</td>
+                  <td data-label="Severity">
                     <span className={`badge badge-${c.severity}`}>{c.severity}</span>
                   </td>
-                  <td>
+                  <td data-label="Status">
                     <span className={`badge badge-${c.status}`}>{c.status}</span>
                   </td>
-                  <td style={{ color: 'var(--text-muted)' }}>
+                  <td data-label="Created (UTC)" style={{ color: 'var(--text-muted)' }}>
                     {new Date(c.created_at).toISOString().replace('T', ' ').slice(0, 19)}
                   </td>
-                  <td>
+                  <td data-label="Actions">
                     <button
                       className="btn btn-primary"
                       style={{ padding: '4px 10px', fontSize: '12px', marginRight: '6px' }}

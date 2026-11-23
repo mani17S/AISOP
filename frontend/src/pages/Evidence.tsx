@@ -153,7 +153,7 @@ export const Evidence: React.FC<EvidenceProps> = ({
             No telemetry events matching the selected filters.
           </div>
         ) : (
-          <table className="data-table">
+          <table className="data-table table-stack">
             <thead>
               <tr>
                 <th>Generated and ingested</th>
@@ -177,10 +177,10 @@ export const Evidence: React.FC<EvidenceProps> = ({
 
                 return (
                   <tr key={evt.id}>
-                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                    <td data-label="Times" style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
                       <TimePair eventTime={rawTimestamp} ingestedAt={evt.raw_ingested_at} />
                     </td>
-                    <td>
+                    <td data-label="Type">
                       <span className="event-type"><ExhibitTag id={evt.id} /> {evt.event_type || 'event'}</span>
                       {evt.provider && (
                         <div
@@ -191,13 +191,13 @@ export const Evidence: React.FC<EvidenceProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="font-mono">{evt.source_identifier || evt.source_type || 'N/A'}</td>
-                    <td>
+                    <td data-label="Source host" className="font-mono">{evt.source_identifier || evt.source_type || 'N/A'}</td>
+                    <td data-label="Severity">
                       <span className={`badge badge-${evt.severity || 'informational'}`}>
                         {evt.severity || 'info'}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Summary">
                       <div style={{ fontWeight: 500 }}>{summaryText}</div>
                       {subjectText && (
                         <div className="font-mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -205,7 +205,7 @@ export const Evidence: React.FC<EvidenceProps> = ({
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Entities">
                       {eventEntities.length > 0 ? (
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                           {eventEntities.slice(0, 3).map((entity, idx) => (

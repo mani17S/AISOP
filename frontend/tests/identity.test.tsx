@@ -46,13 +46,15 @@ describe('identityFromMe', () => {
 const dana = { username: 'dana', serverRole: 'analyst_tier_2', role: 'analyst_tier_2' as const };
 
 describe('what the screen says', () => {
-  it('role strip names the account and says the server set the role', () => {
+  it('role strip states the role, does not repeat the account the header shows, and says the server set the role', () => {
     const html = renderToStaticMarkup(
       <AuthProvider initialIdentity={dana}>
         <RoleStrip />
       </AuthProvider>
     );
-    assert.match(html, /Signed in as <strong>dana<\/strong>, Tier-2 analyst \(lead\)\. Set by the server from your API key\./);
+    assert.match(html, /Your role: <strong>Tier-2 analyst \(lead\)<\/strong>\./);
+    assert.doesNotMatch(html, /dana/, 'the account name appears once, in the header');
+    assert.match(html, /Set by the server from your API key\./);
     assert.doesNotMatch(html, /Preview only\. <span/);
     assert.match(html, /whatever this screen shows/);
   });
