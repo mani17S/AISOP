@@ -12,22 +12,27 @@ Two small attack-simulation datasets from OTRF Security-Datasets (MIT; https://g
 | psh_powershell_httplistener | 110 | 0 | 104 `NO_ADAPTER`, 6 `TIMESTAMP_MISSING_OR_INVALID` |
 The system rejected every real record, safely (rejections are recorded with the raw digest, not dropped). The earlier claim "8 adapters" meant sample-shaped inputs only.
 
-## Change (three small edits, no new component)
-`sysmon_adapter.py`: recognise the forwarder's `Channel` / `SourceName` marker; read `Hostname` as the host. `windows_security_adapter.py`: read the top-level `TimeCreated` / `@timestamp`; read `Hostname`. A flat record with no Sysmon or Security marker is still not claimed (tested).
+## Change (four small edits, no new component)
+`sysmon_adapter.py`: recognise the forwarder's `Channel` / `SourceName` marker; read `Hostname` as the host. `windows_security_adapter.py`: read the top-level `TimeCreated` / `@timestamp`; read `Hostname`. `correlation/normalize.py: _event_data`: a record carrying `EventID` plus a `Channel` or `SourceName` is its own event data (found afterwards: without this the correlator read an empty event for flat records, so process GUIDs, DNS names and logon ids were silently missing). A flat record with no Sysmon or Security marker is still not claimed (tested).
 
 ## Result after
 | File | Records | Accepted | Rejected | Evidence clusters | Incidents | Sufficiency of incidents | Time |
 |---|---|---|---|---|---|---|---|
-| cmd_sharpview_pcre_net | 267 | 267 | 0 | 41 | 11 | 11 LIMITED | 0.19 s |
-| psh_powershell_httplistener | 110 | 110 | 0 | 17 | 17 | 17 LIMITED | 0.07 s |
-Two source types (sysmon, windows_security) were normalised from real exports. Every raw record is kept with its own digest.
+| cmd_sharpview_pcre_net | 267 | 267 | 0 | 42 | 12 | 12 LIMITED | 0.18 s |
+| psh_powershell_httplistener | 110 | 110 | 0 | 17 | 8 | 7 LIMITED, 1 SUFFICIENT | 0.06 s |
+Two source types (sysmon, windows_security) were normalised from real exports. Every raw record is kept with its own digest. (After only the first three edits the figures were 41/11/11 LIMITED and 17/17/17 LIMITED; the fourth edit changed them.)
+
+## The one SUFFICIENT verdict, examined
+After the fourth edit one incident became SUFFICIENT. It consists of two Sysmon records on one host: a registry key event (event 12) and a registry value set (event 13) by the same `svchost.exe` process instance, joined by a STRONG process-GUID link. Both came from the same sensor, and the activity is ordinary Windows behaviour.
+- This is the gate working as designed: independence in AISOP means *a different raw record linked by a specific or strong artefact*, not *a different sensor*. Two consecutive actions of one process satisfy that definition.
+- It is also a real design limit worth stating: a verdict of SUFFICIENT can be reached from records of a single vantage point, and it says the evidence is adequate for investigating the question, not that anything malicious happened. A stricter rule (require a second source type) is an option for future work and would need its own evaluation; it was not applied here because that would be tuning after seeing the data.
 
 ## What the result does and does not show
-- Shows: the pipeline now ingests two real forwarder-style Windows sources end to end on data the project did not author; no SUFFICIENT verdict was produced for any incident (conservative on a single-host lab attack).
+- Shows: the pipeline now ingests two real forwarder-style Windows sources end to end on data the project did not author; 19 of 20 incidents are LIMITED and one is SUFFICIENT (examined above), which is conservative for a single-host lab attack.
 - Does NOT show: that the verdicts are right (no labels), that the ATT&CK rules cover this data (no rule fired on either file), or that other vendors' formats work (only this forwarder shape was tested; Suricata EVE real samples were not obtained).
 
 ## Limitation found by this test: over-merging of distinct events (safe direction)
-226 of 267 records in the first file collapsed into duplicate clusters. Inspection of the clusters shows that distinct events are merged because the near-duplicate rule keys on host, event type and the extracted entities within 2 seconds, and the Sysmon adapter does not extract every distinguishing field as an entity. Examples inside single clusters: process access (event 10) 49 records with 6 distinct target images; registry set (event 13) 23 records in 3 clusters with up to 6 distinct registry keys; DNS (event 22) 3 records with 3 distinct query names; file create (event 11) 3 records with 3 distinct file names.
+225 of 267 records in the first file collapsed into duplicate clusters. The near-duplicate rule keys on host, event type and the extracted entities within 2 seconds, and the entity set does not include every distinguishing field. Examples inside single clusters (measured after the fourth edit): image load (event 7) 82 records in 14 merged clusters with up to 12 distinct loaded modules; process access (event 10) 49 records with 6 distinct target images; registry set (event 13) 23 records in 3 clusters with up to 6 distinct registry keys; file create (event 11) 3 records with 3 distinct file names; DNS (event 22) 2 records with 2 distinct query names (the fourth edit reduced this from 3, the remainder was not investigated).
 - Direction of the error: **safe**. Merging lowers the count of independent evidence units, so it can only make a verdict more cautious, never inflate corroboration. Raw records are all preserved.
 - Cost: resolution is lost (three different DNS lookups count as one unit), and it may be one reason for LIMITED verdicts.
 - Not changed now: adding distinguishing fields as entities would also create new links and change verdicts everywhere, which is a semantic change that needs its own evaluation and ADR. Listed as future work.

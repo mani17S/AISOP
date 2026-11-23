@@ -89,6 +89,11 @@ def _event_data(raw: dict[str, Any]) -> dict[str, Any]:
         return ev["EventData"]
     if isinstance(raw.get("EventData"), dict):
         return raw["EventData"]
+    # Flat exports from Windows event forwarders (Winlogbeat, NXLog) carry the event fields at the top level,
+    # next to the channel or source name. Without this the correlator saw an empty event: no process GUID,
+    # no DNS name, no logon id, so distinct events looked identical.
+    if "EventID" in raw and ("Channel" in raw or "SourceName" in raw):
+        return raw
     return {}
 
 

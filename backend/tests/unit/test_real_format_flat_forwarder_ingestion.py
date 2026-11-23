@@ -42,3 +42,14 @@ def test_a_flat_record_without_a_sysmon_or_security_marker_is_still_not_claimed(
     stranger = {"EventID": 1, "UtcTime": "2020-10-29 08:23:20.000", "Image": "C:\\x.exe", "Hostname": "h1"}
     assert SysmonAlertAdapter().can_adapt(stranger) is False
     assert WindowsSecurityAdapter().can_adapt({"Channel": "Application", "EventID": 99}) is False
+
+
+def test_flat_forwarder_records_expose_their_process_guid_and_dns_name_to_the_correlator():
+    """Before 2026-11-23 the correlator read an empty event for flat records, so these were missing."""
+    result = normalize_records(_RECORDS)
+    by_event_id = {str(r["EventID"]): e for r, e in zip(_RECORDS, result.events) if "Sysmon" in r["Channel"]}
+    assert any(kind == "process_guid" for kind, _ in by_event_id["1"].entities) or any(
+        kind == "process_guid" for e in result.events for kind, _ in e.entities
+    ), "a Sysmon record with a ProcessGuid must produce a process_guid entity"
+    dns = by_event_id["22"]
+    assert any(kind == "domain" for kind, _ in dns.entities), "the DNS query name must become a domain entity"
