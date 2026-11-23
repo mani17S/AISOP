@@ -773,6 +773,14 @@ export type SecurityEventKind =
   | 'unsupported_media_type'
   | 'malformed_request';
 
+/** Who the server says the caller is (GET /api/v1/auth/me). A machine key with no account has null username and role. */
+export interface MeResponse {
+  authenticated: boolean;
+  username: string | null;
+  global_role: string | null;
+  client_name: string | null;
+}
+
 /** An alert about AISOP itself (key guessing, probing, a key from a new address). Not a telemetry alert. */
 export interface SecurityAlert {
   id: string;

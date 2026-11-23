@@ -26,6 +26,7 @@ import {
   CaseScopedEvidenceItem,
   CaseSeverity,
   HealthResponse,
+  MeResponse,
   SecurityOverview,
   InvestigationReportBundle,
   InvestigationValidationResult,
@@ -165,6 +166,11 @@ class ApiClient {
 
   public async getReadiness(): Promise<HealthResponse> {
     return this.request<HealthResponse>('/api/v1/health/ready');
+  }
+
+  /** Who the server says the caller is. Presentation only: the server decides every request from the key. */
+  public async getMe(signal?: AbortSignal): Promise<MeResponse> {
+    return this.request<MeResponse>('/api/v1/auth/me', { signal });
   }
 
   /** Security admin only: suspicious requests the server observed in the last `hours` hours (1 to 168). */

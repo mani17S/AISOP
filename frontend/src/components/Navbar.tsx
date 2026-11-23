@@ -32,9 +32,16 @@ const UtcClock: React.FC = () => {
   );
 };
 
+const ROLE_LABELS: Record<string, string> = {
+  security_admin: 'Security admin',
+  analyst_tier_2: 'Tier-2 analyst (lead)',
+  analyst_tier_1: 'Tier-1 analyst (investigator)',
+  ingest: 'Sensor (ingest only)',
+};
+
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
   const { zone, setZone } = useTimeZone();
-  const { globalRole, setRole, apiKey, setApiKey, keyDialogOpen: isKeyModalOpen, setKeyDialogOpen: setIsKeyModalOpen } = useAuth();
+  const { identity, globalRole, setRole, apiKey, setApiKey, keyDialogOpen: isKeyModalOpen, setKeyDialogOpen: setIsKeyModalOpen } = useAuth();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [keyInput, setKeyInput] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
@@ -161,6 +168,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
             </select>
           </div>
 
+          {identity ? (
+            <div className="signed-in" title="The role comes from your API key. The server decides every request from the key.">
+              <span className="field-label">Signed in as</span>
+              <strong>{identity.username}</strong>
+              <span className="signed-in-role">{ROLE_LABELS[identity.serverRole] ?? identity.serverRole}</span>
+            </div>
+          ) : (
           <div className="role-selector" title="Client-side UI simulation only. Backend independently enforces actual permissions based on the authenticated principal / token.">
             <span className="field-label" aria-hidden="true">View as</span>
             <span className="visually-hidden">UI Preview Role - Does not change backend permissions</span>
@@ -176,6 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
               <option value="auditor_viewer">Auditor (Viewer)</option>
             </select>
           </div>
+          )}
 
           <button
             className="btn btn-secondary"

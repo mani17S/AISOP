@@ -3321,3 +3321,18 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Signed-in identity replaces the role selector when the server has said who the key belongs to (2026-11-23) ── */
+
+.signed-in {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.signed-in-role {
+  color: var(--text-secondary);
+  font-size: 12px;
+}

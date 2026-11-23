@@ -10,13 +10,16 @@
  * All API access decisions are evaluated on the server using the authenticated principal's token.
  */
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { GlobalRole } from '../types';
 import { api } from '../services/api';
+import { identityFromMe, ServerIdentity } from '../utils/identity';
 
 interface AuthContextType {
   username: string;
   globalRole: GlobalRole;
+  /** Set when the server has told us who this key belongs to. Then the role is real, not a preview, and cannot be switched. */
+  identity: ServerIdentity | null;
   apiKey: string;
   isAuthenticated: boolean;
   setRole: (role: GlobalRole) => void;
@@ -47,10 +50,16 @@ const readStoredRole = (): GlobalRole => {
   return 'analyst_tier_2';
 };
 
-export const AuthProvider: React.FC<{ children: ReactNode; initialRole?: GlobalRole }> = ({ children, initialRole }) => {
-  const [username, setUsername] = useState<string>('lead_analyst');
-  const [globalRole, setRoleState] = useState<GlobalRole>(initialRole ?? readStoredRole());
+export const AuthProvider: React.FC<{ children: ReactNode; initialRole?: GlobalRole; initialIdentity?: ServerIdentity | null }> = ({
+  children,
+  initialRole,
+  initialIdentity,
+}) => {
+  const [identity, setIdentity] = useState<ServerIdentity | null>(initialIdentity ?? null);
+  const [username, setUsername] = useState<string>(initialIdentity?.username ?? 'lead_analyst');
+  const [globalRole, setRoleState] = useState<GlobalRole>(initialIdentity?.role ?? initialRole ?? readStoredRole());
   const setRole = (role: GlobalRole) => {
+    if (identity) return; // the role comes from the server for this key; it cannot be switched here
     setRoleState(role);
     try {
       sessionStorage.setItem(VIEW_AS_KEY, role);
@@ -60,6 +69,33 @@ export const AuthProvider: React.FC<{ children: ReactNode; initialRole?: GlobalR
   };
   const [apiKey, setApiKeyState] = useState<string>(() => api.getApiKey());
   const [keyDialogOpen, setKeyDialogOpen] = useState<boolean>(false);
+
+  // Ask the server who this key belongs to. If it cannot say (no key, a machine key, an error) the manual preview stays.
+  useEffect(() => {
+    if (initialIdentity !== undefined) return;
+    if (!apiKey) {
+      setIdentity(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getMe()
+      .then((me) => {
+        if (cancelled) return;
+        const found = identityFromMe(me);
+        setIdentity(found);
+        if (found) {
+          setRoleState(found.role);
+          setUsername(found.username);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setIdentity(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey, initialIdentity]);
 
   const handleSetApiKey = (key: string) => {
     setApiKeyState(key);
@@ -91,6 +127,7 @@ export const AuthProvider: React.FC<{ children: ReactNode; initialRole?: GlobalR
       value={{
         username,
         globalRole,
+        identity,
         apiKey,
         isAuthenticated: Boolean(apiKey),
         setRole,

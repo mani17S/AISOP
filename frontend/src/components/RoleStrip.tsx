@@ -25,7 +25,7 @@ const ROLE_NOTES: Record<string, string> = {
 };
 
 export const RoleStrip: React.FC = () => {
-  const { globalRole, canCreateCase, canTriageEvents, canSynthesizeReports, canCloseCase, canManageAssignments } = useAuth();
+  const { identity, globalRole, canCreateCase, canTriageEvents, canSynthesizeReports, canCloseCase, canManageAssignments } = useAuth();
   const abilities: { label: string; allowed: boolean }[] = [
     { label: 'Create cases', allowed: canCreateCase() },
     { label: 'Triage and promote alerts', allowed: canTriageEvents() },
@@ -38,7 +38,16 @@ export const RoleStrip: React.FC = () => {
     <section className="role-strip" aria-label="Interface preview for the selected role" data-role={role}>
       <details className="role-strip-details">
         <summary className="role-strip-title">
-          Viewing as <strong>{ROLE_NAMES[role] ?? role}</strong>. Preview only. <span className="role-strip-more">What this role can do</span>
+          {identity ? (
+            <>
+              Signed in as <strong>{identity.username}</strong>, {ROLE_NAMES[role] ?? role}. Set by the server from your API key.{' '}
+            </>
+          ) : (
+            <>
+              Viewing as <strong>{ROLE_NAMES[role] ?? role}</strong>. Preview only.{' '}
+            </>
+          )}
+          <span className="role-strip-more">What this role can do</span>
         </summary>
         <p className="role-strip-note-line">{ROLE_NOTES[role] ?? ''}</p>
         <ul className="role-strip-list">
@@ -48,7 +57,9 @@ export const RoleStrip: React.FC = () => {
             </li>
           ))}
         </ul>
-        <p className="role-strip-note">Preview only. The server decides what each API key may do.</p>
+        <p className="role-strip-note">
+          {identity ? 'The server decides every request from your key, whatever this screen shows.' : 'Preview only. The server decides what each API key may do.'}
+        </p>
       </details>
     </section>
   );
