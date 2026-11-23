@@ -8,7 +8,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
-import { SecurityOverview } from '../types';
+import { SecurityAlert, SecurityOverview } from '../types';
 import { SetupNotice, isAuthMessage } from '../components/SetupNotice';
 import { useTimeZone } from '../contexts/TimeZoneContext';
 import { formatInstant } from '../utils/time';
@@ -74,6 +74,35 @@ const HourlyBars: React.FC<{ data: SecurityOverview['timeline'] }> = ({ data }) 
   );
 };
 
+const SEVERITY_LABEL: Record<SecurityAlert['severity'], string> = { critical: 'Critical', high: 'High', medium: 'Medium' };
+
+/** One alert about AISOP itself: what happened, why it matters, what to do. The severity is always written, never only coloured. */
+const AlertCard: React.FC<{ alert: SecurityAlert }> = ({ alert }) => {
+  const { zone } = useTimeZone();
+  return (
+    <article className={`sec-alert sec-alert-${alert.severity}`} aria-label={`${SEVERITY_LABEL[alert.severity]}: ${alert.title}`}>
+      <header className="sec-alert-head">
+        <span className="sec-alert-sev">
+          <span className="sec-alert-mark" aria-hidden="true" />
+          {SEVERITY_LABEL[alert.severity]}
+        </span>
+        <h3 className="sec-alert-title">{alert.title}</h3>
+      </header>
+      <dl className="sec-alert-body">
+        <dt>What happened</dt>
+        <dd>{alert.what_happened}</dd>
+        <dt>Why it matters</dt>
+        <dd>{alert.why_it_matters}</dd>
+        <dt>What to do</dt>
+        <dd>{alert.recommended_action}</dd>
+      </dl>
+      <p className="sec-alert-meta">
+        {formatInstant(alert.first_seen, zone)} to {formatInstant(alert.last_seen, zone)}. {alert.count} request{alert.count === 1 ? '' : 's'}.
+      </p>
+    </article>
+  );
+};
+
 export const Security: React.FC<SecurityProps> = ({ initialOverview, initialError }) => {
   const { zone } = useTimeZone();
   const [hours, setHours] = useState<number>(24);
@@ -135,6 +164,20 @@ export const Security: React.FC<SecurityProps> = ({ initialOverview, initialErro
 
       {data && (
         <>
+          <section className="sec-block sec-alerts" aria-labelledby="sec-alerts-title">
+            <h2 id="sec-alerts-title" className="sec-h2">
+              Platform security alerts {data.alerts.length > 0 && <span className="sec-count">({data.alerts.length})</span>}
+            </h2>
+            <p className="sec-alerts-note">{data.alerts_note}</p>
+            {data.alerts.length === 0 ? (
+              <div className="sec-empty sec-empty-small">
+                No platform security alerts in this window. That is what this server saw; it does not prove nothing else happened.
+              </div>
+            ) : (
+              data.alerts.map((a) => <AlertCard key={a.id} alert={a} />)
+            )}
+          </section>
+
           <section className="sec-summary" aria-label="Summary">
             <div>
               <div className="sec-total">{data.total_events}</div>

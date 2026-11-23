@@ -11,7 +11,7 @@ from app.models.case import (
 )
 from app.models.evidence import ExtractedEntityModel, NormalizedEventModel, RawEvidence
 from app.models.knowledge import KnowledgeEmbedding
-from app.models.security_event import SecurityEventModel
+from app.models.security_event import ApiKeySightingModel, SecurityEventModel
 
 __all__ = [
     "RawEvidence",
@@ -25,4 +25,5 @@ __all__ = [
     "CaseAssignmentModel",
     "CaseAuditEventModel",
     "SecurityEventModel",
+    "ApiKeySightingModel",
 ]

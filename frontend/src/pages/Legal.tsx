@@ -64,6 +64,11 @@ export const PrivacyPolicy: React.FC = () => (
         method and path, the response status and the first 160 characters of the client's user agent. It never keeps API
         keys, request bodies or other headers. Rows are deleted after 30 days and only a security admin can read them.
       </li>
+      <li>
+        for each valid API key, the addresses it has been used from, with the account name, a non-secret 16 character key
+        identifier and the first and last time seen. It is used to notice a key used from a new address. It is kept while the
+        key exists and only a security admin can read it.
+      </li>
     </ul>
     <p>
       This data can contain personal data about people in your environment. It is held in the operator's PostgreSQL

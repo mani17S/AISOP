@@ -12,13 +12,21 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.core.security_events import SecurityEventBuffer
-from app.models.security_event import SecurityEventModel
+from app.models.case import CaseAuditEventModel
+from app.models.security_event import ApiKeySightingModel, SecurityEventModel
+from app.services.security_alert_service import derive_alerts
 from sqlalchemy import delete, select
 
 #: At most this many rows are read to build one overview (a window under attack could hold more; the page says so).
 MAX_ROWS_READ = 20_000
 RECENT_LIMIT = 50
 TOP_LIMIT = 10
+
+ALERTS_NOTE = (
+    "These alerts are about AISOP itself: attempts to guess keys, probing for secrets, a key used from a new address. They are "
+    "separate from the Alerts page, which holds telemetry from your own sources. They detect and do not prove: a valid key from a "
+    "new address may be its owner on a new network."
+)
 
 NOTES = (
     "This page shows what this server process observed. It does not prove that nothing else happened: traffic stopped "
@@ -40,9 +48,30 @@ def _iso(value: datetime) -> str:
 async def flush_security_events(buffer: SecurityEventBuffer, session: Any) -> int:
     """Write what the buffer holds as rows. Returns the number of rows written."""
     buckets, _ = buffer.drain()
-    if not buckets:
+    sightings = buffer.drain_sightings()
+    if not buckets and not sightings:
         return 0
     now = datetime.now(timezone.utc)
+    for sg in sightings:
+        existing = (
+            await session.execute(
+                select(ApiKeySightingModel).where(
+                    ApiKeySightingModel.token_prefix == sg.token_prefix, ApiKeySightingModel.source_ip == sg.source_ip
+                )
+            )
+        ).scalars().first()
+        if existing is None:
+            session.add(
+                ApiKeySightingModel(
+                    token_prefix=sg.token_prefix, client_name=sg.client_name, username=sg.username, source_ip=sg.source_ip,
+                    first_seen=sg.first_seen, last_seen=sg.last_seen, request_count=sg.count,
+                )
+            )
+        else:
+            existing.last_seen = max(_aware(existing.last_seen), sg.last_seen)
+            existing.request_count = int(existing.request_count) + sg.count
+            existing.username = sg.username
+            existing.client_name = sg.client_name
     for b in buckets:
         session.add(
             SecurityEventModel(
@@ -62,6 +91,7 @@ async def flush_security_events(buffer: SecurityEventBuffer, session: Any) -> in
     except Exception:
         await session.rollback()
         buffer.restore(buckets)  # keep the counts for the next attempt: a refused write must not erase evidence of an attack
+        buffer.restore_sightings(sightings)
         raise
     return len(buckets)
 
@@ -109,7 +139,11 @@ async def overview(session: Any, hours: int, not_recorded_since_start: int, now:
         timeline.append({"hour": _iso(cursor), "count": by_hour.get(cursor, 0)})
         cursor += timedelta(hours=1)
 
+    alerts = derive_alerts(rows, await _sightings_for_active_keys(session, start), await _case_creations(session, end), end, start)
+
     return {
+        "alerts": alerts,
+        "alerts_note": ALERTS_NOTE,
         "window_hours": hours,
         "window_start": _iso(start),
         "window_end": _iso(end),
@@ -139,3 +173,26 @@ async def overview(session: Any, hours: int, not_recorded_since_start: int, now:
         "not_recorded_since_start": not_recorded_since_start,
         "notes": list(NOTES),
     }
+
+
+async def _sightings_for_active_keys(session: Any, window_start: datetime) -> list[Any]:
+    """Every address seen for any key that was used in the window, so a key's earlier addresses are known."""
+    active = (
+        (await session.execute(select(ApiKeySightingModel.token_prefix).where(ApiKeySightingModel.last_seen >= window_start)))
+        .scalars()
+        .all()
+    )
+    if not active:
+        return []
+    return list((await session.execute(select(ApiKeySightingModel).where(ApiKeySightingModel.token_prefix.in_(set(active))))).scalars().all())
+
+
+async def _case_creations(session: Any, now: datetime) -> list[tuple[str, datetime]]:
+    rows = (
+        await session.execute(
+            select(CaseAuditEventModel.actor_username, CaseAuditEventModel.created_at).where(
+                CaseAuditEventModel.action == "case_created", CaseAuditEventModel.created_at >= now - timedelta(hours=1)
+            )
+        )
+    ).all()
+    return [(r[0], r[1]) for r in rows]

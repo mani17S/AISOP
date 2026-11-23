@@ -3202,3 +3202,122 @@ body {
     text-align: left;
   }
 }
+
+/* ── Platform security alerts on the Security page (2026-11-23) ───────────────────────────────────────────── */
+
+.sec-alerts {
+  margin-top: 24px;
+}
+
+.sec-count {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.sec-alerts-note {
+  margin: 0 0 12px;
+  max-width: 760px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.sec-empty-small {
+  margin-top: 0;
+  padding: 16px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.sec-alert {
+  margin-top: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sec-alert-critical {
+  border-left-color: var(--severity-critical, #ef4444);
+}
+
+.sec-alert-high {
+  border-left-color: var(--severity-high);
+}
+
+.sec-alert-medium {
+  border-left-color: var(--severity-medium);
+}
+
+.sec-alert-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sec-alert-sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.sec-alert-mark {
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+}
+
+.sec-alert-critical .sec-alert-mark {
+  color: var(--severity-critical, #ef4444);
+}
+
+.sec-alert-high .sec-alert-mark {
+  color: var(--severity-high);
+}
+
+.sec-alert-medium .sec-alert-mark {
+  color: var(--severity-medium);
+}
+
+.sec-alert-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.sec-alert-body {
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 6px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sec-alert-body dt {
+  color: var(--text-secondary);
+}
+
+.sec-alert-body dd {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.sec-alert-meta {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .sec-alert-body {
+    grid-template-columns: 1fr;
+  }
+}

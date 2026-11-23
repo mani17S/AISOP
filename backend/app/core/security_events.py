@@ -100,6 +100,22 @@ class Bucket:
     count: int = 1
 
 
+@dataclass
+class Sighting:
+    """A valid API key was used from this address. Holds a non-secret identifier and names, never the key."""
+
+    token_prefix: str
+    client_name: str
+    username: str
+    source_ip: str
+    first_seen: datetime
+    last_seen: datetime
+    count: int = 1
+
+
+_HEX16 = re.compile(r"^[0-9a-f]{16}$")
+
+
 class SecurityEventBuffer:
     """Counts suspicious responses per (minute, kind, source, status). Single event loop use; no locking needed."""
 
@@ -108,6 +124,38 @@ class SecurityEventBuffer:
         self._buckets: dict[tuple[datetime, str, str, int, str], Bucket] = {}
         self._dropped = 0
         self.dropped_total = 0
+        self._sightings: dict[tuple[str, str], Sighting] = {}
+
+    def record_sighting(self, token_prefix: object, client_name: object, username: object, source_ip: object, when: datetime | None = None) -> None:
+        """Note that a VALID key was used from an address. Only a 16 hex identifier is accepted, so no key can end up here."""
+        prefix = str(token_prefix or "")
+        if not _HEX16.match(prefix):
+            return
+        moment = (when or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        ip = clean_text(source_ip, MAX_IP) or "unknown"
+        existing = self._sightings.get((prefix, ip))
+        if existing is not None:
+            existing.count += 1
+            existing.last_seen = max(existing.last_seen, moment)
+            return
+        if len(self._sightings) >= self.max_keys:
+            return
+        self._sightings[(prefix, ip)] = Sighting(prefix, clean_text(client_name, 64), clean_text(username, 64), ip, moment, moment)
+
+    def drain_sightings(self) -> list[Sighting]:
+        items = list(self._sightings.values())
+        self._sightings = {}
+        return items
+
+    def restore_sightings(self, items: list[Sighting]) -> None:
+        for s in items:
+            existing = self._sightings.get((s.token_prefix, s.source_ip))
+            if existing is not None:
+                existing.count += s.count
+                existing.first_seen = min(existing.first_seen, s.first_seen)
+                existing.last_seen = max(existing.last_seen, s.last_seen)
+            elif len(self._sightings) < self.max_keys:
+                self._sightings[(s.token_prefix, s.source_ip)] = s
 
     def record(
         self,

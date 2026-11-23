@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import math
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import (
@@ -34,6 +36,7 @@ from app.core.errors import (
     CONTEXT_BUDGET_EXCEEDED,
     EVIDENCE_PERSISTENCE_FAILED,
     ApiError,
+    CodedHTTPException,
     safe_exception_text,
 )
 from app.core.rbac import (
@@ -46,7 +49,9 @@ from app.core.rbac import (
     can_manage_case_assignments,
     can_update_case_metadata,
 )
+from app.core.config import Settings, get_settings
 from app.db.session import get_db_session, get_db_session_factory
+from app.models.case import CaseAuditEventModel
 from app.modules.ai.context_builder import IncompleteContextOverflowError
 from app.modules.ai.guardrails import InvestigationValidationResult
 from app.modules.ai.knowledge.retriever import KnowledgeRetriever
@@ -110,6 +115,7 @@ async def create_case(
     request: CaseCreateRequest,
     analyst: AuthenticatedAnalyst = Depends(get_current_analyst),
     session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
 ) -> CaseResponse:
     """
     Create a new incident case, automatically assign creator as the initial Lead,
@@ -120,6 +126,26 @@ async def create_case(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient global role permissions to create cases.",
+        )
+
+    # A stolen key must not be able to flood the case list: one account may create a limited number of cases per hour.
+    recent = (
+        await session.execute(
+            select(func.count())
+            .select_from(CaseAuditEventModel)
+            .where(
+                CaseAuditEventModel.action == "case_created",
+                CaseAuditEventModel.actor_analyst_id == analyst.analyst_id,
+                CaseAuditEventModel.created_at >= datetime.now(timezone.utc) - timedelta(hours=1),
+            )
+        )
+    ).scalar_one()
+    if recent >= settings.CASE_CREATE_MAX_PER_HOUR:
+        raise CodedHTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many cases were created by this account in the last hour. Try again later or ask a security admin.",
+            headers={"Retry-After": "600"},
+            code="CASE_CREATION_LIMIT_REACHED",
         )
 
     service = CaseService()

@@ -348,6 +348,14 @@ async def verify_api_key(
         if throttle is not None and client_ip is not None:
             throttle.record_success(client_ip, key_prefix)
 
+        if request is not None:
+            # Lets the Security page notice a valid key used from somewhere new. Only a non-secret identifier and names.
+            request.state.auth_sighting = {
+                "prefix": key_prefix,
+                "client": auth_data["client_name"],
+                "username": auth_data["analyst_username"],
+            }
+
         return AuthenticatedClient(
             client_id=auth_data["client_name"],
             authenticated=True,

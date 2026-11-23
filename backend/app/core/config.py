@@ -328,6 +328,15 @@ class Settings(BaseSettings):
         ),
     )
 
+    CASE_CREATE_MAX_PER_HOUR: int = Field(
+        default=20,
+        ge=1,
+        le=1000,
+        description=(
+            "Most cases one account may create per hour. A stolen key could otherwise flood the case list; the refusal is a 429 and "
+            "shows on the Security page. Raise it only for a team that promotes alerts in bulk."
+        ),
+    )
     LLM_MAX_CONCURRENCY: int = Field(
         default=1,
         ge=1,

@@ -15,6 +15,8 @@ import { SecurityOverview } from '../src/types';
 const render = (el: React.ReactElement): string => renderToStaticMarkup(<AuthProvider>{el}</AuthProvider>);
 
 const overview = (patch: Partial<SecurityOverview> = {}): SecurityOverview => ({
+  alerts: [],
+  alerts_note: 'These alerts are about AISOP itself. They are separate from the Alerts page, which holds telemetry from your own sources.',
   window_hours: 24,
   window_start: '2026-11-22T10:00:00Z',
   window_end: '2026-11-22T13:30:00Z',
@@ -109,5 +111,58 @@ describe('Security page', () => {
     assert.doesNotMatch(html, /[\u{1F300}-\u{1FAFF}☀-➿]/u);
     assert.match(html, /<h1>Security<\/h1>/);
     assert.match(html, /How to read this page/);
+  });
+
+  it('shows platform security alerts with the severity written out, what happened, why it matters and what to do', () => {
+    const html = render(
+      <Security
+        initialOverview={overview({
+          alerts: [
+            { id: 'a1', rule: 'key_used_after_guessing', severity: 'critical', title: 'A valid API key was used from 203.0.113.50, which had been guessing keys',
+              what_happened: '6 rejected keys came from 203.0.113.50, and the key of dana was then accepted.', why_it_matters: 'This is the pattern of a stolen key.',
+              recommended_action: 'Confirm with dana right away. If it was not them, revoke this key now.', subject: '203.0.113.50',
+              first_seen: '2026-11-22T12:00:00Z', last_seen: '2026-11-22T12:30:00Z', count: 6 },
+            { id: 'a2', rule: 'secret_probing', severity: 'medium', title: 'Probing for secrets and admin panels from 203.0.113.9',
+              what_happened: '5 requests asked for environment files.', why_it_matters: 'Automated scanning.', recommended_action: 'Watch this address.',
+              subject: '203.0.113.9', first_seen: '2026-11-22T11:00:00Z', last_seen: '2026-11-22T11:10:00Z', count: 1 },
+          ],
+        })}
+      />
+    );
+    assert.match(html, /Platform security alerts/);
+    assert.match(html, /Critical/);
+    assert.match(html, /Medium/);
+    assert.match(html, /What happened/);
+    assert.match(html, /Why it matters/);
+    assert.match(html, /What to do/);
+    assert.match(html, /1 request\./, 'singular request count');
+    assert.match(html, /6 requests\./);
+    assert.ok(html.indexOf('guessing keys') < html.indexOf('Probing for secrets'), 'the serious alert is listed first');
+  });
+
+  it('says these alerts are separate from the telemetry alerts', () => {
+    const html = render(<Security initialOverview={overview()} />);
+    assert.match(html, /separate from the Alerts page/);
+    assert.match(html, /telemetry from your own sources/);
+  });
+
+  it('shows an honest empty state for alerts', () => {
+    const html = render(<Security initialOverview={overview()} />);
+    assert.match(html, /No platform security alerts in this window/);
+    assert.match(html, /does not prove nothing else happened/);
+  });
+
+  it('escapes hostile text inside an alert', () => {
+    const hostile = '<img src=x onerror=alert(1)>';
+    const html = render(
+      <Security
+        initialOverview={overview({
+          alerts: [{ id: 'a3', rule: 'key_guessing', severity: 'high', title: hostile, what_happened: hostile, why_it_matters: hostile, recommended_action: hostile,
+            subject: hostile, first_seen: '2026-11-22T11:00:00Z', last_seen: '2026-11-22T11:10:00Z', count: 2 }],
+        })}
+      />
+    );
+    assert.doesNotMatch(html, /<img src=x/);
+    assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   });
 });

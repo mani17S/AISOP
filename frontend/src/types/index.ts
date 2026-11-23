@@ -773,7 +773,24 @@ export type SecurityEventKind =
   | 'unsupported_media_type'
   | 'malformed_request';
 
+/** An alert about AISOP itself (key guessing, probing, a key from a new address). Not a telemetry alert. */
+export interface SecurityAlert {
+  id: string;
+  rule: string;
+  severity: 'critical' | 'high' | 'medium';
+  title: string;
+  what_happened: string;
+  why_it_matters: string;
+  recommended_action: string;
+  subject: string;
+  first_seen: string;
+  last_seen: string;
+  count: number;
+}
+
 export interface SecurityOverview {
+  alerts: SecurityAlert[];
+  alerts_note: string;
   window_hours: number;
   window_start: string;
   window_end: string;

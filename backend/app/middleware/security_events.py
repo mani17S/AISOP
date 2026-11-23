@@ -41,23 +41,22 @@ class SecurityEventsMiddleware:
     def _observe(self, scope, status_code: int | None) -> None:
         if not status_code:
             return
-        route = scope.get("route")
-        reason = (scope.get("state") or {}).get("security_reason")
-        kind = classify(status_code, route is not None, reason)
-        if kind is None:
-            return
         buffer = getattr(getattr(scope.get("app"), "state", None), "security_events", None)
         if buffer is None:
             return
-        request = Request(scope)
+        state = scope.get("state") or {}
+        route = scope.get("route")
+        kind = classify(status_code, route is not None, state.get("security_reason"))
+        sighting = state.get("auth_sighting")
+        if kind is None and not sighting:
+            return
+        source_ip = resolve_client_ip(Request(scope), self.trusted_proxies)
+        if sighting:
+            # A valid key was used from this address (see the new-address alert). Identifier and names only, never the key.
+            buffer.record_sighting(sighting.get("prefix"), sighting.get("client"), sighting.get("username"), source_ip)
+        if kind is None:
+            return
         headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
         # A real route keeps its own path with identifiers replaced; an unknown path is kept as sent (that is the evidence).
         path = route_path(scope.get("path", "")) if route is not None else scope.get("path", "")
-        buffer.record(
-            kind,
-            resolve_client_ip(request, self.trusted_proxies),
-            scope.get("method", ""),
-            path,
-            status_code,
-            headers.get("user-agent"),
-        )
+        buffer.record(kind, source_ip, scope.get("method", ""), path, status_code, headers.get("user-agent"))
