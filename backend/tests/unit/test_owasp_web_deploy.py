@@ -203,9 +203,23 @@ def test_render_blueprint_is_production_hardened_and_holds_no_secrets():
         assert env["ENVIRONMENT"]["value"] == "production"
         assert env["API_AUTH_ENABLED"]["value"] == "true"
         assert env["API_AUTH_ALLOW_LEGACY_KEYS"]["value"] == "false"
-        assert env["LLM_ENABLED"]["value"] == "false"
-        for secret in ("DATABASE_URL", "CORS_ORIGINS"):
+        # The AI may be on in the hosted demo only as the explicit, opt-in external provider of ADR-016 (2026-11-23). Any other way of
+        # turning it on, or turning on a provider without the opt-in switch, is a failure.
+        if env["LLM_ENABLED"]["value"] == "true":
+            assert env["LLM_PROVIDER"]["value"] == "cloudflare_workers_ai"
+            assert env["LLM_ALLOW_EXTERNAL_PROVIDER"]["value"] == "true"
+            assert env["EMBEDDING_PROVIDER"]["value"] == "cloudflare_workers_ai"
+        else:
+            assert env["LLM_ENABLED"]["value"] == "false"
+        # Secrets are entered in the dashboard and never carry a value in the repository.
+        for secret in ("DATABASE_URL", "CLOUDFLARE_AI_API_TOKEN"):
             assert env[secret].get("sync") is False and "value" not in env[secret], f"{secret} must be set in the dashboard, not the repo"
+        # The allowed browser origin is not secret, so it may be written here, but only as an explicit https list: never a wildcard.
+        import json as _json
+
+        origins = _json.loads(env["CORS_ORIGINS"]["value"]) if "value" in env["CORS_ORIGINS"] else []
+        assert env["CORS_ORIGINS"].get("sync") is False or (origins and all(o.startswith("https://") and "*" not in o for o in origins))
+        assert not any("token" in str(v.get("value", "")).lower() and len(str(v.get("value", ""))) > 40 for v in env.values()), "no token value in the repo"
         assert "DEBUG" not in env or env["DEBUG"]["value"] == "false"
         assert "API_AUTH_KEYS" not in env, "a static key must never be committed"
     assert "aisop:aisop" not in RENDER.read_text(encoding="utf-8")

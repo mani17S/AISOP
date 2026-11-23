@@ -72,3 +72,6 @@ developers.cloudflare.com (Pages limits, serving pages, custom domains); neon.co
 
 Notes: from a distant machine each query to the Oregon database takes about 0.5 s, so bulk loading must run from inside the region or use a small dataset; the hosted API runs in the same region and does not have this delay. The free Render database has an expiry date shown in the dashboard; check it before the defence. The hosted API runs with the AI disabled.
 
+## 5. Hosted AI (added 2026-11-23, ADR-016)
+The hosted API no longer runs with the AI off. `render.yaml` enables Cloudflare Workers AI for the model and for RAG embeddings (opt-in, synthetic data only; see `docs/06_AI/Hosted_AI.md`). The hosted database holds 51 knowledge chunks embedded with the Cloudflare model. One secret is needed in the Render dashboard besides `DATABASE_URL`: `CLOUDFLARE_AI_API_TOKEN`, a Cloudflare token limited to Workers AI (create it in the dashboard from the Workers AI template; do not reuse the deployment token). Without it the service still starts and AI actions fall back to the deterministic result.
+

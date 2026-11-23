@@ -78,7 +78,10 @@ export const PrivacyPolicy: React.FC = () => (
     <h2>AI features</h2>
     <p>
       Report drafting and investigation synthesis are optional and use a language model chosen by the operator. In the
-      default configuration the model runs locally and evidence is not sent to a third-party AI service. If an
+      default configuration the model runs locally and evidence is not sent to a third-party AI service. The public demo
+      is the exception, and it holds sample data only: there the model and the retrieval step run on Cloudflare Workers
+      AI, so the text of the case being analysed and the knowledge-base text are sent to Cloudflare while an AI action runs.
+      Do not put real security data into the public demo. If an
       operator connects an external model or threat intelligence service, the data sent to it is governed by that
       operator's configuration and that service's own terms. AI output is labeled as inference and an analyst reviews
       it before use.

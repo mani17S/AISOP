@@ -17,7 +17,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any, Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -141,6 +141,32 @@ class Settings(BaseSettings):
             "Local-first guard: OLLAMA_BASE_URL must point at this machine (localhost, 127.0.0.0/8, ::1) unless the operator sets this to true. "
             "Sending prompts and evidence to another host is an explicit, opt-in decision."
         ),
+    )
+
+    # ── Hosted AI for the public demo: Cloudflare Workers AI, OPT-IN only (ADR-016) ──────────────
+    LLM_ALLOW_EXTERNAL_PROVIDER: bool = Field(
+        default=False,
+        description=(
+            "Local-first guard for third-party AI services. False (default): only the local provider can be built. True is an explicit "
+            "decision to send prompts and evidence text to an external AI service (Cloudflare Workers AI). Use for synthetic demo data only."
+        ),
+    )
+    CLOUDFLARE_ACCOUNT_ID: str | None = Field(default=None, description="Cloudflare account id (not secret). Needed only for the external provider.")
+    CLOUDFLARE_AI_API_TOKEN: SecretStr | None = Field(
+        default=None,
+        description="Cloudflare API token limited to Workers AI. Secret: set it only in the host's environment, never in the repository.",
+    )
+    CLOUDFLARE_AI_MODEL: str = Field(default="@cf/meta/llama-3.3-70b-instruct-fp8-fast", description="Workers AI chat model id.")
+    CLOUDFLARE_AI_EMBEDDING_MODEL: str = Field(default="@cf/baai/bge-base-en-v1.5", description="Workers AI embedding model id (768 dimensions).")
+    CLOUDFLARE_AI_TIMEOUT_SECONDS: int = Field(default=120, gt=0)
+    CLOUDFLARE_AI_DAILY_NEURON_LIMIT: int = Field(
+        default=9000,
+        gt=0,
+        description="Neurons this process may spend per UTC day. Workers AI's free allowance is 10,000; stopping below it keeps a public demo free.",
+    )
+    EMBEDDING_PROVIDER: str = Field(
+        default="ollama",
+        description="'ollama' (local, default) or 'cloudflare_workers_ai' (external, needs LLM_ALLOW_EXTERNAL_PROVIDER). Vectors from different models are not comparable: re-embed the knowledge base when this changes.",
     )
 
     # ── ATT&CK reference (optional, local, offline) ─────────────

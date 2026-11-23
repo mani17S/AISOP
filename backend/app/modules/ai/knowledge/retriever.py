@@ -24,7 +24,7 @@ from typing import Any
 
 from app.core.config import Settings, get_settings
 from app.models.knowledge import KnowledgeEmbedding
-from app.modules.ai.embeddings.embedder import OllamaEmbedder
+from app.modules.ai.embeddings.embedder import OllamaEmbedder, get_embedder
 from app.schemas.knowledge import RetrievalRequest, RetrievalResult
 from loguru import logger
 from sqlalchemy import select
@@ -64,7 +64,7 @@ class KnowledgeRetriever:
     ) -> None:
         cfg = settings or get_settings()
         self._settings = cfg
-        self._embedder = embedder or OllamaEmbedder(cfg)
+        self._embedder = embedder or get_embedder(cfg)
         self._default_top_k = cfg.RETRIEVAL_TOP_K
 
     @property

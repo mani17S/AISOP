@@ -9,7 +9,7 @@ services to acquire the configured provider.
 from __future__ import annotations
 
 import re
-from typing import Callable
+from typing import Any, Callable
 
 from app.core.config import Settings, get_settings
 from app.modules.ai.llm.exceptions import LLMConfigurationError, LLMError
@@ -56,6 +56,34 @@ def _ollama_factory(cfg: Settings) -> LLMProvider:
 
 
 register_llm_provider("ollama", _ollama_factory)  # built in: local, free, the default
+
+
+def require_external_opt_in(cfg: Settings) -> tuple[str, Any]:
+    """The external (third-party) AI service needs an explicit opt-in plus credentials. Never inferred, never partially configured."""
+    if not cfg.LLM_ALLOW_EXTERNAL_PROVIDER:
+        raise LLMConfigurationError(
+            "An external AI provider is configured but not allowed. Setting LLM_ALLOW_EXTERNAL_PROVIDER=true is an explicit decision "
+            "to send prompts and evidence text to a third-party service."
+        )
+    if not cfg.CLOUDFLARE_ACCOUNT_ID or cfg.CLOUDFLARE_AI_API_TOKEN is None or not cfg.CLOUDFLARE_AI_API_TOKEN.get_secret_value():
+        raise LLMConfigurationError("The external AI provider needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_AI_API_TOKEN.")
+    return cfg.CLOUDFLARE_ACCOUNT_ID, cfg.CLOUDFLARE_AI_API_TOKEN
+
+
+def _cloudflare_factory(cfg: Settings) -> LLMProvider:
+    from app.modules.ai.providers.cloudflare.provider import CloudflareWorkersAIProvider
+
+    account_id, token = require_external_opt_in(cfg)
+    return CloudflareWorkersAIProvider(
+        account_id=account_id,
+        api_token=token,
+        model=cfg.CLOUDFLARE_AI_MODEL,
+        timeout_seconds=cfg.CLOUDFLARE_AI_TIMEOUT_SECONDS,
+        daily_neuron_limit=cfg.CLOUDFLARE_AI_DAILY_NEURON_LIMIT,
+    )
+
+
+register_llm_provider("cloudflare_workers_ai", _cloudflare_factory)  # OPT-IN, external (ADR-016): synthetic demo data only
 
 
 def get_llm_provider(settings: Settings | None = None) -> LLMProvider:

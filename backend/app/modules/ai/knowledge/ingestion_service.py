@@ -25,7 +25,7 @@ from typing import Any
 
 from app.core.config import Settings, get_settings
 from app.models.knowledge import KnowledgeEmbedding
-from app.modules.ai.embeddings.embedder import OllamaEmbedder
+from app.modules.ai.embeddings.embedder import OllamaEmbedder, get_embedder
 from app.modules.ai.knowledge.chunker import DocumentChunker
 from app.modules.ai.knowledge.loader import KnowledgeSourceLoader
 from app.schemas.knowledge import (
@@ -60,7 +60,7 @@ class KnowledgeIngestionService:
         self._settings = cfg
         self._loader = loader or KnowledgeSourceLoader(cfg)
         self._chunker = chunker or DocumentChunker(cfg)
-        self._embedder = embedder or OllamaEmbedder(cfg)
+        self._embedder = embedder or get_embedder(cfg)
 
     @property
     def loader(self) -> KnowledgeSourceLoader:

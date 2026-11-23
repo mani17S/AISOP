@@ -298,3 +298,21 @@ class OllamaEmbedder:
         )
 
         return embeddings
+
+
+def get_embedder(settings: Settings | None = None):
+    """
+    The configured embedder. Local (Ollama) by default. 'cloudflare_workers_ai' is external and needs the explicit opt-in
+    (LLM_ALLOW_EXTERNAL_PROVIDER) plus credentials; an unknown name fails closed and never falls back to another provider.
+    """
+    cfg = settings or get_settings()
+    name = (cfg.EMBEDDING_PROVIDER or "ollama").strip().lower()
+    if name == "ollama":
+        return OllamaEmbedder(cfg)
+    if name == "cloudflare_workers_ai":
+        from app.modules.ai.embeddings.cloudflare import CloudflareEmbedder
+
+        return CloudflareEmbedder(cfg)
+    from app.modules.ai.llm.exceptions import LLMConfigurationError
+
+    raise LLMConfigurationError("Unsupported embedding provider.")
