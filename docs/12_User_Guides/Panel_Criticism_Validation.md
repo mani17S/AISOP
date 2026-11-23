@@ -6,7 +6,7 @@ Purpose: for each criticism the panel raised, what was re-checked today, the com
 
 | Check | Command | Result |
 |---|---|---|
-| Backend unit suite | `.venv\Scripts\python.exe -m pytest backend/tests/unit -q` | 3,717 passed, 1 skipped, 1 expected failure, 0 failed (4 min 12 s) |
+| Backend unit suite | `.venv\Scripts\python.exe -m pytest backend/tests/unit -q` | 3,717 passed, 1 skipped, 1 expected failure, 0 failed (4 min 12 s). 10 more tests were added afterwards (`test_attack_mapping_ground_truth.py`, 10 passed alone, and the 128 architecture and evaluation guard tests re-ran clean); the full suite was not re-run after that addition |
 | Reliability, OWASP-mapped and adversarial suites | `pytest backend/tests/unit/test_reliability_matrix.py test_owasp_probe_suite.py test_stage5_adversarial.py` | 168 passed, 1 skipped |
 | Frontend | `npm run typecheck`, `npm test`, `npm run build` in `frontend/` | typecheck clean, 290 of 290 tests, build succeeded |
 | npm advisories | `npm audit --omit=dev`, `npm audit` | 0 in what ships; 2 (1 moderate, 1 high) in the dev-server toolchain (vite, esbuild), not part of the build |
@@ -39,6 +39,25 @@ Purpose: for each criticism the panel raised, what was re-checked today, the com
 ### 5. Crash when handling multiple alerts: ADDRESSED, ORIGINAL CAUSE UNPROVEN
 - Done: reliability matrix R01 to R12 (concurrent ingest, duplicates, malformed and large input, commit failure, model timeout, retry bounds) passes in the offline suite; the measured IPv6 `localhost` stall is fixed by using `127.0.0.1`; limits and a per-case lock exist.
 - Not proven: that the panel's crash had that cause; behaviour under real concurrent load. The PostgreSQL matrix figures (38 passed, 3 not executable live) are from a saved log of an earlier run and were not re-run today.
+
+## A weakness this validation found (ATT&CK coverage)
+Run: `.venv\Scripts\python.exe backend\evaluation_tools\score_attack_mapping.py` (new today) feeds each of the 20 hand-authored ground-truth scenarios through the same normalisation and rule engines the product uses, with no model, and compares the techniques emitted with the scenario's expected list.
+
+| Measure | Result |
+|---|---|
+| Mandatory expected techniques recovered | 1 of 20 (recall 0.05) |
+| Techniques emitted | 4, of which 2 were not in the expected list (both T1564.003 Hidden Window, which the scenario's own command line does show, but the author had not listed it) |
+| Benign scenarios with any technique emitted | 0 of 5 |
+
+Reading of the result:
+- The rule table is small by design (6 rules in the correlation engine, 7 in the domain engine, 13 in all) and every rule states a limitation. The system prefers to say nothing over mapping a technique it cannot support. That gives no false techniques on benign activity, and very low recall.
+- Many "expected" techniques are the kind a model proposes from context (for example T1059.003 for a `cmd.exe /c echo` line), which the rules deliberately do not claim.
+- The synthetic scenarios use reserved documentation addresses (`198.51.100.45`). The rule "a scripting host connects to a public address" correctly does not treat these as public, so it never fires on this data.
+- The scenarios and the rules share one author, so even the 1 of 20 shows consistency, not accuracy.
+- Decision: the rules were NOT extended to match these scenarios. Rules written after reading the scenarios and then scored on them would give a flattering number that would not hold on new data. Extending coverage is future work and needs scenarios written afterwards.
+- What the panel may be told: "The mapping is conservative by design: 13 evidence-backed rules, no false techniques on 5 benign scenarios, and low recall on my 20 scenarios (1 of 20). Broader coverage is future work."
+- What must not be said: that AISOP maps ATT&CK well, covers the matrix, or detects these attacks.
+- Guard added: `backend/tests/unit/test_attack_mapping_ground_truth.py` (10 tests) asserts the benign scenarios emit nothing and every record is accepted. It deliberately does not assert recall.
 
 ## Things found and corrected during this validation
 - The walkthrough gave the scorer's path as `backend/scripts/...`; it is `backend/evaluation_tools/...`. Corrected.

@@ -145,4 +145,5 @@ If something fails live: say so, restart with `scripts\demo_check.ps1 -Start` (a
 - "Pentested with PentAGI", "35/35 PostgreSQL", "zero vulnerabilities" (only the pinned Python list is clean; two npm dev-server advisories are open).
 - That every test passes after any further change. The full backend run on 2026-11-23 passed (3,717); rerun it after any edit before saying so.
 - That you wrote all the code by hand.
+- That AISOP maps ATT&CK well or broadly. Measured 2026-11-23 on the 20 author-written scenarios (`backend/evaluation_tools/score_attack_mapping.py`): 1 of 20 mandatory expected techniques recovered, no technique on any of the 5 benign scenarios. The rule table is small and conservative on purpose (13 rules). Say that, and call wider coverage future work.
 - Any paper citation you have not read yourself.
