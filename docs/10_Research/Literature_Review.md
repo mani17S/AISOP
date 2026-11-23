@@ -184,3 +184,31 @@ Method: web searches, then pages opened by fetch agents. For each source the not
 2. Search for work on evidence independence or corroboration in alert fusion and in Dempster-Shafer style evidence combination applied to intrusion detection, which was not searched.
 3. Open the product documentation of Splunk, CrowdStrike, Google SecOps and one open-source assistant.
 4. Run the labelled experiment and report the result either way.
+
+## Addendum (2026-11-23): dependent alerts in intrusion detection, and two vendor pages
+
+This addendum corrects the reading of source 10 above: precedent for the independence idea exists in intrusion-detection alert fusion as well, not only in database research. The Zomlot paper itself could not be read, so what follows about it comes from a search-result excerpt and must be checked against the paper before it is relied on.
+
+### 14. Dependent alerts in Dempster-Shafer alert fusion (search excerpt only)
+
+**Work:** Zomlot et al., Kansas State University, AISec 2011, on combining beliefs in an alert correlation graph when the evidence is not independent. Related: Yu and Frincke, "Alert Confidence Fusion in Intrusion Detection Systems with Extended Dempster-Shafer Theory", ACM Southeast Conference 2005, which weights alerts from different sources.
+**URLs seen in search results:** https://www.cs.ksu.edu/~xou/publications/aisec11.pdf (moved; the new address was not found) and https://www.osti.gov/biblio/985088
+**What was read:** nothing. The KSU address redirected to a generic directory page. A poster by the same group at https://www.ieee-security.org/TC/SP2011/posters/Prioritizing_Intrusion_Analysis_Using_Dempster-Shafer_Theory.pdf downloaded but was compressed binary that could not be read here. The statements below come from a search engine's summary of search results.
+**What the search summary said (unverified):**
+- The classical Dempster-Shafer rule assumes independent sources, and the multiplication of belief assignments is not valid for non-independent evidence.
+- Zomlot et al. propose customised combination formulas that account for dependence when combining beliefs in an alert correlation graph. The summary says the authors claim to be first to apply sound non-independent combination to IDS alerts. That is the authors' own claim as relayed, and it was not checked.
+- Yu and Frincke address source reliability by weighting, not dependence.
+**Relation to AISOP:** If these summaries are accurate, the idea that dependent alerts must not be combined as if they were independent already exists in the intrusion-detection literature, in a probabilistic form. AISOP's rule is a deterministic simplification (duplicates and near-duplicates count once, weak links never corroborate). So "independence of evidence" cannot be presented as new, and the comparison a panel member may draw is with this line of work. Whether a deterministic, fail-closed gate on top of such a rule appears there was not checked.
+
+### 15. Vendor pages: Splunk and Google SecOps
+
+Both pages were read in full by a fetch agent. They are vendor documentation, so they show what each vendor claims, not how the product behaves.
+- **Splunk, "Summarize findings and investigations with the AI Assistant in Splunk Enterprise Security" (version 8.8 page, last updated 2026-10-21).** https://help.splunk.com/en/splunk-enterprise-security-8/administer/8.8/agentic-capabilities-in-splunk-enterprise-security/summarize-findings-and-investigations-with-the-ai-assistant-in-splunk-enterprise-security . The assistant returns a structured summary, narrative, ATT&CK analysis and suggested next steps, and can generate reports. The page makes no statement on accuracy, verification or citations, and does not address insufficient data. Its stated limits are availability and a daily quota.
+- **Google Security Operations, "Use Triage and Investigation Agent (TIN) to investigate alerts" (no date on the page).** https://docs.cloud.google.com/chronicle/docs/secops/triage-investigation-agent . The agent classifies alerts as true or false positive with a confidence level and shows the supporting data and a step timeline. The page describes no per-claim citation and no verification step, and offers no inconclusive disposition. Scope limits are stated (Google SecOps SIEM data only).
+**Relation to AISOP:** In these two pages, nothing describes refusing to conclude on thin evidence or checking claims against observed evidence. That is a statement about two pages, not about the products. CrowdStrike Charlotte AI was only seen through search summaries (a "Show Response Details" audit toggle and vendor accuracy claims) and is not counted.
+
+## Updated status of the novelty position
+
+- Precedent now exists for each ingredient: abstention on insufficient context (source 9), discounting dependent or copied sources (sources 10 and 14), claim verification (source 5), and a vendor marketing the principle that missing evidence must not close an alert (source 13).
+- In the pages actually read, none of the commercial AI assistants (sources 7, 8, 15) describes a sufficiency gate or per-claim verification.
+- The remaining supportable statement is the narrow one: an applied, deterministic, fail-closed combination of these ingredients for SOC investigations, with its effect still to be measured. Nothing stronger should be said until sources 9, 10 and 14 are read in full and the labelled experiment has been run.
