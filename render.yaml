@@ -1,17 +1,21 @@
-# Render Blueprint for the AISOP backend (free web service). PROPOSED, not deployed.
-# Secrets are never stored here: DATABASE_URL and CORS_ORIGINS are set in the Render dashboard.
+# Render Blueprint for the AISOP backend (free web service). Pre-flighted 2026-11-23 in production mode against the hosted database;
+# the service itself is created from the Render dashboard (the API key supplied could not create services).
+# Secrets are never stored here: only DATABASE_URL is entered in the Render dashboard. CORS_ORIGINS is not secret and is set below.
 services:
   - type: web
     name: aisop-api
     runtime: python
     plan: free
+    region: oregon   # same region as the hosted PostgreSQL database
     buildCommand: pip install -r requirements.txt
     # Migrations run on start because pre-deploy commands are not part of the free plan (UNVERIFIED, check at sign up).
     startCommand: alembic upgrade head && cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/v1/health
     envVars:
       - key: PYTHON_VERSION
-        value: "3.12"
+        value: "3.12.8"   # Render expects a full version (UNVERIFIED that 3.12.8 is offered; if the build refuses it, pick any 3.12.x it lists)
+      - key: DEBUG
+        value: "false"
       - key: ENVIRONMENT
         value: production
       - key: API_AUTH_ENABLED
@@ -23,4 +27,4 @@ services:
       - key: DATABASE_URL
         sync: false   # postgresql+psycopg://USER:PASSWORD@HOST/DB?sslmode=require (Neon gives postgresql://, add +psycopg)
       - key: CORS_ORIGINS
-        sync: false   # JSON list, for example ["https://aisop.pages.dev"]
+        value: '["https://aisop-demo.pages.dev"]'
