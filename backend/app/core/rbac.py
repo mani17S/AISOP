@@ -269,6 +269,14 @@ def can_access_global_event_triage(global_role: GlobalRole | str) -> bool:
     )
 
 
+def can_view_security_monitoring(global_role: GlobalRole | str) -> bool:
+    """
+    The Security page (what the server observed being done to it: failed logins, probes, lockouts, by source address).
+    Permitted: security_admin only. It lists source addresses and attack patterns, which analysts do not need to investigate cases.
+    """
+    return has_global_role(global_role, {GlobalRole.SECURITY_ADMIN})
+
+
 def can_access_unscoped_event_detail(global_role: GlobalRole | str) -> bool:
     """
     Decision 1A: Full event payloads and raw evidence in global unscoped query.

@@ -58,6 +58,12 @@ export const PrivacyPolicy: React.FC = () => (
       <li>normalized events and the entities extracted from them (IP addresses, hostnames, usernames, file hashes)</li>
       <li>cases, analyst accounts and roles</li>
       <li>an audit trail of investigation actions</li>
+      <li>
+        a security log of requests the server refused (a rejected API key, a lockout, a request for a path that does not
+        exist, an oversized or malformed request). It keeps counts per minute with the source IP address, the request
+        method and path, the response status and the first 160 characters of the client's user agent. It never keeps API
+        keys, request bodies or other headers. Rows are deleted after 30 days and only a security admin can read them.
+      </li>
     </ul>
     <p>
       This data can contain personal data about people in your environment. It is held in the operator's PostgreSQL

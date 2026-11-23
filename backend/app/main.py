@@ -6,6 +6,7 @@ AI Security Investigation & Operations Platform (AISOP) Backend API.
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -15,14 +16,53 @@ from app.core.config import get_settings, validate_production_settings
 from app.core.errors import install_error_handlers
 from pathlib import Path
 from app.core.logging import setup_logging
+from app.core.security_events import SecurityEventBuffer
 from app.modules.ai.knowledge.retriever import KnowledgeRetriever
 from app.modules.threatintel.feeds.manager import LocalFeedManager
 from app.modules.threatintel.local_engine import LocalThreatIntelEngine
 from app.middleware import RequestCorrelationMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 from app.middleware.body_limit import SMALL_BODY_LIMITS, BodySizeLimitMiddleware
+from app.middleware.security_events import SecurityEventsMiddleware
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+
+
+SECURITY_EVENTS_FLUSH_SECONDS = 10
+SECURITY_EVENTS_RETENTION_DAYS = 30
+
+
+async def _flush_security_events_once(app: FastAPI) -> None:
+    """Write the in-memory security event counts to the database. A failure is logged, never raised into the server."""
+    from app.db.session import get_session_factory
+    from app.services.security_event_service import flush_security_events
+
+    buffer = getattr(app.state, "security_events", None)
+    if buffer is None:
+        return
+    try:
+        async with get_session_factory()() as session:
+            await flush_security_events(buffer, session)
+    except Exception as exc:
+        logger.warning("Security event flush failed", error_type=type(exc).__name__)
+
+
+async def _security_events_loop(app: FastAPI) -> None:
+    from app.db.session import get_session_factory
+    from app.services.security_event_service import purge_older_than
+
+    ticks_per_purge = max(1, 3600 // SECURITY_EVENTS_FLUSH_SECONDS)
+    tick = 0
+    while True:
+        await asyncio.sleep(SECURITY_EVENTS_FLUSH_SECONDS)
+        await _flush_security_events_once(app)
+        tick += 1
+        if tick % ticks_per_purge == 0:
+            try:
+                async with get_session_factory()() as session:
+                    await purge_older_than(session, SECURITY_EVENTS_RETENTION_DAYS)
+            except Exception as exc:
+                logger.warning("Security event purge failed", error_type=type(exc).__name__)
 
 
 @asynccontextmanager
@@ -63,7 +103,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             error_type=type(exc).__name__,
         )
 
+    flush_task = asyncio.create_task(_security_events_loop(app))
     yield
+    flush_task.cancel()
+    try:
+        await flush_task
+    except asyncio.CancelledError:
+        pass
+    await _flush_security_events_once(app)
     logger.info("Shutting down AISOP application")
 
 
@@ -104,6 +151,10 @@ def create_app() -> FastAPI:
         enabled=settings.SECURITY_HEADERS_ENABLED,
         trusted_proxies=settings.RATE_LIMIT_TRUSTED_PROXIES,
     )
+
+    # Attack visibility: counts suspicious responses (Security page). Outside the limiter and size caps so their answers are seen.
+    app.state.security_events = SecurityEventBuffer()
+    app.add_middleware(SecurityEventsMiddleware, trusted_proxies=settings.RATE_LIMIT_TRUSTED_PROXIES)
 
     # Request correlation and observability middleware
     app.add_middleware(RequestCorrelationMiddleware)

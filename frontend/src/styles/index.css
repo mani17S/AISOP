@@ -3001,3 +3001,204 @@ body {
 .time-also {
   color: var(--text-muted);
 }
+
+/* ── Security page: what the server observed being done to it (2026-11-22) ───────────────────────────────── */
+
+.sec-block {
+  margin-top: 32px;
+}
+
+.sec-h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.sec-summary {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.sec-total {
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.sec-total-label,
+.sec-window {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sec-window {
+  text-align: right;
+}
+
+.sec-empty {
+  margin-top: 32px;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+}
+
+.sec-chart {
+  margin: 0;
+}
+
+.sec-chart svg {
+  display: block;
+  width: 100%;
+  height: 140px;
+}
+
+.sec-chart-bar {
+  fill: var(--accent-teal);
+}
+
+.sec-chart-axis {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.sec-chart-grid {
+  stroke: var(--text-muted);
+  stroke-opacity: 0.25;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.sec-chart-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sec-details {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sec-details summary {
+  cursor: pointer;
+}
+
+.sec-ranked {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.sec-ranked li {
+  display: grid;
+  grid-template-columns: minmax(160px, 280px) 1fr 56px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.sec-ranked-label {
+  color: var(--text-primary);
+}
+
+.sec-ranked-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sec-ranked-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent-teal);
+}
+
+.sec-ranked-count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.sec-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.sec-small-table td,
+.sec-small-table th {
+  font-size: 13px;
+}
+
+.sec-path,
+.sec-agent {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sec-agent {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.sec-notes {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  max-width: 760px;
+}
+
+.sec-notes ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.sec-notes li + li {
+  margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .sec-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sec-ranked li {
+    grid-template-columns: 1fr 56px;
+  }
+
+  .sec-ranked-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .sec-window {
+    text-align: left;
+  }
+}

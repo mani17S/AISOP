@@ -13,6 +13,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, Header, HTTPException, Request, status
 from app.core.errors import RATE_LIMITED, CodedHTTPException
+from app.core.security_events import REASON_AUTH_LOCKED_OUT
 from loguru import logger
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
@@ -155,6 +156,8 @@ async def verify_api_key(
     def locked_out() -> None:
         wait = throttle.retry_after(client_ip, key_prefix) if throttle is not None and client_ip is not None else 0
         if wait:
+            if request is not None:
+                request.state.security_reason = REASON_AUTH_LOCKED_OUT  # lets the Security page tell a lockout from throttling
             raise AuthLockedOut(wait)
 
     def failed() -> None:

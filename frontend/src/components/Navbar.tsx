@@ -125,6 +125,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
           >
             Reports
           </button>
+          {globalRole === 'security_admin' && (
+            <button
+              className={`nav-item ${currentTab === 'security' ? 'active' : ''}`}
+              aria-current={currentTab === 'security' ? 'page' : undefined}
+              onClick={() => onSelectTab('security')}
+            >
+              Security
+            </button>
+          )}
         </nav>
 
         <div className="nav-controls">

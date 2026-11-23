@@ -759,3 +759,41 @@ export interface MultiSourceInvestigation {
   batch_graph?: GraphView | null;
   ledger: { head: string; verified: boolean; steps: { seq: number; step: string; entry_hash: string }[] };
 }
+
+// ── Security monitoring (what the server observed being done to it) ──────────────────────────────────────────
+
+export type SecurityEventKind =
+  | 'auth_failed'
+  | 'auth_locked_out'
+  | 'rate_limited'
+  | 'forbidden'
+  | 'unknown_path'
+  | 'method_not_allowed'
+  | 'payload_too_large'
+  | 'unsupported_media_type'
+  | 'malformed_request';
+
+export interface SecurityOverview {
+  window_hours: number;
+  window_start: string;
+  window_end: string;
+  total_events: number;
+  totals_by_kind: { kind: SecurityEventKind | string; count: number }[];
+  timeline: { hour: string; count: number }[];
+  top_sources: { source_ip: string; count: number; kinds: { kind: string; count: number }[] }[];
+  top_paths: { kind: string; path: string; count: number }[];
+  recent: {
+    time: string;
+    kind: string;
+    status_code: number;
+    method: string;
+    path: string;
+    source_ip: string;
+    user_agent: string | null;
+    count: number;
+  }[];
+  rows_read: number;
+  truncated: boolean;
+  not_recorded_since_start: number;
+  notes: string[];
+}

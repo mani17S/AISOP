@@ -13,6 +13,7 @@ import { Alerts } from './pages/Alerts';
 import { Cases } from './pages/Cases';
 import { Evidence } from './pages/Evidence';
 import { Reports } from './pages/Reports';
+import { Security } from './pages/Security';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PrivacyPolicy, TermsOfService } from './pages/Legal';
 import { Landing } from './pages/Landing';
@@ -80,6 +81,7 @@ const ShellBody: React.FC = () => {
             )}
             {apiKey && currentTab === 'evidence' && <Evidence />}
             {apiKey && currentTab === 'reports' && <Reports initialCaseId={selectedCaseIdForReport} />}
+            {apiKey && currentTab === 'security' && <Security />}
           </ErrorBoundary>
         </main>
 

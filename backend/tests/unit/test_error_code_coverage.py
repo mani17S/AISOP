@@ -62,7 +62,7 @@ def _message_expr(node: ast.Call):
 def test_inventory_is_stable_and_counted():
     names = [_call_name(n) for _, n in _sites()]
     # Reported numbers in the Phase 2.3 matrix; a change here means the matrix must be updated on purpose.
-    assert names.count("HTTPException") + names.count("CodedHTTPException") + names.count("ApiError") + names.count("StructuredHttpError") == 107 + 0
+    assert names.count("HTTPException") + names.count("CodedHTTPException") + names.count("ApiError") + names.count("StructuredHttpError") == 108 + 0  # 107 + 1: the Security overview role refusal (2026-11-22)
     assert names.count("StructuredHttpError") == 1
 
 

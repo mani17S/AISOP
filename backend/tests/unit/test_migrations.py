@@ -56,7 +56,7 @@ def test_alembic_config_discovery(alembic_config: Config):
 
     heads = script_dir.get_heads()
     assert len(heads) == 1
-    assert heads[0] == "0004_p3h2_rbac_case_scoping"
+    assert heads[0] == "0005_security_events"
 
 
 def test_target_metadata_tables():
@@ -239,7 +239,15 @@ def test_migration_0004_metadata(alembic_config: Config):
     assert rev_0004 is not None
     assert rev_0004.revision == "0004_p3h2_rbac_case_scoping"
     assert rev_0004.down_revision == "0003_source_scoped_chunks"
-    assert rev_0004.nextrev == set()
+    assert rev_0004.nextrev == {"0005_security_events"}  # 0005 (2026-11-22) follows it; 0004 itself is unchanged
+
+
+def test_migration_0005_metadata(alembic_config: Config):
+    script_dir = ScriptDirectory.from_config(alembic_config)
+    rev_0005 = script_dir.get_revision("0005_security_events")
+    assert rev_0005 is not None
+    assert rev_0005.down_revision == "0004_p3h2_rbac_case_scoping"
+    assert rev_0005.nextrev == set()
 
 
 def test_migration_0004_immutability_triggers_and_downgrade_source(alembic_config: Config):
@@ -434,3 +442,13 @@ def test_isolated_migration_lifecycle(alembic_config: Config):
         assert "extracted_entities" not in remaining_tables
 
     engine.dispose()
+
+
+def test_offline_sql_creates_the_security_events_table(alembic_config: Config, capsys: pytest.CaptureFixture):
+    command.upgrade(alembic_config, "head", sql=True)
+    sql = capsys.readouterr().out
+    assert "CREATE TABLE security_events" in sql
+    assert "ix_security_events_bucket_minute" in sql and "ix_security_events_kind" in sql
+    # nothing that could hold a secret
+    for forbidden in ("api_key", "authorization", "request_body", "password"):
+        assert forbidden not in sql.split("CREATE TABLE security_events")[1].split(");")[0].lower()

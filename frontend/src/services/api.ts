@@ -26,6 +26,7 @@ import {
   CaseScopedEvidenceItem,
   CaseSeverity,
   HealthResponse,
+  SecurityOverview,
   InvestigationReportBundle,
   InvestigationValidationResult,
   DomainImportResult,
@@ -164,6 +165,11 @@ class ApiClient {
 
   public async getReadiness(): Promise<HealthResponse> {
     return this.request<HealthResponse>('/api/v1/health/ready');
+  }
+
+  /** Security admin only: suspicious requests the server observed in the last `hours` hours (1 to 168). */
+  public async getSecurityOverview(hours: number, signal?: AbortSignal): Promise<SecurityOverview> {
+    return this.request<SecurityOverview>(`/api/v1/security/overview?hours=${encodeURIComponent(String(hours))}`, { signal });
   }
 
   // ── Evidence & Telemetry ─────────────────────────────────────────────────
