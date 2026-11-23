@@ -18,8 +18,11 @@ A language model is then an optional layer on top: its output is checked claim b
 | "Independence and abstention rules reduce unsupported conclusions" | A testable hypothesis. **Not yet tested**: no labels, no baseline comparison, no held-out run (see `docs/10_Research/Evaluation.md`). |
 | Novelty compared with the literature or other products | **Unknown.** Requires the literature and product review that has not been done. |
 
+## Update 2026-11-23
+A limited review of 13 sources now exists (`docs/10_Research/Literature_Review.md`). It found precedent for each ingredient (abstention on insufficient context, discounting copied sources, claim verification) and did not find the exact combination in the pages opened. That is not a demonstrated gap: the review is short, vendor documentation for several products was not opened, and two key papers were read only at abstract level.
+
 ## What would close the gap
-1. A literature and product review, with sources the student has actually read, comparing how others treat corroboration and abstention.
+1. A literature and product review, with sources the student has actually read, comparing how others treat corroboration and abstention. A first limited pass is done; the full-text reading and the remaining product documentation are listed at the end of the review.
 2. The experiment in `docs/10_Research/Evaluation.md`, reported with its failures.
 
 ## Honest limits

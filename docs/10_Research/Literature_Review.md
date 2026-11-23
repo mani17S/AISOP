@@ -1,6 +1,6 @@
 # Literature and Product Review
 
-Status: first pass, written 2026-11-22. It covers 8 sources that were fetched and read for this document. It does not prove or disprove novelty. See the last section.
+Status: first pass written 2026-11-22 (8 sources), widened on 2026-11-23 (second pass at the end of this file, 5 more sources, with how much of each was readable). It does not prove or disprove novelty. See "What this review does and does not show" and the second pass.
 
 ## Purpose
 
@@ -121,3 +121,66 @@ These were seen in search results or in my own background knowledge but not open
 - Vendor documentation describes marketed behaviour and was not tested. Proprietary logic may do more than the pages say.
 - The honest reading is limited. Claim verification looks addressed elsewhere. Abstention is addressed elsewhere in other forms and with other triggers. Independence as AISOP defines it was not found in the pages read, and the supportable wording is "not found in this limited review", not "absent from the field".
 - Any novelty claim for the panel would need a wider search (for example, on source independence in evidence combination and on retrieval-augmented abstention), and the evaluation in `docs/10_Research/Evaluation.md` to show the properties help in practice.
+
+## Second pass (2026-11-23): what a wider search added
+
+Method: web searches, then pages opened by fetch agents. For each source the note says how much text was actually readable. Two PDFs came back as unreadable binary and no PDF reader is installed, so those were not read. Nothing below is cited from memory.
+
+### 9. Sufficient context for retrieval-augmented generation (closest prior art to the sufficiency gate)
+
+**Title:** Sufficient Context: A New Lens on Retrieval Augmented Generation Systems
+**Authors:** Hailey Joren, Jianyi Zhang, Chun-Sung Ferng, Da-Cheng Juan, Ankur Taly, Cyrus Rashtchian
+**Year:** arXiv 2411.06037, submitted 9 November 2024, v3 revised 23 April 2025. A search result lists it as ICLR 2025; the pages opened here did not state a venue, so confirm before citing one.
+**URL:** https://arxiv.org/abs/2411.06037 (HTML version https://arxiv.org/html/2411.06037v3)
+**What was read:** the abstract and the first part of the HTML text word for word (the definition, the autorater results). The rest of the page, including the selective-generation method and the limitations, was seen only as a machine summary.
+**Summary:** An instance has sufficient context if the context allows a plausible answer to the question, which does not need a ground-truth answer. Insufficient context is incomplete, inconclusive or contradictory. Sufficiency is decided by an LLM autorater (Gemini 1.5 Pro, one example), reported at 93% accuracy on a 115-instance hand-labelled set the authors built to be hard. The abstract reports that large models often answer instead of abstaining when context is insufficient. A selective-generation method combines the sufficiency label with the model's own confidence to decide when to abstain, reported as improving the fraction of correct answers among responses by 2 to 10% for three model families. Evaluated on question answering, not on security.
+**Relation to AISOP:** This is the nearest prior art to AISOP's gate: deciding "is the context enough to answer" before trusting a model is an established idea. The differences are in what decides it. Here sufficiency is judged by another model, per question. In AISOP it is a deterministic count of independent observed evidence, evaluated before any model is called, with fail-closed behaviour and stated reason codes. The text read does not discuss duplicate or redundant passages, independence of sources or corroboration (the machine summary of the unread part says the same, which is unverified).
+
+### 10. Source dependence in truth discovery (precedent for the independence idea)
+
+**Authors:** Xin Luna Dong, Laure Berti-Equille, Divesh Srivastava
+**Works:**
+- "Truth discovery and copying detection in a dynamic world", PVLDB vol. 2 issue 1, pp. 562-573, 2009. Read: the abstract via the Crossref record only.
+- "Data Fusion: Resolving Conflicts from Multiple Sources", WAIM 2013. Read: the abstract on the Google Research page only.
+- "Integrating Conflicting Data: The Role of Source Dependence", PVLDB 2009. Not read at all: the PDF could not be parsed and no other copy was opened. It is known here only from a reference list and a search result.
+
+**URLs:** https://api.crossref.org/works/10.14778/1687627.1687691 and https://research.google/pubs/data-fusion-resolving-conflicts-from-multiple-sources/
+**Summary (abstracts only):** The 2009 paper studies finding true values and detecting copying between sources when update histories are known, with a Hidden Markov Model that decides whether one source copies another. The 2013 abstract describes finding true values among conflicting sources "among which some may copy from others", with accuracy and scalability shown on real-world data.
+**Relation to AISOP:** The principle that copied information should not count as independent support is established in database research on data fusion. AISOP's independence rule (duplicates and near-duplicates are one piece of evidence) is therefore not a new idea in the abstract. Neither abstract mentions security, alerts or logs, so whether this literature has been applied to SOC evidence was not established. The methods themselves (statistical models over source histories) were not read, and AISOP's rule is a simple deterministic one, not these models.
+
+### 11. CORTEX: multi-agent alert triage
+
+**Authors:** Bowen Wei, Yuan Shen Tay, Howard Liu, Jinhao Pan, Kun Luo, Ziwei Zhu, Chris Jordan (George Mason University, Fluency Security). arXiv 2510.00311, 30 September 2025.
+**URL:** https://arxiv.org/html/2510.00311v1
+**What was read:** the first 39,956 of 72,180 characters word for word, the remainder (appendix material) as a machine summary.
+**Summary:** Agents gather evidence from SIEM, identity and asset tools, and a coordinating agent reconciles it and writes a report. Evaluated on several thousand production SOC traces: actionable F1 0.78 against 0.61 (prompt only) and 0.66 (single agent with tools), false-positive rate 14.2% against 29.8% and 24.9%, at a median 152 s against 45 s and about 5.7 times the tokens. There is an "Undetermined" class defined as insufficient evidence, but the text read describes no mechanism that blocks a verdict when evidence is incomplete, and does not address duplicate or non-independent evidence. It says the system can be sensitive to incomplete tool output.
+**Relation to AISOP:** It is a production-data comparison of LLM triage designs, which AISOP does not have. It differs from AISOP in that the verdict comes from model agents cross-checking one another, not from a deterministic gate in front of the model. Its figures are on private data and cannot be compared with AISOP's synthetic sets.
+
+### 12. Evaluating LLMs for security incident analysis
+
+**Authors:** Sourov Jajodia, Madeena Sultana, Suryadipta Majumdar, Adrian Taylor, Grant Vandenberghe (Concordia University, Defence Research and Development Canada). arXiv 2603.06422, 6 March 2026.
+**URL:** https://arxiv.org/html/2603.06422v1
+**What was read:** the first 39,956 of about 189,000 characters word for word; the rest as a machine summary.
+**Summary:** A benchmark with 25 incident scenarios (229 questions) and 135 alert-triage scenarios built from public packet captures, used to evaluate 11 models with a deliberately minimal agent. The machine summary (not verified word for word) says the best model fully solves 8 of 25 incident scenarios and that triage was forced binary, so abstention was not measured.
+**Relation to AISOP:** It supports the point that unaided models are unreliable on multi-step incident analysis, which is the motivation for a gate and verifier. It does not test any evidence-sufficiency or independence mechanism.
+
+### 13. Vendor claim: incomplete evidence must not close an alert
+
+**Vendor:** D3 Security (promotes its own AI SOC product). Blog post "100 Wrong Verdicts a Day: The Fine Print Inside a '99% Accurate' AI SOC", 22 July 2026. Read in full.
+**URL:** https://d3security.com/blog/ai-soc-when-its-wrong/
+**Summary:** The post claims "Missing evidence must increase uncertainty, not increase confidence in benignity", that "No answer" is a legitimate output, and that an evidence ledger records which sources were queried so that failed retrieval becomes a named gap and auto-closure is blocked on incomplete evidence. It gives no mechanism detail and no evaluation data.
+**Relation to AISOP:** It shows that at least one vendor markets the same principle (abstain on incomplete evidence). It is a marketing claim and unverified, and it concerns missing evidence (not queried or failed) rather than whether the present evidence is independent.
+
+## What the second pass changes
+
+- **Abstention on insufficient context is established.** Joren et al. is direct, recent prior art for gating on context sufficiency, and a vendor markets the same principle for SOC work. "Abstaining when evidence is insufficient" must not be presented as new.
+- **Independence of sources has precedent outside security.** Discounting copied information is a known topic in data fusion (source 10, abstracts only). "Duplicates are not corroboration" must not be presented as an original principle.
+- **What was still not found.** In the pages opened, no source describes deciding sufficiency by a deterministic count of independent, observed evidence in a SOC investigation, with a fail-closed gate before any model call, a rule that analyst notes, threat intelligence and model output never count as corroboration, and claim verification after generation, all in one system. This remains "not found in this limited review", not "does not exist". The searches were short, vendor documentation for Splunk, CrowdStrike, Google SecOps and others was not opened, and two key papers were read at abstract level only.
+- **The defensible contribution** is therefore an applied combination for the SOC setting: a deterministic and testable form of ideas known separately in RAG and in data fusion. Whether it works better than a naive rule is the open question that the labelled experiment in `docs/10_Research/Evaluation.md` is meant to answer.
+
+## Still to do before any novelty wording is used
+
+1. Read the full text of sources 9, 10 and 5 (DeepFaith). Two PDFs here were unreadable, so use a PDF reader.
+2. Search for work on evidence independence or corroboration in alert fusion and in Dempster-Shafer style evidence combination applied to intrusion detection, which was not searched.
+3. Open the product documentation of Splunk, CrowdStrike, Google SecOps and one open-source assistant.
+4. Run the labelled experiment and report the result either way.
