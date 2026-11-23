@@ -555,6 +555,37 @@ def assess_evidence_sufficiency(
             rec_final = [] if trace is not None else None
             trace_excluded_pairs = set(material_pairs)
             corroborating, repeated_only, weak_only = classify(material_pairs, rec_final)
+    # ── ADR-017 (2026-11-24): vantage-level independence ──────────────────────────────────────────────────────────────────────────────
+    # Two different raw records are different WITNESSES only if they were seen from different vantage points (a vantage is a source type
+    # at a host, for example ``sysmon@workstation5``, or an explicit ``attributes["vantage"]``). When every record that corroborates the
+    # key event, and the key event itself, carries a KNOWN vantage and it is the same one, the verdict is capped at LIMITED. An unknown
+    # vantage never triggers this, so contexts that carry no source type behave exactly as before. It can only lower a verdict.
+    def vantage_of(c: int) -> Optional[str]:
+        attrs = rep[c].attributes or {}
+        explicit = attrs.get("vantage")
+        if isinstance(explicit, str) and explicit.strip():
+            return explicit.strip().lower()
+        # The incident path names the declared source ``source_type``; the case path stores the same fact as ``source_system``.
+        source_type = attrs.get("source_type") or attrs.get("source_system")
+        if isinstance(source_type, str) and source_type.strip():
+            return f"{source_type.strip().lower()}@{str(rep[c].source_identifier).strip().lower()}"
+        return None
+
+    if corroborating:
+        # The witnesses are the whole chain joined by specific or strong links, not only the key event's direct neighbours: a story can be
+        # carried by several vantage points one hop apart (file hash -> process artefact -> public IP -> DNS and firewall records).
+        witness_units = set(corroborating) | ({anchor_unit} if anchor_unit is not None else set())
+        frontier = list(witness_units)
+        while frontier:
+            current = frontier.pop()
+            for other in attested_units:
+                if other not in witness_units and other not in anomalous_units and specific_shared(current, other):
+                    witness_units.add(other)
+                    frontier.append(other)
+        witness_vantages = {vantage_of(c) for c in witness_units}
+        if None not in witness_vantages and len(witness_vantages) == 1:
+            findings.append(_finding(ReasonCode.SAME_VANTAGE_ONLY, FindingEffect.LIMITED, [rep[c].event_uuid for c in sorted(witness_units)]))
+
     if not corroborating:
         findings.append(
             _finding(ReasonCode.UNCORROBORATED_QUESTION, FindingEffect.LIMITED, [rep[c].event_uuid for c in relevant_units])

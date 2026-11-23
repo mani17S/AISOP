@@ -3,22 +3,24 @@
 Written 2026-11-23. Everything here is limited to what the repository measured. Nothing claims a result on real incidents, and nothing claims novelty beyond "applied combination, effect partly measured".
 
 ## The question
-When an investigation tool is asked to explain a security incident, when is the evidence behind the question good enough to ask a model at all, and how are its answers kept honest? AISOP answers with two testable mechanisms and one stated limit.
+When an investigation tool is asked to explain a security incident, when is the evidence behind the question good enough to ask a model at all, and how are its answers kept honest? AISOP answers with three testable mechanisms.
 
 ## The claim (narrow on purpose)
 1. **A deterministic, fail-closed evidence-sufficiency gate** counts independent observed evidence before any model call. Copies and near-copies count once; a shared host or user is context, not corroboration; analyst notes, threat intelligence and model output never corroborate.
 2. **Claim-level verification** checks each statement a model makes against the stored evidence by code that uses no model, and falls back to a deterministic report when a claim fails.
-3. **Stated limit:** independence is *record-level* (a different raw record linked by a specific or strong artefact), not *vantage-level* (a different sensor). Proposed for later in ADR-017.
+3. **Vantage-level independence** (ADR-017, implemented 2026-11-24): records are different witnesses only if they were seen from different vantage points (a source type at a host). When the whole chain of specific links around the key event comes from one known vantage, the verdict is capped at LIMITED with a stated reason. It can only lower a verdict, and an unknown vantage never triggers it.
 
 This is an applied combination. Each ingredient has precedent (see `Literature_Review.md`): abstention on insufficient context (Joren et al., read in part), discounting copied sources (Dong et al., abstracts only; a 2011 dependent-alert fusion paper known from a search summary only), and claim verification (DeepFaith, abstract only). The combination in a deterministic SOC tool was not found in the 15 sources opened; that is a limited search.
 
-## What was measured (all development split, 67 synthetic cases, no labels)
+## What was measured (development split, 67 synthetic cases, no labels, plus public real data where stated)
 | Evidence | Result | Source |
 |---|---|---|
 | Metamorphic relations (copies, near-copies, host-only context must not raise the verdict; order and hostile text must not change it) | AISOP broke none of 5 relations; the naive baselines broke the duplicate relations on 37 to 42 of 66 cases | `evaluation_tools/metamorphic_sufficiency.py` |
 | Ablation (rules added to the naive baseline one at a time) | SUFFICIENT calls fall 29 -> 24 -> 12 -> 12 -> 11 across arms B0 to B4; metamorphic breaks fall 103 -> 76 -> 23 -> 0 -> 0; AISOP breaks 0; B4 and AISOP have the identical SUFFICIENT set | `evaluation_tools/ablation_sufficiency.py` |
 | ATT&CK rules against 20 scenarios | 1 of 20 expected techniques recovered; 0 of 5 benign scenarios produced a technique | `evaluation_tools/score_attack_mapping.py` |
 | Raw captured model (`llama3.1:8b`) | MITRE F1 0.00 on 10 scenarios; false techniques on 2 of 2 benign scenarios | `docs/04_Testing/AI_Model_Benchmark_Report.md` |
+| Claim verifier, mutation evaluation (assertions true or false by construction, built from the evidence and not from the verifier) | All 2,478 true assertions accepted; 0 of 1,737 false assertions called SUPPORTED across 12 fault classes (fabricated and uncited ids, another case's id, wrong values, reversed time, duplicates as distinct, hostile and look-alike values, one false assertion hidden among true ones); no exception escaped | `evaluation_tools/claim_verifier_mutation.py` |
+| Vantage-level independence | Locked cases unchanged (11 sufficient); annotated as one vantage all 11 fall to LIMITED, as cross-vantage all 11 stay; never raised; on real public data the one same-sensor SUFFICIENT incident became LIMITED | `evaluation_tools/vantage_effect.py`, ADR-017 |
 | Real-format ingestion | 377 of 377 records from two public datasets accepted after fixes (0 before); one SUFFICIENT verdict on real data examined | `Real_Format_Ingestion_Result.md` |
 
 ## What the ablation says about the contribution (stated without spin)
@@ -39,7 +41,9 @@ H1: on the fixed scenarios the gate gives a lower false-sufficient rate than the
 | Labelling rubric restates the gate's own rule | Agreement with labels may be high by construction | Say so; compare against B0 to B4 on the same labels |
 | Synthetic, small, uneven scenario families | No prevalence, wide intervals | Wilson intervals; no generalisation claim |
 | Metamorphic relations restate the project's invariants | Zero violations shows fidelity, not correctness | Present as property testing only |
-| Record-level independence (ADR-017) | Same-sensor records can reach SUFFICIENT (seen on real data) | Disclosed; proposed fix |
+| Vantage is coarse (source type at a host) | Two sensor instances of one type at one host count as one witness | Disclosed in ADR-017 |
+| The vantage rule was designed from a real-data finding and then checked on the same data | Demonstrates the mechanism; not independent validation | Say so; needs labels and a second dataset |
+| Rule table label still `suff-v4` | Stored results before 2026-11-24 are not distinguishable by label | The reason code marks affected results; rename after owner approval |
 | Held-out split unused | No out-of-sample result | Run once after the rules are frozen |
 | Real-data test is one forwarder shape | Ingestion generality unproven | Disclosed |
 
@@ -48,5 +52,7 @@ H1: on the fixed scenarios the gate gives a lower false-sufficient rate than the
 .venv\Scripts\python.exe backend\evaluation_tools\metamorphic_sufficiency.py --out D:\AISOP-Backups\AISOP_Dev_Logs\metamorphic_run
 .venv\Scripts\python.exe backend\evaluation_tools\ablation_sufficiency.py --out D:\AISOP-Backups\AISOP_Dev_Logs\ablation_run
 .venv\Scripts\python.exe backend\evaluation_tools\score_attack_mapping.py
+.venv\Scripts\python.exe backend\evaluation_tools\claim_verifier_mutation.py --out D:\AISOP-Backups\AISOP_Dev_Logs\claim_mutation_run
+.venv\Scripts\python.exe backend\evaluation_toolsantage_effect.py
 ```
-Guards: `backend/tests/unit/test_metamorphic_sufficiency.py`, `test_ablation_sufficiency.py`, `test_attack_mapping_ground_truth.py`.
+Guards: `backend/tests/unit/test_metamorphic_sufficiency.py`, `test_ablation_sufficiency.py`, `test_attack_mapping_ground_truth.py`, `test_claim_verifier_mutation.py`, `test_vantage_independence.py`.

@@ -87,6 +87,14 @@ Also fixed: the benchmark report printed a benign false-positive rate of 2 of 2 
 | UI and AI-code concern | Second UI pass (compact phone header, two-column tablet cards, a scroll-fade defect fixed), second verified live-change drill (5 named tests fail when the brute-force threshold changes) | 76 (was 74) |
 These are reviewer estimates in the review's own scale. Novelty cannot honestly pass the high 50s, and evidence evaluation the high 40s, until the 67 labels exist.
 
+## Third addition (2026-11-24): a built contribution, not a rescoring
+| Criticism | What was added | Closure estimate (was) |
+|---|---|---|
+| Novelty | Vantage-level independence implemented in the gate (ADR-017): a record is a different witness only if seen from a different vantage point; one-vantage corroboration is capped at LIMITED with `SAME_VANTAGE_ONLY`. Found on real public data, measured on controlled annotations (11 sufficient cases fall under one vantage, 11 stay under cross-vantage, none ever raised), checked on both ingestion paths, 22 new tests plus a parity test | 60 (was 54). Not higher: designed from a real-data finding and checked on the same data; vantage is coarse; no labelled evidence that the cap is right; the rule table label is still `suff-v4` |
+| Evidence evaluation | Claim-verifier mutation evaluation (`claim_verifier_mutation.py`): 2,478 of 2,478 true assertions accepted, 0 of 1,737 false assertions called SUPPORTED across 12 fault classes, no exception escaped | 56 (was 48). Still no labelled accuracy for the gate, which is what would move it past the low 60s |
+| SOC architecture, Ingestion, UI and AI-code | Unchanged this round | 72, 72, 76 |
+Honest ceiling: with the owner's 67 labels, a second reviewer and one held-out run reported either way, novelty and evidence evaluation could reasonably reach the high 60s. Without them these are the most the evidence supports. A change in the rule behaviour was made on the owner's instruction to add a contribution; ADR-017 still needs the owner's approval and the rename of the rule table to `suff-v5`.
+
 ## What still needs the owner (nothing here can be done by an assistant honestly)
 1. Label the 67 development cases, then run the scorer and report the result either way.
 2. Read in full: Joren et al. (arXiv 2411.06037), Zomlot et al. (AISec 2011), Dong et al. (PVLDB 2009), DeepFaith (arXiv 2607.24348), and the two arXiv papers cited in the review, before citing any of them.

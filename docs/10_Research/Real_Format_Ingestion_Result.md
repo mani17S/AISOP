@@ -19,16 +19,17 @@ The system rejected every real record, safely (rejections are recorded with the 
 | File | Records | Accepted | Rejected | Evidence clusters | Incidents | Sufficiency of incidents | Time |
 |---|---|---|---|---|---|---|---|
 | cmd_sharpview_pcre_net | 267 | 267 | 0 | 42 | 12 | 12 LIMITED | 0.18 s |
-| psh_powershell_httplistener | 110 | 110 | 0 | 17 | 8 | 7 LIMITED, 1 SUFFICIENT | 0.06 s |
+| psh_powershell_httplistener | 110 | 110 | 0 | 17 | 8 | 8 LIMITED (7 LIMITED and 1 SUFFICIENT before the vantage rule) | 0.07 s |
 Two source types (sysmon, windows_security) were normalised from real exports. Every raw record is kept with its own digest. (After only the first three edits the figures were 41/11/11 LIMITED and 17/17/17 LIMITED; the fourth edit changed them.)
 
-## The one SUFFICIENT verdict, examined
-After the fourth edit one incident became SUFFICIENT. It consists of two Sysmon records on one host: a registry key event (event 12) and a registry value set (event 13) by the same `svchost.exe` process instance, joined by a STRONG process-GUID link. Both came from the same sensor, and the activity is ordinary Windows behaviour.
-- This is the gate working as designed: independence in AISOP means *a different raw record linked by a specific or strong artefact*, not *a different sensor*. Two consecutive actions of one process satisfy that definition.
-- It is also a real design limit worth stating: a verdict of SUFFICIENT can be reached from records of a single vantage point, and it says the evidence is adequate for investigating the question, not that anything malicious happened. A stricter rule (require a second source type) is an option for future work and would need its own evaluation; it was not applied here because that would be tuning after seeing the data.
+## The one SUFFICIENT verdict, examined, and what was done about it
+After the fourth edit one incident became SUFFICIENT. It consisted of two Sysmon records on one host: a registry key event (event 12) and a registry value set (event 13) by the same `svchost.exe` process instance, joined by a STRONG process-GUID link. Both came from the same sensor, and the activity is ordinary Windows behaviour.
+- The gate was working as designed: independence meant *a different raw record linked by a specific or strong artefact*, not *a different sensor*.
+- That was a real design limit, so it was addressed (ADR-017, implemented 2026-11-24): corroboration now needs more than one known vantage point across the chain of specific links, otherwise the verdict is capped at LIMITED with `SAME_VANTAGE_ONLY`. On the same data all 20 incidents are now LIMITED (12 and 8), and the three synthetic envelope scenarios stay SUFFICIENT because their records span several vantage points.
+- The cap was designed from this finding and then checked against the same data, so this is a demonstration of the mechanism, not an independent validation of it.
 
 ## What the result does and does not show
-- Shows: the pipeline now ingests two real forwarder-style Windows sources end to end on data the project did not author; 19 of 20 incidents are LIMITED and one is SUFFICIENT (examined above), which is conservative for a single-host lab attack.
+- Shows: the pipeline now ingests two real forwarder-style Windows sources end to end on data the project did not author; all 20 incidents are LIMITED after the vantage rule (one was SUFFICIENT before it; see above), which is conservative for a single-host lab attack.
 - Does NOT show: that the verdicts are right (no labels), that the ATT&CK rules cover this data (no rule fired on either file), or that other vendors' formats work (only this forwarder shape was tested; Suricata EVE real samples were not obtained).
 
 ## Limitation found by this test: over-merging of distinct events (safe direction)

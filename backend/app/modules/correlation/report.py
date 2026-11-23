@@ -35,6 +35,7 @@ REASON_EXPLANATIONS = {
     "UNCORROBORATED_QUESTION": "No other evidence unit under the current record-level rule (a different raw record joined by a specific artefact such as a file hash, domain, public IP, process GUID or logon session) corroborates the key event.",
     "WEAK_LINK_ONLY": "Other events are related only by host, user, internal IP or process name, which is context, not corroboration.",
     "REPEATED_OBSERVATION_ONLY": "Other events share an artefact but are repetitions of the same observation (same host, event id and action), not an independent source of proof.",
+    "SAME_VANTAGE_ONLY": "The records that corroborate the key event were all seen from one vantage point (the same source type at the same host), so they are one witness, not two. The verdict is capped at LIMITED.",
     "TEMPORAL_ANOMALY": "Some events are dated outside the investigation window or in the future.",
     "CONTRADICTORY_EVIDENCE": "Evidence contradicts itself: opposite outcomes or conflicting digests for the same event, conflicting outcomes from independent sources, or an artefact timestamped before the event that supposedly delivered it. See the contradiction section for the records, why it matters and what would resolve it.",
     "MISSING_REQUIRED_FIELD": "The anchor event lacks details its event type requires.",

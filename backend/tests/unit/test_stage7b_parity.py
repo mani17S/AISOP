@@ -250,3 +250,18 @@ async def test_unsupported_ai_claim_cannot_change_verdict_or_findings_on_either_
     assert not any(c["grounding"] == "validated_reference" for c in inc_inc["llm"]["claims"])
     assert r["bundle"]["technical_report"]["confirmed_findings"] == [] or all(
         c["grounding_status"] == "validated_reference" for c in r["bundle"]["technical_report"]["confirmed_findings"])
+
+
+# ------------------------------------------------------------------ ADR-017: vantage-level independence has the same effect on both paths
+@pytest.mark.anyio
+async def test_same_vantage_evidence_gives_the_same_capped_verdict_on_both_paths(db_session, app_instance):
+    records = [
+        S.env("forensic.file", "dfir-collector-synthetic", {"host": "ws-fin-07", "path": "C:\\Users\\Public\\svc.exe", "sha256": S.SHA_TOOL},
+              t="2026-11-04T09:59:50Z", method="triage_collection"),
+        S.env("forensic.process_artifact", "dfir-collector-synthetic", {"host": "ws-fin-07", "image": "C:\\Users\\Public\\svc.exe", "sha256": S.SHA_TOOL,
+                                                                       "source_artifact": "process_listing"}, t="2026-11-04T10:00:08Z", method="triage_collection"),
+    ]
+    r = await run3(db_session, app_instance, records, "b-vantage")
+    a, b = project_inc(r["inc"]), project_audit(r["audit_inv"])
+    assert a == b, (a, b)
+    assert a["verdict"] == "limited" and "SAME_VANTAGE_ONLY" in a["reason_codes"]

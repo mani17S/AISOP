@@ -52,6 +52,7 @@ const RAISE: Record<string, string> = {
   MISSING_REQUIRED_FIELD: 'Supply the missing field in the source record and ingest it again.',
   WEAK_LINK_ONLY: 'Records are related only by host, user, internal address or process name. Add evidence that shares a specific artefact.',
   REPEATED_OBSERVATION_ONLY: 'The same observation was repeated. Add evidence from a different source or a different observation.',
+  SAME_VANTAGE_ONLY: 'All the corroborating records were seen from one vantage point (one source type at one host). Add evidence from a different source or a different host.',
   DUPLICATE_EVIDENCE_COLLAPSED: '',
   IRRELEVANT_EVIDENCE_EXCLUDED: '',
   GATE_EVALUATION_ERROR: 'The sufficiency check failed internally. Run the investigation again; if it repeats, report it.',
