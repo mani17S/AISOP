@@ -8,7 +8,7 @@ Read section 6 ("Do not claim") before you rehearse anything else. For the day i
 
 | Item | Number | Source |
 |---|---|---|
-| Backend unit tests, full run | 3,812 passed, 1 skipped, 1 expected failure (a documented limitation, `xfail`), 0 failed (`.venv\Scripts\python.exe -m pytest backend/tests/unit -q`, run 2026-11-23, 4 min 16 s, after the last backend change) | run 2026-11-23 |
+| Backend unit tests, full run | 3,816 passed, 1 skipped, 1 expected failure (a documented limitation, `xfail`), 0 failed (`.venv\Scripts\python.exe -m pytest backend/tests/unit -q`, run 2026-11-23, 4 min 16 s, after the last backend change) | run 2026-11-23 |
 | Backend integration tests collected | 124 (run today) | collection count |
 | Last recorded full unit run | 3,142 passed, 1 skipped, 0 failed (saved log `D:\AISOP-Backups\AISOP_Dev_Logs_20261120\day6_unit.log`, via `CLAIM_LIST_AUDIT.md`); `docs/10_Research/Evaluation.md` quotes 3,166 passed on a later run | saved log |
 | Key suites run today (10 files: sufficiency gate, gated generation, multisource workflow, stage 5 adversarial, independence, reliability matrix, OWASP probes, review, export gate, claim verifier) | 313 passed, 1 skipped, 1 failed | run today |
@@ -87,7 +87,7 @@ If something fails live: say so, restart with `scripts\demo_check.ps1 -Start` (a
 
 ### 2.4 Concern that the UI and code are AI-generated
 - Honest answer: do not deny AI assistance. The repository itself contains AI tooling and instructions (`CLAUDE.md`, `.claude/`), and commits may carry AI co-author lines. A denial is easy to disprove and would cost credibility. The defensible position is: AI assisted the implementation, and the work is defended by verification and by your ability to explain and modify it.
-- Evidence of verification: 3,789 backend unit tests collected (3,812 passed, 1 skipped, 1 expected failure, run 2026-11-23) with adversarial tests (`backend/tests/unit/test_stage5_adversarial.py`, 43 test functions), OWASP-mapped probe suite (`test_owasp_probe_suite.py`, 33 cases offline, 18 of 18 live), security findings that were found and fixed (SEC-F1 report injection, `docs/07_Security/Security_Test_Findings.md`), an architecture test that fails if any production code calls the model outside `GatedGenerator` (`test_sufficiency_gated_generation.py::test_no_unguarded_model_generate_call_in_production_tree`), and the design constitution for the UI (`docs/08_Frontend/AISOP_Website_Design_Constitution.md`, `frontend/AGENTS.md`).
+- Evidence of verification: 3,789 backend unit tests collected (3,816 passed, 1 skipped, 1 expected failure, run 2026-11-23) with adversarial tests (`backend/tests/unit/test_stage5_adversarial.py`, 43 test functions), OWASP-mapped probe suite (`test_owasp_probe_suite.py`, 33 cases offline, 18 of 18 live), security findings that were found and fixed (SEC-F1 report injection, `docs/07_Security/Security_Test_Findings.md`), an architecture test that fails if any production code calls the model outside `GatedGenerator` (`test_sufficiency_gated_generation.py::test_no_unguarded_model_generate_call_in_production_tree`), and the design constitution for the UI (`docs/08_Frontend/AISOP_Website_Design_Constitution.md`, `frontend/AGENTS.md`).
 - Rehearsal aid: `docs/12_User_Guides/Code_Guide_and_Live_Change.md` (three files to explain with what to say, and a live change verified on 2026-11-23: setting `NEAR_DUPLICATE_WINDOW_SECONDS` to 0.0 makes exactly 10 named tests fail).
 - Evidence of understanding: you can explain 3 files without notes (section 4) and make a small live change, for example add a reason code or change a rule threshold, then show the test fail and pass. Rehearse one such change.
 - NOT proven: authorship per file. I could not verify who wrote what. Also, tests written with AI assistance are not an independent check on AI-written code, so say tests are evidence of behaviour, not proof of correctness.
@@ -151,7 +151,7 @@ If something fails live: say so, restart with `scripts\demo_check.ps1 -Start` (a
 - That the AI is accurate or correct. It is fast on the demo case (about 7 to 14 s with the 1.5B model) but there is no quality benchmark; the grounding checks confirm that cited events exist and that IPs, hashes and executables named in a claim appear in them, not that a count or an interpretation is right.
 - That threat intelligence enriches investigations (the multi-source path makes no TI call; R10 asserts zero outbound requests).
 - "Pentested with PentAGI", "35/35 PostgreSQL", "zero vulnerabilities" (only the pinned Python list is clean; two npm dev-server advisories are open).
-- That every test passes after any further change. The full backend run on 2026-11-23 passed (3,812); rerun it after any edit before saying so.
+- That every test passes after any further change. The full backend run on 2026-11-23 passed (3,816); rerun it after any edit before saying so.
 - That you wrote all the code by hand.
 - That AISOP maps ATT&CK well or broadly. Measured 2026-11-23 on the 20 author-written scenarios (`backend/evaluation_tools/score_attack_mapping.py`): 1 of 20 mandatory expected techniques recovered, no technique on any of the 5 benign scenarios. The rule table is small and conservative on purpose (13 rules). Say that, and call wider coverage future work.
 - Any paper citation you have not read yourself.

@@ -1,0 +1,117 @@
+{
+ "date": "2026-11-24",
+ "components": 221,
+ "runtime": 71,
+ "licences": {
+  "MIT": 164,
+  "Apache-2.0": 11,
+  "BSD-3-Clause": 11,
+  "ISC": 6,
+  "MIT License": 5,
+  "BSD-2-Clause": 4,
+  "OFL-1.1": 3,
+  "BSD License": 2,
+  "LGPL-3.0-only": 2,
+  "Apache 2.0": 2,
+  "MPL-2.0": 1,
+  "PSFL": 1,
+  "MIT AND PSF-2.0": 1,
+  "Apache-2.0 OR BSD-2-Clause": 1,
+  "Mozilla Public License 2.0 (MPL 2.0)": 1,
+  "Apache License": 1,
+  "Apache Software License": 1,
+  "PSF-2.0": 1,
+  "MIT license": 1,
+  "CC-BY-4.0": 1,
+  "BlueOak-1.0.0": 1
+ },
+ "licence_review": [],
+ "vulnerabilities": [
+  {
+   "package": "esbuild",
+   "version": "0.21.5",
+   "ecosystem": "npm",
+   "runtime": false,
+   "advisories": [
+    {
+     "id": "GHSA-67mh-4wv8-2f99",
+     "summary": "esbuild enables any website to send any requests to the development server and read the response",
+     "severity": "MODERATE",
+     "aliases": []
+    }
+   ]
+  },
+  {
+   "package": "vite",
+   "version": "5.4.21",
+   "ecosystem": "npm",
+   "runtime": false,
+   "advisories": [
+    {
+     "id": "GHSA-4w7w-66w2-5vf9",
+     "summary": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+     "severity": "MODERATE",
+     "aliases": [
+      "CVE-2026-39365"
+     ]
+    },
+    {
+     "id": "GHSA-587h-7wmj-h5pm",
+     "summary": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+     "severity": "HIGH",
+     "aliases": [
+      "CVE-2026-112942"
+     ]
+    },
+    {
+     "id": "GHSA-698v-4r3x-3vcv",
+     "summary": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+     "severity": "MODERATE",
+     "aliases": [
+      "CVE-2026-112943"
+     ]
+    },
+    {
+     "id": "GHSA-9jrq-w75r-8gcw",
+     "summary": "Vite: Cross origin script execution through Vite custom middleware",
+     "severity": "LOW",
+     "aliases": [
+      "CVE-2026-112945"
+     ]
+    },
+    {
+     "id": "GHSA-fx2h-pf6j-xcff",
+     "summary": "vite: `server.fs.deny` bypass on Windows alternate paths",
+     "severity": "MODERATE",
+     "aliases": [
+      "CVE-2026-53571"
+     ]
+    },
+    {
+     "id": "GHSA-r825-w8mm-5pxw",
+     "summary": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+     "severity": "MODERATE",
+     "aliases": [
+      "CVE-2026-112944"
+     ]
+    },
+    {
+     "id": "GHSA-rq7h-c2jc-7f22",
+     "summary": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+     "severity": "MODERATE",
+     "aliases": [
+      "CVE-2026-112946"
+     ]
+    },
+    {
+     "id": "GHSA-v6wh-96g9-6wx3",
+     "summary": "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+     "severity": "MODERATE",
+     "aliases": [
+      "CVE-2026-53632"
+     ]
+    }
+   ]
+  }
+ ]
+}

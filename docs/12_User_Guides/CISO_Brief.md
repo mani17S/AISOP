@@ -10,7 +10,7 @@ Analysts lose time reading piles of alerts and logs that repeat each other, and 
 |---|---|---|---|
 | **Does it reduce analyst reading?** | A management summary: records to evidence units to incidents | Public Windows data: 377 records became 20 incidents. Public SSH log: 2,000 lines became 852 evidence units and 23 incidents | No measured time saved per analyst; no user study |
 | **Where are my blind spots?** | Which telemetry types (endpoint, network, identity, cloud, email) are absent from the supplied evidence, and what to collect next | Deterministic; tested (`test_management_view.py`) | It describes the evidence given, not the company's whole logging, and not detection coverage |
-| **Can I defend a conclusion to an auditor?** | Raw records kept with SHA-256; a hash-chained ledger; claim-by-claim verification; case audit trail; a lead's approval before any export | 0 of 1,737 false assertions accepted by the claim verifier; 3,812 backend and 307 frontend tests | Tamper-evident since submission, not immutable; no independent audit |
+| **Can I defend a conclusion to an auditor?** | Raw records kept with SHA-256; a hash-chained ledger; claim-by-claim verification; case audit trail; a lead's approval before any export | 0 of 1,737 false assertions accepted by the claim verifier; 3,816 backend and 307 frontend tests | Tamper-evident since submission, not immutable; no independent audit |
 | **Does it stay inside my data rules?** | Local-first by default; the hosted AI option is opt-in, synthetic data only, and states what leaves the machine | ADR-016; privacy page; token never in a response or log | The hosted demo is not live; evidence text goes to a third party when it is on |
 | **What must I not tell the board?** | A written list of claims not to make | `Defence_Walkthrough.md` section 6 | It is not detection, not response, not a SIEM, not proven on real incidents |
 
@@ -34,3 +34,9 @@ It does not detect attacks, take response actions, replace the SIEM or EDR, or d
 2. A real Suricata or EDR export through the adapters, and chunking for large batches (2,000 records took about 12 seconds; correlation grows quadratically).
 3. MFA and signed approvals (ADR-015), then a security-event notification channel.
 4. A detection-engineering feedback loop (ADR-012): findings that are repeatedly LIMITED because a source is missing become a request to the logging owners.
+
+## Where the supporting material is
+- Decision requested of the executive team: `Executive_Brief.md`. Pilot design with measures and stop conditions: `docs/11_Deployment/Pilot_Plan.md`.
+- Security and governance view for a CISO, a data protection officer and a risk committee: `docs/07_Security/Security_Governance_Summary.md`.
+- Software bill of materials and the known-advisory check: `docs/07_Security/sbom/` (re-run with `.venv\Scripts\python.exe scripts\supply_chain_check.py --out docs\07_Security\sbom`).
+- How much analyst time a pilot must save to pay for itself, using the company's own numbers: `scripts/roi_model.py`.
