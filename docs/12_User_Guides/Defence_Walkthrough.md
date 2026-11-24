@@ -2,7 +2,7 @@
 
 Written 2026-11-22 for the academic panel. Everything below was checked against the repository on that date. Numbers marked "run today" were produced by a command run on 2026-11-22; numbers marked "saved log" come from a log file written earlier and were not re-run. Data everywhere is synthetic and author-built. Nothing here claims production readiness.
 
-Read section 6 ("Do not claim") before you rehearse anything else.
+Read section 6 ("Do not claim") before you rehearse anything else. For the day itself, use the one-page `Defence_Day_Checklist.md` (verified 2026-11-24).
 
 ## 0. Verified numbers (use these, nothing else)
 
