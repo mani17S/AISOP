@@ -4,7 +4,7 @@ One page to run from. Everything here was checked on 2026-11-24 against the repo
 
 ## 1. The day before
 1. `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\demo_check.ps1 -Start` until it prints "All checks OK", then `-WarmUp` (loads the model). Verified today after a backend restart on the latest code: all checks OK.
-2. Run the suites once and quote only what they print: `.venv\Scripts\python.exe -m pytest backend/tests/unit -q` (about 4 minutes; last full run 3,827 passed, 1 skipped, 1 expected failure) and, in `frontend/`, `npm test` (307 of 307).
+2. Run the suites once and quote only what they print: `.venv\Scripts\python.exe -m pytest backend/tests/unit -q` (about 4 minutes; last full run 3,871 passed, 1 skipped, 1 expected failure) and, in `frontend/`, `npm test` (307 of 307).
 3. Keep the demo keys, `.env` and the credential files off screen. Rotate the Render database password, the Render API key and the Cloudflare deployment token after the defence (they were pasted into a chat).
 4. Read in full the papers you will be asked about (arXiv 2411.06037; the data-fusion and dependent-alert papers listed in `Literature_Review.md`). Do not cite a paper you have not read.
 
@@ -24,20 +24,21 @@ Then: the AI action (shows seconds and a Cancel button; if the model is slow say
 ## 3. Numbers you may quote (and what each does not show)
 | Say | Source | It does not show |
 |---|---|---|
-| 3,827 backend and 307 frontend tests pass | the runs above | correctness, only behaviour |
+| 3,871 backend and 307 frontend tests pass | the runs above | correctness, only behaviour |
 | On the 67 locked cases AISOP says sufficient for 11, naive baselines for 29 and 24 | `Evaluation.md` | which is right (no human labels yet) |
 | On 2,250 randomised synthetic cases with truth by construction, the false-sufficient rate falls 0.835, 0.711, 0.470, 0.345, 0.219 as each rule is added, then 0.000 (95% CI 0.000 to 0.002) for the gate | `Evaluation.md`, `synthetic_benchmark.py` | that the definition of independence is right: truth shares the gate's definition |
 | 0 of 1,737 false assertions were called supported by the claim verifier; 2,478 of 2,478 true ones were | `claim_verifier_mutation.py` | how often a model's claims are right |
 | Vantage rule: one-sensor corroboration is capped at LIMITED; found on real public data; locked cases unchanged; none ever raised | ADR-017, `vantage_effect.py` | independent validation (designed from that finding) |
 | 377 of 377 records from two public datasets ingested (0 before fixes) | `Real_Format_Ingestion_Result.md` | other vendors' formats |
-| ATT&CK rules recovered 1 of 20 expected techniques with 0 false techniques on 5 benign scenarios; the raw captured model scored F1 0.00 | `Evaluation.md` | coverage; do not say AISOP maps ATT&CK well |
+| ATT&CK rules recovered 11 of 34 documented techniques (32%, interval about 19% to 49%) on the held-out half of public attack captures labelled by their authors, rules frozen first; 3 of 20 author-written scenarios; 0 false techniques on 5 benign scenarios; the raw captured model scored F1 0.00 | `Detection_Engineering_Evaluation.md`, `Evaluation.md` | coverage and the direction of the gain; do not say AISOP maps ATT&CK well or completely |
 
 ## 4. Likely hard questions, one line each
 - *What is new?* An applied combination: deterministic fail-closed sufficiency gate with independence and vantage rules, plus claim verification; each ingredient has precedent; effect measured on synthetic data, not yet on human labels.
 - *Isn't the gate just a few rules?* On the locked cases four rules reproduce its SUFFICIENT set; what the gate adds is the LIMITED tier, provenance and contradiction handling, and it needs your labels to be judged.
 - *Where is the accuracy?* Not claimed. The labelled run is the next step.
 - *Was the code AI-written?* Largely, under written rules; show the live change in `Code_Guide_and_Live_Change.md`.
-- *Why only 1 of 20 techniques?* Conservative on purpose; rules were not tuned to the scenarios.
+- *Why only about a third?* Two reasons, both measured. The rules only claim what a command line or a typed event shows, so lateral movement, Kerberos and in-memory techniques are mostly not covered; and some captures do not contain the telemetry at all. The first number was 0 of 50 with the original six rules; the endpoint rules were written from public technique definitions, frozen, then scored once on data I had not looked at. Dev looked better (49%) because I had inspected it; I report the lower held-out number.
+- *Is 32% good?* No. It is a start with an honest number and a method for improving it with a fresh held-out set each time. There is no benign corpus, so a false-positive rate is not claimed.
 - *Is it hosted?* Not live; the demo is local.
 
 ## 5. Do not claim

@@ -18,7 +18,7 @@ Written 2026-11-24. Each row states what is implemented and tested, what is part
 ## 2. What AISOP supports in the company's programme
 | Company need | How AISOP supports it | Limit |
 |---|---|---|
-| Consistent, explainable investigation | Fixed rules with reason codes; every verdict states why | Rules validated on synthetic data only |
+| Consistent, explainable investigation | Fixed rules with reason codes; every verdict states why | ATT&CK rules scored on public third-party captures (about a third of documented techniques recovered); the sufficiency rules are validated on synthetic and metamorphic data only |
 | Evidence integrity for audit or legal review | Hashes, hash-chained ledger, approved-export gate, case audit trail | Tamper-evident since submission, not immutable |
 | Logging gap visibility | Management summary lists absent telemetry types and what to collect | Describes supplied evidence only |
 | AI governance | Model optional, labelled and checked; human approval; no model output counts as evidence; no silent cloud fallback | Hosted option sends evidence text to a third party when on |

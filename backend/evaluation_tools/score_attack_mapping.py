@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from app.modules.correlation.mitre import map_techniques  # noqa: E402
+from app.modules.correlation.mitre_endpoint import map_endpoint_techniques  # noqa: E402
 from app.modules.correlation.workflow import analyze  # noqa: E402
 from app.modules.evidence_domains.domain_attack import map_domain_techniques  # noqa: E402
 
@@ -39,6 +40,7 @@ def emitted(events: list[dict]) -> set[str]:
     if result.normalization.rejected:
         raise SystemExit(f"{len(result.normalization.rejected)} record(s) were rejected, so the score would be wrong: {result.normalization.rejected[0]}")
     found = {m.technique_id for m in map_techniques(result.normalization.events)}
+    found |= {m.technique_id for m in map_endpoint_techniques(result.normalization.events)}  # the shipped pipeline runs all three tables
     found |= {m.technique_id for m in map_domain_techniques(result.observations)}
     return found
 

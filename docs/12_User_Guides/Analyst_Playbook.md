@@ -101,7 +101,7 @@ Under each claim a separate **Verification** line says whether its listed assert
 
 ## 6. ATT&CK mapping
 
-The Multi-source ATT&CK table lists techniques derived by explicit, versioned rules (`attack-map-v1`, six rules per ADR-009; current rule count not verified). Each row shows the technique, tactics, the rule id, the independent evidence count, whether a source also asserted it, and the rule's limitation. Techniques a source asserted that no rule derived appear separately as "asserted but NOT derived (unverified)". They are not mappings.
+The Multi-source ATT&CK table lists techniques derived by explicit, versioned rules in three tables (`attack-map-v1`, six rules per ADR-009; `domain-attack-v1`, seven rules; `endpoint-attack-v1`, 39 rules over process command lines and typed Sysmon or Windows Security fields, added 2026-11-24). A command-line rule proves the command was run, not who ran it or why; read the rule's limitation on each row. Each row shows the technique, tactics, the rule id, the independent evidence count, whether a source also asserted it, and the rule's limitation. Techniques a source asserted that no rule derived appear separately as "asserted but NOT derived (unverified)". They are not mappings.
 
 **To challenge a mapping**
 1. Open the rule row and read its limitation.

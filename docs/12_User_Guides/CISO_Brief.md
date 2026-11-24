@@ -10,7 +10,7 @@ Analysts lose time reading piles of alerts and logs that repeat each other, and 
 |---|---|---|---|
 | **Does it reduce analyst reading?** | A management summary: records to evidence units to incidents | Public Windows data: 377 records became 20 incidents. Public SSH log: 2,000 lines became 852 evidence units and 23 incidents | No measured time saved per analyst; no user study |
 | **Where are my blind spots?** | Which telemetry types (endpoint, network, identity, cloud, email) are absent from the supplied evidence, and what to collect next | Deterministic; tested (`test_management_view.py`) | It describes the evidence given, not the company's whole logging, and not detection coverage |
-| **Can I defend a conclusion to an auditor?** | Raw records kept with SHA-256; a hash-chained ledger; claim-by-claim verification; case audit trail; a lead's approval before any export | 0 of 1,737 false assertions accepted by the claim verifier; 3,827 backend and 307 frontend tests | Tamper-evident since submission, not immutable; no independent audit |
+| **Can I defend a conclusion to an auditor?** | Raw records kept with SHA-256; a hash-chained ledger; claim-by-claim verification; case audit trail; a lead's approval before any export | 0 of 1,737 false assertions accepted by the claim verifier; 3,871 backend and 307 frontend tests | Tamper-evident since submission, not immutable; no independent audit |
 | **Does it stay inside my data rules?** | Local-first by default; the hosted AI option is opt-in, synthetic data only, and states what leaves the machine | ADR-016; privacy page; token never in a response or log | The hosted demo is not live; evidence text goes to a third party when it is on |
 | **What must I not tell the board?** | A written list of claims not to make | `Defence_Walkthrough.md` section 6 | It is not detection, not response, not a SIEM, not proven on real incidents |
 
@@ -20,7 +20,7 @@ It does not detect attacks, take response actions, replace the SIEM or EDR, or d
 ## What the evidence says about the quality of its judgements (all synthetic or public lab data)
 - On 2,250 randomised cases with truth known by construction, the rate at which it wrongly calls evidence sufficient is 0.000 (95% CI 0.000 to 0.002), against 0.835 for a naive "any shared entity" rule; each rule it adds fixes a named family of failures.
 - Its newest rule (ADR-017) says a flood of identical failed logins seen by one sensor is one witness, not many; on the real SSH log, 18 of 23 incidents were capped for exactly that reason.
-- Its ATT&CK rules are conservative: 1 of 20 expected techniques recovered, no false technique on 5 benign scenarios. A raw language model scored F1 0.00 and gave false techniques on benign activity, which is why model-proposed techniques are never accepted as evidence.
+- Its ATT&CK rules are conservative and cover about a third of the techniques tested: on public attack captures labelled by their own authors, 11 of 34 documented techniques were recovered (interval about 19% to 49%; the original six rules found 1), with each hit tied to a specific command line or event; no technique was produced on 5 benign scenarios. It is not a complete detection product. A raw language model scored F1 0.00 and gave false techniques on benign activity, which is why model-proposed techniques are never accepted as evidence.
 - No human-labelled accuracy exists yet. That is the main open item.
 
 ## If I were running a pilot (what I would ask for)

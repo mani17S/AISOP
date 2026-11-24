@@ -58,5 +58,30 @@ Emitted outside the documented technique (reported honestly, not all false posit
 
 Held-out run command: `.venv\Scripts\python.exe backend\evaluation_tools\score_attack_datasets.py --side heldout --out <file>`. If the three hashes above do not match the files used for the held-out run, the run does not count.
 
-## Held-out result
-_Not yet run._
+## Held-out result (run after the freeze; the three hashes above were re-verified unchanged immediately before the run)
+One earlier attempt scored zero datasets because the downloader crashed on a file the host blocked; no rule was evaluated and nothing was seen, so no information leaked. The downloader was then made to count blocked files as unreadable, as on the dev side, and the held-out side was run.
+
+| | Dev (inspected while developing) | **Held-out (not seen)** |
+|---|---|---|
+| Datasets scored | 46 of 52 | **34 of 44** (10 unreadable or empty) |
+| Documented techniques | 49 | **34** |
+| Recovered, parent level | 24 (49%) | **11 (32%)** |
+| Recovered, exact | 22 (45%) | **9 (26%)** |
+| Old six rules alone, parent level | 0 | **1 (3%)** |
+| New endpoint table alone, parent level | 24 | **10 (29%)** |
+| Wilson 95% interval on parent-level recovery | about 35% to 63% | **about 19% to 49%** |
+
+Reading it honestly:
+- **The gain is real and comes from the new table.** On data nobody on this project wrote or labelled, the original six rules found 1 of 34 documented techniques; the combined tables found 11.
+- **It is not a good detector.** Two of three documented techniques were not recovered. The number to quote is about one in three, with an interval from about one in five to one in two. 34 techniques is a small sample.
+- **Dev was optimistic by about 17 points** (49% against 32%), as expected from inspecting dev while writing rules. The two intervals overlap, so the size of the drop is not proven, only its direction.
+- **Recovery is parent level for the headline** (the existing scorer's convention). Exact recovery is lower (26%) because, for example, a rule for LSASS memory also covers a sibling credential-dumping label.
+
+Held-out misses by documented technique family (none were addressed afterwards, so the held-out side stays clean): lateral movement over SMB, DCOM and remote services (5), credential dumping variants (3), defence-evasion events not present in the capture (3), generic or loosely-labelled proxy execution (2), and single cases of token abuse, DLL hijacking, microphone capture, group discovery, remote-service exploitation, a web shell, injection and scheduled tasks.
+
+What the rules emitted outside the documented technique (held-out, 28 of 39 emitted pairs): 11 are `T1070.001` from Windows Security event 1102 (the lab clearing its logs; correct by the rule's definition); 12 come from the six original rules (`T1071`, `T1027`, `T1059.001`); the 8 that remain from the endpoint table are `T1055` (3), `T1003.001` (2) and one each of `T1547.001`, `T1136.001` and `T1021.002`. Whether each is a false positive was not adjudicated; capture authors label only the activity they meant to demonstrate.
+
+## What this does and does not establish
+- It establishes that, on third-party captures, the shipped rules now find roughly a third of the documented techniques where they found almost none, with the evidence behind each hit being a specific command line or typed event that can be shown to the analyst.
+- It does not establish precision, behaviour on real incidents, or coverage of tools and techniques outside these captures. There is still no benign background corpus here, so a false-positive **rate** is not available.
+- Any rule change after this point uses a fresh held-out set; reusing this one would no longer be held out.

@@ -18,7 +18,7 @@ AISOP sits between detection and response. It takes the alerts and logs a SIEM o
 | Visibility of logging gaps | The management summary lists which telemetry types are absent from the supplied evidence and what to collect | Implemented; it describes the supplied evidence, not the whole estate |
 
 ## Evidence so far, and what it does not show
-- 3,827 backend and 307 frontend tests pass; the claim verifier rejected 1,737 of 1,737 false assertions in a mutation test; on 2,250 randomised synthetic cases with truth known by construction the gate wrongly called evidence sufficient in 0.000 of cases (95% CI 0.000 to 0.002) versus 0.835 for a naive rule.
+- 3,871 backend and 307 frontend tests pass; the claim verifier rejected 1,737 of 1,737 false assertions in a mutation test; on 2,250 randomised synthetic cases with truth known by construction the gate wrongly called evidence sufficient in 0.000 of cases (95% CI 0.000 to 0.002) versus 0.835 for a naive rule.
 - Supply chain (2026-11-24): 221 components inventoried (SBOM in `docs/07_Security/sbom/`); 71 run in production and none has a published advisory in the public OSV database; the only advisories (vite, esbuild) are in development-server tools that are not in the production build. This is a lookup of known advisories, not a guarantee.
 - **Not shown:** accuracy against human labels (none yet); behaviour on real incidents; analyst time saved; performance at the company's real volume (the API accepts 1,000 evidence rows per run; the library handled 2,000 records in about 3 seconds on a laptop); any real vendor EDR or Suricata export.
 
