@@ -51,6 +51,7 @@ from app.modules.correlation.workflow import WORKFLOW_VERSION, IncidentAnalysis,
 from app.services.attack_reference_service import resolve_attack_reference
 from app.modules.correlation.mitre import MAPPING_VERSION as _LEGACY_MAPPING_VERSION  # noqa: F401
 from app.modules.evidence_domains.bridge import is_dated, is_machine
+from app.modules.correlation.mitre_endpoint import ENDPOINT_MAPPING_VERSION
 from app.modules.evidence_domains.domain_attack import DOMAIN_MAPPING_VERSION
 from app.schemas.multisource import MultiSourceSection
 from app.modules.correlation.management_view import management_view
@@ -407,6 +408,7 @@ class MultiSourceInvestigationService:
                                    "analyst_statements": sum(1 for o in result.observations if not o.counts_for_corroboration and o.family.value == "analyst")},
             "batch_graph": result.batch_graph.to_view() if (result.batch_graph is not None and not result.incidents) else None,
             "domain_attack_rules": DOMAIN_MAPPING_VERSION,
+            "endpoint_attack_rules": ENDPOINT_MAPPING_VERSION,
         }
 
     @staticmethod

@@ -35,6 +35,13 @@ from app.schemas.alert import CanonicalAlert
 EVENT_NAMESPACE = uuid.UUID("0d1c7e44-52a9-4a53-8a67-3b2f6b9d4e11")
 
 _OUTCOME_BY_WINDOWS_EVENT = {"4624": "success", "4625": "failure"}
+# Source-supplied fields the ATT&CK rules may read (CorrelationEvent.source_fields). Fixed and short: the raw record stays the evidence, this is a bounded view.
+_SOURCE_FIELDS = (
+    "SourceImage", "TargetImage", "GrantedAccess", "CallTrace", "ParentImage", "ParentCommandLine", "TargetObject", "Details", "EventType",
+    "ImageLoaded", "TargetFilename", "StartModule", "PipeName", "AuditPolicyChanges", "SubcategoryGuid", "ServiceName", "ServiceFileName",
+    "TaskName", "LogonType", "ObjectName", "ObjectType", "AccessMask", "Properties", "NewProcessName", "ParentProcessName", "TokenElevationType",
+)
+_SOURCE_FIELD_LIMIT = 300
 
 #: Bounds on untrusted raw records (Stage 5). A record deeper than this cannot be a real vendor event and would
 #: exhaust the interpreter stack when hashed; a record larger than this (canonical JSON) is rejected rather than
@@ -160,6 +167,18 @@ def _time_assumed_utc(alert: CanonicalAlert, raw: dict[str, Any]) -> bool:
         if (isinstance(system_time, dict) and system_time.get("@SystemTime")) or _event_data(raw).get("UtcTime"):
             return False
     return True
+
+
+def _source_fields(source_type: str, event_data: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """The whitelisted typed fields of a Sysmon or Windows Security record, verbatim and bounded. Other sources contribute nothing."""
+    if source_type not in ("sysmon", "windows_security"):
+        return ()
+    out = []
+    for key in _SOURCE_FIELDS:
+        value = event_data.get(key)
+        if isinstance(value, (str, int)) and str(value).strip():
+            out.append((key, str(value)[:_SOURCE_FIELD_LIMIT]))
+    return tuple(out)
 
 
 def _to_event(
@@ -301,6 +320,7 @@ def _to_event(
         time_assumed_utc=_time_assumed_utc(alert, raw),
         raw_sha256=digest,
         entities=tuple(sorted(entity_set)),
+        source_fields=_source_fields(alert.source_type, ed_all),
     )
 
 

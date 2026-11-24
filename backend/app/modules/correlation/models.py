@@ -49,6 +49,10 @@ class CorrelationEvent(BaseModel):
     evidence_type: str = Field(default="", description="Canonical evidence type for source-agnostic observations (ADR-011); empty for SIEM/Sysmon alerts")
     raw_sha256: str = Field(min_length=64, max_length=64)
     entities: tuple[tuple[str, str], ...] = Field(default=(), description="(type, value) pairs used for linking")
+    source_fields: tuple[tuple[str, str], ...] = Field(
+        default=(),
+        description="Detection-engineering view: a FIXED whitelist of source-supplied typed fields (e.g. Sysmon TargetImage, GrantedAccess, TargetObject), each bounded to 300 characters, copied verbatim. Never an entity, link or independence key; read only by the ATT&CK rules",
+    )
 
 
 class RejectedRecord(BaseModel):

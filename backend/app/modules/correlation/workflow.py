@@ -55,6 +55,7 @@ from app.modules.correlation.normalize import normalize_records
 from app.modules.correlation.timeline import build_timeline
 from app.modules.evidence_domains.bridge import is_dated, is_machine, is_projectable
 from app.modules.evidence_domains.contradictions import detect_contradictions
+from app.modules.correlation.mitre_endpoint import ENDPOINT_MAPPING_VERSION, map_endpoint_techniques
 from app.modules.evidence_domains.domain_attack import DOMAIN_MAPPING_VERSION, map_domain_techniques
 from app.modules.evidence_domains.graph import InvestigationGraph, build_graph
 from app.modules.evidence_domains.model import EvidenceFamily, Observation
@@ -334,6 +335,7 @@ def analyze(
             "unclassified": sum(1 for o in machine_obs if o.family == EvidenceFamily.UNCLASSIFIED),
             "adapters": sorted({o.adapter + "@" + o.adapter_version for o in observations}),
             "attack_rules": DOMAIN_MAPPING_VERSION,
+            "endpoint_attack_rules": ENDPOINT_MAPPING_VERSION,
         })
     corr = correlate(norm.events)
     # ADR-013: the pure detector runs ONCE over all machine observations. Its findings are also surfaced as correlator contradictions (so the
@@ -374,7 +376,7 @@ def analyze(
         trace = SufficiencyTrace()
         assessment = evaluate_sufficiency(context, incident_candidates, trace=trace)
         timeline = build_timeline(corr, incident)
-        mappings = map_techniques(included) + map_domain_techniques(obs_in)
+        mappings = map_techniques(included) + map_endpoint_techniques(included) + map_domain_techniques(obs_in)
         ents_in = {e for o in obs_in for e in o.entities}
         notes = [a for a in analyst_obs if ents_in & set(a.entities)]
         analysis = IncidentAnalysis(

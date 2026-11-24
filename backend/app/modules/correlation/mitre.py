@@ -136,8 +136,9 @@ def _parent(technique_id: str) -> str:
     return technique_id.split(".")[0]
 
 
-def map_techniques(events: list[CorrelationEvent]) -> list[MitreMapping]:
-    """Apply every rule to the de-duplicated evidence; returns mappings in rule order."""
+def map_techniques(events: list[CorrelationEvent], rules: Optional[tuple[Rule, ...]] = None) -> list[MitreMapping]:
+    """Apply every rule to the de-duplicated evidence; returns mappings in rule order. ``rules`` defaults to the ``attack-map-v1`` table; the endpoint table
+    (``mitre_endpoint``) runs through the same machinery so de-duplication, the vendor-asserted flag and the evidence counts behave identically."""
     seen: set[str] = set()
     unique: list[CorrelationEvent] = []
     for e in sorted(events, key=lambda x: (x.timestamp, x.record_index)):
@@ -148,7 +149,7 @@ def map_techniques(events: list[CorrelationEvent]) -> list[MitreMapping]:
     vendor = {t for e in unique for t in e.vendor_techniques}
     vendor_parents = {_parent(t) for t in vendor}
     out: list[MitreMapping] = []
-    for rule in RULES:
+    for rule in (RULES if rules is None else rules):
         if not _TECHNIQUE_ID.match(rule.technique_id):  # pragma: no cover - table integrity guard
             raise ValueError(f"invalid technique id in rule {rule.rule_id}")
         matched = rule.match(unique)
