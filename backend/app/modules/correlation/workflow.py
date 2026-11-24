@@ -347,6 +347,11 @@ def analyze(
         "incidents": [str(i.incident_id) for i in corr.incidents],
         "contradictions": len(corr.contradictions),
     })
+    link_index: dict[int, list[int]] = {}
+    for li, lk in enumerate(corr.links):
+        link_index.setdefault(lk.cluster_a, []).append(li)
+        if lk.cluster_b != lk.cluster_a:
+            link_index.setdefault(lk.cluster_b, []).append(li)
     result = WorkflowResult(normalization=norm, correlation=corr, observations=observations)
     domain_flags = _domain_flags(observations)
     if observations:
@@ -376,7 +381,7 @@ def analyze(
             incident=incident, events=included, timeline=timeline, mitre=mappings,
             asserted_only=asserted_only_techniques(included, mappings), context=context, assessment=assessment,
             observations=obs_in, analyst_notes=notes,
-            graph=build_graph(obs_in, corr, notes, len(norm.rejected)) if obs_in else None,
+            graph=build_graph(obs_in, corr, notes, len(norm.rejected), link_index=link_index) if obs_in else None,
             enrichments=enrich(obs_in, indicators),
             trace=trace,
         )

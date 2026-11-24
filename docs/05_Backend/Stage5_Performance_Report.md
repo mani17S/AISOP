@@ -42,3 +42,15 @@ Raw outputs: `logs/benchmark_final.json`, `logs/benchmark_api.json`.
 
 ## Limitations
 Synthetic, highly regular records (chains repeat structure); real telemetry will differ in entity overlap. SQLite in memory is not PostgreSQL; there is no network or disk latency, no concurrent clients, no authentication cost beyond one token check. Memory is Python allocation only (`tracemalloc`), not process RSS. Sizes above 1,000 events were deliberately not run (a 2,000-event single incident is extrapolated, not measured, at roughly 10 s and 600 MB).
+
+## 2026-11-24 update: a hard-shaped input, and the fix
+A shape not covered above (many separate incidents, every record on the same host, so nearly every pair of evidence units shares the host) took far longer than the figures in this report: 600 synthetic SSH-style records 34.7 s, 1,500 records 515.5 s, and 2,000 records of a real public SSH log 9.1 s. Profiling found three loops that rescanned every link once per incident or per lone component (cubic growth) plus repeated recomputation of the same entity's link strength. They were rewritten to give IDENTICAL output: `backend/evaluation_tools/pipeline_fingerprint.py` hashes the full result (events, clusters, links, incidents, verdicts, reason codes, assessment hashes) for the demo scenarios, the envelope scenarios, two synthetic logs, the real SSH log and the two real Windows files; all 14 hashes matched before and after.
+
+| Input | Before | After |
+|---|---|---|
+| 600 synthetic records | 34.7 s | 2.95 s |
+| 1,500 synthetic records | 515.5 s | 14.8 s |
+| 2,000 real SSH lines | 9.06 s | 3.05 s |
+| all 14 inputs together | 559.6 s | 21.2 s |
+
+Pinned by `backend/tests/unit/test_pipeline_scaling.py` (the exact output of 10 inputs, plus a bound that 800 records finish within 60 s). The per-run limit of 1,000 evidence rows (ADR-010) is unchanged. The number of pairwise links itself still grows with the square of the number of evidence units that share an entity; this removed the extra factors, not that one.

@@ -31,4 +31,4 @@ Written 2026-11-24. Each row states what is implemented and tested, what is part
 - **Personal data:** user names, host names and addresses appear in evidence; a pilot must sanitise before export.
 
 ## 4. Known gaps a risk committee should record
-No MFA; per-process throttles; no row-level security; no notification channel; no independent penetration test; no real-data validation; no human-labelled accuracy; the hosted deployment not live; correlation slows with batch size.
+No MFA; per-process throttles; no row-level security; no notification channel; no independent penetration test; no real-data validation; no human-labelled accuracy; the hosted deployment not live; a per-run limit of 1,000 evidence rows, so larger exports must be split.

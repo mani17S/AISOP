@@ -57,6 +57,19 @@ def _cell(text: object) -> str:
     return s.replace("](", "] (").replace("![", "! [")  # link / image syntax cannot form; plain [brackets] stay readable
 
 
+def non_weak_links(result: "WorkflowResult") -> list:
+    """Strong and specific links of the result in their original order, computed once per result: a result can hold hundreds of thousands of weak
+    links and every incident used to rescan all of them."""
+    cached = getattr(result, "_non_weak_links", None)
+    if cached is None:
+        cached = [lk for lk in result.correlation.links if lk.strength != "weak"]
+        try:
+            result._non_weak_links = cached  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+    return cached
+
+
 def render_incident_report(result: "WorkflowResult", a: "IncidentAnalysis") -> str:
     inc, assessment = a.incident, a.assessment
     sources = sorted({e.source_type for e in a.events})
@@ -126,8 +139,8 @@ def render_incident_report(result: "WorkflowResult", a: "IncidentAnalysis") -> s
     add("")
     members = {i for i in (*inc.core_clusters, *inc.weak_context_clusters)}
     shown = sorted(
-        (lk for lk in result.correlation.links
-         if lk.cluster_a in members and lk.cluster_b in members and lk.strength != "weak"),
+        (lk for lk in non_weak_links(result)
+         if lk.cluster_a in members and lk.cluster_b in members),
         key=lambda lk: (lk.strength != "strong", lk.cluster_a, lk.cluster_b),
     )
     if shown:

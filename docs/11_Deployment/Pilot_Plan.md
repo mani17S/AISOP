@@ -35,14 +35,14 @@ Sanitise before export (remove customer identifiers, secrets and personal data n
 2. **False-sufficient rate**: share of incidents the reviewer judged not sufficient that AISOP called SUFFICIENT, with a confidence interval. Target set by the CISO; any single false-sufficient verdict an analyst would have acted on is a stop condition.
 3. **Usefulness of "what to collect next"**: share of LIMITED verdicts where the suggested evidence request was judged useful by the analyst.
 4. **Parsing coverage**: share of real records accepted, per source.
-5. **Throughput**: time to process a batch at the pilot's real volume (known limit: 2,000 records took about 12 seconds).
+5. **Throughput**: time to process a batch at the pilot's real volume (known: the API accepts at most 1,000 evidence rows per investigation run, ADR-010, so larger exports are split; the correlation step handled 1,500 hard-shaped synthetic records in about 15 seconds after the 2026-11-24 speed-up, 515 seconds before).
 6. **Workload view**: records to incidents on the real data (do not read this as time saved).
 
 ## Stop conditions (any one ends the pilot)
 A false-sufficient verdict an analyst would have acted on; evidence text found leaving the environment; a security finding in AISOP rated high or critical that cannot be fixed within the week; the sponsor withdraws.
 
 ## Prerequisites the project does not yet have
-Step-up MFA and signed approvals (ADR-015, proposed); a restricted database role for the app; metrics and alerting; chunking for large batches; an independent penetration test of the pilot build; a review of the language model's licence terms.
+Step-up MFA and signed approvals (ADR-015, proposed); a restricted database role for the app; metrics and alerting; a documented way to split exports larger than the 1,000-row per-run limit; an independent penetration test of the pilot build; a review of the language model's licence terms.
 
 ## Decision memo template (week 6)
 Measures achieved against the targets; incidents where AISOP and the analysts disagreed and why; defects found; cost against budget; recommendation (continue, change, stop); conditions for any wider use.

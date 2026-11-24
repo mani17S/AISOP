@@ -23,6 +23,7 @@ batches; not a streaming engine).
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 from typing import Optional
 
 from app.modules.correlation.models import (
@@ -65,6 +66,7 @@ WEAK_WINDOW_SECONDS = 1800.0
 SPECIFIC_WINDOW_SECONDS = 86400.0
 CONTRADICTION_WINDOW_SECONDS = 2.0
 _RANK = {LINK_WEAK: 0, LINK_SPECIFIC: 1, LINK_STRONG: 2}
+_ONE_MICROSECOND = timedelta(microseconds=1)
 
 
 def stage_of(category: str) -> str:
@@ -157,14 +159,30 @@ def correlate(
     c_ents: list[set[tuple[str, str]]] = [set().union(*(set(e.entities) for e in mem)) for mem in c_events]
 
     # ── typed pairwise links between evidence clusters ───────────────────────
+    # Performance (2026-11-24), output unchanged (pipeline_fingerprint.py): clusters are ordered by first_seen, so the time gap to later clusters only
+    # grows, and once it exceeds the larger of the two windows no later cluster can link, so the inner loop stops. The strength of an entity depends
+    # only on the entity, so it is looked up once. The gap uses integer microseconds divided exactly as timedelta.total_seconds() does.
     links: list[Link] = []
+    strength_of: dict[tuple[str, str], str] = {}
+    epoch = clusters[0].first_seen
+    micros = [(c.first_seen - epoch) // _ONE_MICROSECOND for c in clusters]
+    max_limit = max(weak_window_seconds, specific_window_seconds)
     for i in range(n):
+        ents_i = c_ents[i]
         for j in range(i + 1, n):
-            shared = c_ents[i] & c_ents[j]
+            dt = abs(micros[j] - micros[i]) / 10**6
+            if dt > max_limit:
+                break
+            shared = ents_i & c_ents[j]
             if not shared:
                 continue
-            best = max((entity_link_strength(t, v) for t, v in shared), key=lambda s: _RANK[s])
-            dt = abs((clusters[j].first_seen - clusters[i].first_seen).total_seconds())
+            best, best_rank = LINK_WEAK, -1
+            for ent in shared:
+                s = strength_of.get(ent)
+                if s is None:
+                    s = strength_of[ent] = entity_link_strength(ent[0], ent[1])
+                if _RANK[s] > best_rank:
+                    best, best_rank = s, _RANK[s]
             limit = weak_window_seconds if best == LINK_WEAK else specific_window_seconds
             if dt > limit:
                 continue
@@ -183,19 +201,26 @@ def correlate(
     # ── weak attachment of lone observations; weak links never merge multi-evidence groups ──
     comp_of = {i: idx for idx, members in enumerate(components) for i in members}
     weak_links = [lk for lk in links if lk.strength == LINK_WEAK]
+    # For each lone component, how many weak links join it to each multi-evidence component (one pass over the weak links, in their original order,
+    # instead of rescanning all of them for every lone component).
+    singleton_counts: dict[int, dict[int, int]] = {}
+    for lk in weak_links:
+        a, b = comp_of[lk.cluster_a], comp_of[lk.cluster_b]
+        if a == b:
+            continue
+        if len(components[a]) == 1 and len(components[b]) >= 2:
+            row = singleton_counts.setdefault(a, {})
+            row[b] = row.get(b, 0) + 1
+        if len(components[b]) == 1 and len(components[a]) >= 2:
+            row = singleton_counts.setdefault(b, {})
+            row[a] = row.get(a, 0) + 1
     attached: dict[int, list[int]] = {idx: [] for idx in range(len(components))}
     weakly_related: dict[int, set[int]] = {idx: set() for idx in range(len(components))}
     absorbed: set[int] = set()
     for idx, members in enumerate(components):
         if len(members) != 1:
             continue
-        counts: dict[int, int] = {}
-        for lk in weak_links:
-            a, b = comp_of[lk.cluster_a], comp_of[lk.cluster_b]
-            if idx in (a, b):
-                other = b if a == idx else a
-                if other != idx and len(components[other]) >= 2:
-                    counts[other] = counts.get(other, 0) + 1
+        counts = singleton_counts.get(idx, {})
         if counts:
             best_other = sorted(counts, key=lambda o: (-counts[o], clusters[components[o][0]].first_seen))[0]
             attached[best_other].append(members[0])
@@ -218,6 +243,14 @@ def correlate(
         incident_ids[idx] = uuid.uuid5(INCIDENT_NAMESPACE, "|".join(keys))
         drafts.append((idx, core, ctx))
 
+    # Which links touch each component, so an incident counts only its own links instead of scanning every link once per incident.
+    links_of_comp: dict[int, list[int]] = {}
+    for li, lk in enumerate(links):
+        ca, cb = comp_of[lk.cluster_a], comp_of[lk.cluster_b]
+        links_of_comp.setdefault(ca, []).append(li)
+        if cb != ca:
+            links_of_comp.setdefault(cb, []).append(li)
+
     incidents: list[Incident] = []
     for idx, core, ctx in drafts:
         all_clusters = core + ctx
@@ -229,9 +262,13 @@ def correlate(
         if len(stages) >= ESCALATION_MIN_STAGES and _sev(severity) < _sev("high"):
             severity, escalated = "high", True
         counts = {LINK_STRONG: 0, LINK_SPECIFIC: 0, LINK_WEAK: 0}
-        member_set = set(all_clusters)
-        for lk in links:
-            if lk.cluster_a in member_set and lk.cluster_b in member_set:
+        incident_comps = {idx, *(comp_of[c] for c in ctx)}  # core is the whole of component idx; each context cluster is a whole lone component
+        touching: set[int] = set()
+        for comp_idx in incident_comps:
+            touching.update(links_of_comp.get(comp_idx, ()))
+        for li in touching:
+            lk = links[li]
+            if comp_of[lk.cluster_a] in incident_comps and comp_of[lk.cluster_b] in incident_comps:
                 counts[lk.strength] += 1
         evs_sorted = sorted(evs, key=lambda e: (e.timestamp, e.record_index))
         incidents.append(

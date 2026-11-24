@@ -132,6 +132,7 @@ def build_graph(
     correlation: Optional[CorrelationResult] = None,
     analyst_observations: Optional[list[Observation]] = None,
     rejected: int = 0,
+    link_index: Optional[dict[int, list[int]]] = None,
 ) -> InvestigationGraph:
     """
     Build the graph for ``observations`` (machine evidence). ``correlation`` supplies evidence clusters, links and
@@ -185,7 +186,14 @@ def build_graph(
     if correlation is not None:
         keys = {o.key for o in observations}
         cluster_rep = {c.cluster_id: c for c in correlation.clusters}
-        for lk in correlation.links:
+        if link_index is None:
+            candidate_links = correlation.links
+        else:
+            # Same links, same order: only those whose two clusters both belong to this graph (``link_index`` maps a cluster id to the indexes of the
+            # links that touch it, built once per run by the workflow).
+            in_graph = {cid for cid, c in cluster_rep.items() if c.representative in keys}
+            candidate_links = [correlation.links[li] for li in sorted({li for cid in in_graph for li in link_index.get(cid, ())})]
+        for lk in candidate_links:
             ca, cb = cluster_rep[lk.cluster_a], cluster_rep[lk.cluster_b]
             if ca.representative not in keys or cb.representative not in keys:
                 continue

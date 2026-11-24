@@ -54,6 +54,7 @@ from app.modules.evidence_domains.bridge import is_dated, is_machine
 from app.modules.evidence_domains.domain_attack import DOMAIN_MAPPING_VERSION
 from app.schemas.multisource import MultiSourceSection
 from app.modules.correlation.management_view import management_view
+from app.modules.correlation.report import non_weak_links
 from app.schemas.sufficiency import SUFFICIENCY_RULE_VERSION
 
 svc_logger = logger.bind(component="multisource_investigation_service")
@@ -501,8 +502,8 @@ class MultiSourceInvestigationService:
         inc = a.incident
         members = {*inc.core_clusters, *inc.weak_context_clusters}
         links = sorted(
-            (lk for lk in result.correlation.links
-             if lk.cluster_a in members and lk.cluster_b in members and lk.strength != "weak"),
+            (lk for lk in non_weak_links(result)
+             if lk.cluster_a in members and lk.cluster_b in members),
             key=lambda lk: (lk.strength != "strong", lk.cluster_a, lk.cluster_b),
         )
         llm = None
