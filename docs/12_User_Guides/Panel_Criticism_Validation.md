@@ -108,6 +108,9 @@ Why not higher: the benchmark's truth shares the gate's definition of independen
 |---|---|---|
 | Ingestion | A second real format: a public SSH server log (2,000 lines) through a year-explicit syslog converter and a stricter, broader Linux auth adapter; three real-data defects found and fixed; 13 tests | 77 (was 72). Two real sources now (Windows forwarder, SSH syslog); still no real vendor EDR or Suricata export, one dataset each, year assumed for the SSH log |
 
+## Sixth addition (2026-11-24): the company's view
+A CISO-facing layer: a deterministic management summary in every multi-source result (workload reduction, verdict mix, telemetry present and absent in the supplied evidence, what to collect next, data quality, ledger) shown in the case workspace, and `CISO_Brief.md` (what it is for, five questions answered with measured evidence and limits, a pilot design, what to build next). 7 backend and 6 frontend tests; verified live through the API on the `suff-v5` rule. It supports the SOC-architecture and UI/AI-code answers (a defined user and purpose); it does not change the research scores.
+
 ## What still needs the owner (nothing here can be done by an assistant honestly)
 1. Label the 67 development cases, then run the scorer and report the result either way.
 2. Read in full: Joren et al. (arXiv 2411.06037), Zomlot et al. (AISec 2011), Dong et al. (PVLDB 2009), DeepFaith (arXiv 2607.24348), and the two arXiv papers cited in the review, before citing any of them.

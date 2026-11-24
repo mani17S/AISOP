@@ -53,6 +53,7 @@ from app.modules.correlation.mitre import MAPPING_VERSION as _LEGACY_MAPPING_VER
 from app.modules.evidence_domains.bridge import is_dated, is_machine
 from app.modules.evidence_domains.domain_attack import DOMAIN_MAPPING_VERSION
 from app.schemas.multisource import MultiSourceSection
+from app.modules.correlation.management_view import management_view
 from app.schemas.sufficiency import SUFFICIENCY_RULE_VERSION
 
 svc_logger = logger.bind(component="multisource_investigation_service")
@@ -577,6 +578,7 @@ class MultiSourceInvestigationService:
             "counts": {"records_normalized": summary["records_normalized"], "records_rejected": summary["records_rejected"],
                        "evidence_clusters": summary["evidence_clusters"], "duplicates_collapsed": summary["duplicates_collapsed"],
                        "contradictions": len(result.correlation.contradictions), "incidents": len(result.incidents)},
+            "management": management_view(result),
             "sources": [{"source_type": k, "events": v["events"], "distinct_raw_records": len(v["raws"])}
                         for k, v in sorted(by_source.items())],
             "rejected": [{"record_index": r.record_index, "reason": r.reason, "raw_sha256_prefix": r.raw_sha256[:12]}

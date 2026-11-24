@@ -733,6 +733,17 @@ export interface MultiSourceReviewRequest {
   note?: string;
 }
 
+/** One-screen summary for a security leader, computed by the server from the pipeline's own facts (management_view.py). */
+export interface ManagementView {
+  workload: { records: number; evidence_units: number; incidents: number; fewer_items_pct: number | null };
+  verdicts: { sufficient: number; limited: number; insufficient: number };
+  telemetry: { present: string[]; absent: string[]; collect: Record<string, string> };
+  next_steps: { reason_code: string; incidents: number; action: string }[];
+  data_quality: { records_rejected: number; rejected_reasons: Record<string, number>; records_with_assumed_time: number };
+  integrity: { ledger_verified: boolean };
+  caveat: string;
+}
+
 export interface MultiSourceInvestigation {
   schema: string;
   status: string;
@@ -741,6 +752,7 @@ export interface MultiSourceInvestigation {
   use_llm: boolean;
   workflow_version: string;
   evidence_fingerprint: string;
+  management?: ManagementView;
   counts: Record<string, number>;
   sources: { source_type: string; events: number; distinct_raw_records: number }[];
   rejected: { record_index: number; reason: string; raw_sha256_prefix: string }[];

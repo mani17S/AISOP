@@ -36,6 +36,7 @@ import {
   IntelligenceSection,
 } from './DomainEvidencePanel';
 import { EnrichmentView, AnalystStatementView, ContradictionView, GraphView, DomainObservation } from '../types';
+import { ManagementSummary } from './ManagementSummary';
 
 const INSUFFICIENT_STYLE = {
   color: 'var(--severity-critical)',
@@ -517,6 +518,8 @@ export const MultiSourceResultView: React.FC<{ data: MultiSourceInvestigation; s
       {data.use_llm ? 'requested' : 'not requested'}. Audit hash chain {data.ledger.verified ? 'verified' : 'NOT verified'}:{' '}
       <span className="font-mono">{data.ledger.head.slice(0, 16)}</span>
     </p>
+
+    <ManagementSummary view={data.management} />
 
     <h4>Contributing sources</h4>
     <div className="table-container">
