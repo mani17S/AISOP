@@ -560,7 +560,7 @@ export interface ContradictionView {
 }
 
 /**
- * Sprint 1: same-pass, behaviour-preserving explanation of the CURRENT record-level suff-v4 decision. Identifiers (event UUIDs), fixed
+ * Sprint 1: same-pass, behaviour-preserving explanation of the CURRENT suff-v5 decision (record-level independence plus the vantage cap). Identifiers (event UUIDs), fixed
  * codes and entity TYPE and STRENGTH only. Entity values are never part of it for any role (RESTRICTED visibility). Optional: results stored
  * before this feature have none.
  */

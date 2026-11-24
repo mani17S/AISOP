@@ -102,7 +102,7 @@ async def test_incident_and_case_paths_give_the_same_verdict_and_contradiction_r
     assert inc["sufficiency"]["verdict"] == "limited" and qualified_code in inc["sufficiency"]["reason_codes"]
     # case path: same detector, same gate
     assert audit["sufficiency_verdict"] == "limited" and qualified_code in audit["sufficiency_reason_codes"]
-    assert audit["sufficiency_rule_version"] == "suff-v4"
+    assert audit["sufficiency_rule_version"] == "suff-v5"
     assert sorted(c for c in audit["sufficiency_reason_codes"] if c.startswith("CONTRADICTORY_EVIDENCE")) == \
         sorted(c for c in inc["sufficiency"]["reason_codes"] if c.startswith("CONTRADICTORY_EVIDENCE"))
     assert any(qualified_code in g for g in resp.json()["output"]["uncertainty_and_data_gaps"])      # disclosed in the analyst-facing output

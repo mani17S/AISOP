@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.contradiction import ContradictionFinding, Materiality
 
 #: Version of the deterministic rule table. Bump on any rule/threshold change.
-SUFFICIENCY_RULE_VERSION = "suff-v4"  # v4 (ADR-013 Rev 2): contradiction findings from independent sources; see schemas/contradiction.py
+SUFFICIENCY_RULE_VERSION = "suff-v5"  # v5 (ADR-017): v4 plus vantage-level independence (SAME_VANTAGE_ONLY); v4 (ADR-013 Rev 2): contradiction findings from independent sources; see schemas/contradiction.py
 
 
 class SufficiencyVerdict(StrEnum):

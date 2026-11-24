@@ -330,8 +330,8 @@ async def test_limited_incident_gets_a_limitation_note_and_the_disclosure_reache
     a = res.incidents[0]
     assert provider.calls == 1 and "[EVIDENCE LIMITATION - system generated]" in provider.prompts[0]
     gaps = a.llm_result.output.uncertainty_and_data_gaps
-    assert any(g.startswith("EVIDENCE_SUFFICIENCY[suff-v4]=LIMITED") and "UNCORROBORATED_QUESTION" in g for g in gaps)
-    assert "EVIDENCE_SUFFICIENCY[suff-v4]=LIMITED" in a.markdown          # in the analyst-facing report, not just the prompt
+    assert any(g.startswith("EVIDENCE_SUFFICIENCY[suff-v5]=LIMITED") and "UNCORROBORATED_QUESTION" in g for g in gaps)
+    assert "EVIDENCE_SUFFICIENCY[suff-v5]=LIMITED" in a.markdown          # in the analyst-facing report, not just the prompt
 
 
 @pytest.mark.anyio

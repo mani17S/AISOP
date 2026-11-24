@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **ID** | ADR-017 |
-| **Status** | **PROPOSED, implemented 2026-11-24** on the project owner's instruction to add a defensible research contribution (same convention as ADR-009 and ADR-010). Owner approval of this record is still wanted. |
+| **Status** | **APPROVED 2026-11-24** by the project owner ("go ahead") after implementation on the owner's instruction to add a defensible research contribution. The rule table is now labelled `suff-v5`. |
 | **Date** | 2026-11-23 (proposed), 2026-11-24 (implemented) |
 | **Relates to** | ADR-008 (sufficiency gate), ADR-013 (contradiction-aware sufficiency), `docs/10_Research/Contribution_Statement.md`, `docs/10_Research/Real_Format_Ingestion_Result.md` |
 | **Changes** | One new reason code (`SAME_VANTAGE_ONLY`) and one verdict cap in `ai/guardrails/sufficiency_gate.py`. It can only lower a verdict. |
@@ -34,11 +34,11 @@ On the real public data the one SUFFICIENT incident became LIMITED (`SAME_VANTAG
 3. Weight corroboration by vantage (a score). Rejected: an unexplained number, against the deterministic and explainable rule.
 
 ## Consequences and limits (stated plainly)
-- **The rule table is still labelled `suff-v4`.** The label is pinned in 35 places (stored results, integration tests, report text), so renaming it to `suff-v5` is a separate mechanical change that needs owner approval of this ADR. Until then the cap is recorded in every affected result by the `SAME_VANTAGE_ONLY` reason code, and results without it are identical to before. A result stored before 2026-11-24 for same-vantage-only evidence still says SUFFICIENT until the evidence changes or it is re-run.
+- **The rule table is now labelled `suff-v5`** (renamed 2026-11-24 on approval). The version is part of each stored investigation's evidence fingerprint, so every investigation stored under `suff-v4` is treated as stale and is recomputed under the new rule when next opened or re-run; no stored result silently keeps a SUFFICIENT verdict that the new rule would cap. Historical references to `suff-v4` in ADR-013 and older documents describe the contradiction revision and are left as they were.
 - **Vantage is coarse.** Two different sensor instances of one type at one host count as one vantage, and a record forwarded through a second system is merged by duplicate clustering rather than counted as a second vantage.
 - **No labelled evidence yet** says the cap is right. It follows the project's own definition of independence; whether analysts agree needs the owner's labels.
 - **The development dataset cannot exercise it** (no vantage in the locked cases); the controlled annotations above are the evidence, plus the real public data.
-- Verdicts on stored demo investigations that rely on same-vantage corroboration will fall to LIMITED when re-run.
+- Verdicts on stored demo investigations that rely on same-vantage corroboration fall to LIMITED when they are recomputed (which the version change forces).
 
 ## Decision
-Owner approval of the record, and of renaming the rule table to `suff-v5`, is pending.
+Approved by the owner on 2026-11-24, including the rename of the rule table to `suff-v5`.

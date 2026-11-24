@@ -21,6 +21,8 @@ This is an applied combination. Each ingredient has precedent (see `Literature_R
 | Raw captured model (`llama3.1:8b`) | MITRE F1 0.00 on 10 scenarios; false techniques on 2 of 2 benign scenarios | `docs/04_Testing/AI_Model_Benchmark_Report.md` |
 | Claim verifier, mutation evaluation (assertions true or false by construction, built from the evidence and not from the verifier) | All 2,478 true assertions accepted; 0 of 1,737 false assertions called SUPPORTED across 12 fault classes (fabricated and uncited ids, another case's id, wrong values, reversed time, duplicates as distinct, hostile and look-alike values, one false assertion hidden among true ones); no exception escaped | `evaluation_tools/claim_verifier_mutation.py` |
 | Vantage-level independence | Locked cases unchanged (11 sufficient); annotated as one vantage all 11 fall to LIMITED, as cross-vantage all 11 stay; never raised; on real public data the one same-sensor SUFFICIENT incident became LIMITED | `evaluation_tools/vantage_effect.py`, ADR-017 |
+| Synthetic benchmark with ground truth by construction (2,250 randomised cases, nine families, noise; fresh seed run once) | False-sufficient rate B0 0.835, B1 0.711, B2 0.470, B3 0.345, B4 0.219, AISOP 0.000 [0.000, 0.002]; AISOP accuracy 1.000 with the vantage known and 0.889 with it unknown (all error in the same-vantage family); each rule is shown to fix a named family | `evaluation_tools/synthetic_benchmark.py` |
+| Rubric oracle (independent reference implementation of the labelling guide) | Agrees with the gate on 65 of 65 judged development cases (kappa 1.000, partly by construction); reveals that the written guide is silent on four rules the gate enforces (repeated observation, same vantage, placeholder artefacts, near-duplicate definition); a proposed addendum is written for the owner | `evaluation_tools/rubric_oracle.py`, `Labelling_Guide_Addendum_PROPOSED.md` |
 | Real-format ingestion | 377 of 377 records from two public datasets accepted after fixes (0 before); one SUFFICIENT verdict on real data examined | `Real_Format_Ingestion_Result.md` |
 
 ## What the ablation says about the contribution (stated without spin)
@@ -41,9 +43,10 @@ H1: on the fixed scenarios the gate gives a lower false-sufficient rate than the
 | Labelling rubric restates the gate's own rule | Agreement with labels may be high by construction | Say so; compare against B0 to B4 on the same labels |
 | Synthetic, small, uneven scenario families | No prevalence, wide intervals | Wilson intervals; no generalisation claim |
 | Metamorphic relations restate the project's invariants | Zero violations shows fidelity, not correctness | Present as property testing only |
+| The benchmark's truth is built from the same definition of independence the gate implements | 1.000 shows conformance under noise, not that the definition is right | Say so; the owner labels are the independent check |
 | Vantage is coarse (source type at a host) | Two sensor instances of one type at one host count as one witness | Disclosed in ADR-017 |
 | The vantage rule was designed from a real-data finding and then checked on the same data | Demonstrates the mechanism; not independent validation | Say so; needs labels and a second dataset |
-| Rule table label still `suff-v4` | Stored results before 2026-11-24 are not distinguishable by label | The reason code marks affected results; rename after owner approval |
+| Rule table renamed `suff-v5` on 2026-11-24 | Results from before are labelled `suff-v4` | The version is in the evidence fingerprint, so older stored results recompute |
 | Held-out split unused | No out-of-sample result | Run once after the rules are frozen |
 | Real-data test is one forwarder shape | Ingestion generality unproven | Disclosed |
 

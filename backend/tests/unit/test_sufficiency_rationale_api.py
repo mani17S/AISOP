@@ -68,7 +68,7 @@ async def test_the_rationale_is_additive_and_identical_in_the_response_the_secti
         suff = r.json()["incidents"][0]["sufficiency"]
         assert EXISTING_SUFFICIENCY_KEYS <= set(suff)                                   # every pre-existing field is still there
         rat = suff["rationale"]
-        assert rat["schema"] == "suff-rationale-v1" and rat["rule_version"] == "suff-v4" and rat["completeness"] == "complete"
+        assert rat["schema"] == "suff-rationale-v1" and rat["rule_version"] == "suff-v5" and rat["completeness"] == "complete"
         assert suff["verdict"] == "sufficient" and rat["status"]["verdict"] == suff["verdict"]
         assert rat["status"]["model_call_permitted"] is (not suff["abstain"])           # same pass: same fields as the verdict
 

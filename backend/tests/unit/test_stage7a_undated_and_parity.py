@@ -218,7 +218,7 @@ async def test_parity_material_contradictions_project_identically(db_session, ap
     a = project_incident(inc)
     b = public(case_p)
     assert a["verdict"] == b["verdict"] == "limited"
-    assert a["rule_version"] == b["rule_version"] == "suff-v4"
+    assert a["rule_version"] == b["rule_version"] == "suff-v5"
     assert a["contradiction_codes"] == b["contradiction_codes"] == [code]
     assert case_p["_gaps"] and any(code in g for g in case_p["_gaps"])          # the coded disclosure reaches the analyst-facing output
 

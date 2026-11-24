@@ -21,7 +21,7 @@ def anyio_backend():
 @pytest.mark.anyio
 async def test_s1_scenario_offline(db_session):
     stored = await V.scenario_findings_round_trip(db_session, V.new_run())
-    assert stored["incidents"][0]["sufficiency"]["rule_version"] == "suff-v4"
+    assert stored["incidents"][0]["sufficiency"]["rule_version"] == "suff-v5"
 
 
 @pytest.mark.anyio

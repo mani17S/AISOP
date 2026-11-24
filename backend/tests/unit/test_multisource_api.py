@@ -401,8 +401,8 @@ async def test_llm_path_is_gated_claims_are_verified_and_limited_is_disclosed(db
         inc = body["incidents"][0]
         assert provider.calls == 1 and inc["llm_status"] == "validated" and "[EVIDENCE LIMITATION - system generated]" in provider.prompts[0]
         assert inc["llm"]["claims"][0]["grounding"] == "validated_reference" and inc["llm"]["claims"][0]["category"] == "observed_fact"
-        assert any(g.startswith("EVIDENCE_SUFFICIENCY[suff-v4]=LIMITED") for g in inc["llm"]["uncertainty_and_data_gaps"])
-        assert "EVIDENCE_SUFFICIENCY[suff-v4]=LIMITED" in inc["report_markdown"]
+        assert any(g.startswith("EVIDENCE_SUFFICIENCY[suff-v5]=LIMITED") for g in inc["llm"]["uncertainty_and_data_gaps"])
+        assert "EVIDENCE_SUFFICIENCY[suff-v5]=LIMITED" in inc["report_markdown"]
 
 
 @pytest.mark.anyio

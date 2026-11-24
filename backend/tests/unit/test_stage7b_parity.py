@@ -217,7 +217,7 @@ async def test_report_path_projection_matches_the_incident_path_for_contradictio
     r = await run3(db_session, app_instance, builder(), f"b-rep-{code[-5:]}")
     inc = project_inc(r["inc"])
     rep = project_audit(r["audit_rep"])
-    assert inc["verdict"] == rep["verdict"] == "limited" and inc["rule_version"] == rep["rule_version"] == "suff-v4"
+    assert inc["verdict"] == rep["verdict"] == "limited" and inc["rule_version"] == rep["rule_version"] == "suff-v5"
     assert [c for c in inc["reason_codes"] if c.startswith("CONTRADICTORY")] == [c for c in rep["reason_codes"] if c.startswith("CONTRADICTORY")] == [code]
     gaps = r["bundle"]["technical_report"]["investigation_gaps"]
     assert any(code in g for g in gaps)                                               # the contradiction is disclosed in the report bundle

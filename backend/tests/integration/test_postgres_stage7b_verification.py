@@ -147,7 +147,7 @@ async def scenario_findings_round_trip(session: Any, run: str) -> dict:
 @pytest.mark.anyio
 async def test_s1_contradiction_findings_round_trip_with_typed_fields(postgres_session):
     stored = await scenario_findings_round_trip(postgres_session, new_run())
-    assert stored["incidents"][0]["sufficiency"]["rule_version"] == "suff-v4"
+    assert stored["incidents"][0]["sufficiency"]["rule_version"] == "suff-v5"
 
 
 # ----------------------------------------------------------------------------------------- scenario 2
@@ -301,7 +301,7 @@ async def scenario_sufficiency_persistence_and_stale(session: Any, run: str, *, 
     created, first = await inv.start(session=session, case_id=case_id, actor=analyst, use_llm=False, force=False, llm_provider=None)
     assert created is True and first["reused"] is False
     inc = first["incidents"][0]["sufficiency"]
-    assert inc["rule_version"] == "suff-v4" and "CONTRADICTORY_EVIDENCE:outcome" in inc["reason_codes"] and inc["verdict"] == "limited"
+    assert inc["rule_version"] == "suff-v5" and "CONTRADICTORY_EVIDENCE:outcome" in inc["reason_codes"] and inc["verdict"] == "limited"
     row = (await session.execute(select(CaseAuditEventModel).where(CaseAuditEventModel.case_id == case_id, CaseAuditEventModel.action == MULTISOURCE_ACTION))).scalars().all()
     assert len(row) == 1
     snapshot = json.loads(json.dumps(row[0].details))

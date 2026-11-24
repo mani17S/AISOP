@@ -268,7 +268,7 @@ def test_audit_details_flags_and_limitation_note_shapes():
     assert limited.limitation_note() and "LIMITED" in limited.limitation_note()
     assert sufficient.limitation_note() is None and insufficient.limitation_note() is None
     assert sufficient.disclosure_flags() == []
-    assert limited.disclosure_flags()[0].startswith("EVIDENCE_SUFFICIENCY[suff-v4]=LIMITED")
+    assert limited.disclosure_flags()[0].startswith("EVIDENCE_SUFFICIENCY[suff-v5]=LIMITED")
 
 
 def test_assessment_model_is_immutable_and_strict():

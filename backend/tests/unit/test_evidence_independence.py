@@ -158,7 +158,7 @@ def test_limited_disclosure_reaches_the_validated_output_and_is_idempotent():
     result = InvestigationOutputValidator().validate(_scripted_output(ctx), ctx, a)
     assert not any("EVIDENCE_SUFFICIENCY" in f for f in result.output.uncertainty_and_data_gaps)
     disclosed = apply_sufficiency_disclosure(result, a)
-    flags = [f for f in disclosed.output.uncertainty_and_data_gaps if f.startswith("EVIDENCE_SUFFICIENCY[suff-v4]=LIMITED")]
+    flags = [f for f in disclosed.output.uncertainty_and_data_gaps if f.startswith("EVIDENCE_SUFFICIENCY[suff-v5]=LIMITED")]
     assert len(flags) == 1 and "UNCORROBORATED_QUESTION" in flags[0]
     assert apply_sufficiency_disclosure(disclosed, a) is disclosed          # idempotent
     assert disclosed.decision == result.decision and disclosed.violations == result.violations

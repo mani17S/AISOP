@@ -207,13 +207,13 @@ def test_unclassified_and_analyst_evidence_never_take_part():
 
 
 # ══ gate integration (suff-v4) ═══════════════════════════════════════════════
-def test_version_is_v4_and_the_gate_default_argument_keeps_existing_callers_working():
+def test_version_is_v5_and_the_gate_default_argument_keeps_existing_callers_working():
     from app.modules.ai.guardrails.sufficiency_gate import evaluate_sufficiency
 
-    assert SUFFICIENCY_RULE_VERSION == "suff-v4"
+    assert SUFFICIENCY_RULE_VERSION == "suff-v5"
     a = analyze(S.scenario_a_identity_cloud()).incidents[0]
     again = evaluate_sufficiency(a.context)                                             # old call shape: no contradictions argument
-    assert again.assessment_sha256 == a.assessment.assessment_sha256 and again.rule_version == "suff-v4" and again.contradictions == []
+    assert again.assessment_sha256 == a.assessment.assessment_sha256 and again.rule_version == "suff-v5" and again.contradictions == []
 
 
 def test_a_material_contradiction_caps_the_verdict_at_limited_and_excludes_the_pair_from_corroboration():
@@ -279,7 +279,7 @@ def test_a_stored_v3_result_is_not_reused_because_the_fingerprint_includes_the_r
 def test_the_report_states_the_contradiction_the_effect_and_what_would_resolve_it_without_calling_it_resolved():
     md = analyze(scenario_c()).incidents[0].markdown
     head = md.split("## 2. Timeline")[0]
-    assert "**Verdict: LIMITED** (rule table suff-v4)" in head and "CONTRADICTORY_EVIDENCE:ordering" in head
+    assert "**Verdict: LIMITED** (rule table suff-v5)" in head and "CONTRADICTORY_EVIDENCE:ordering" in head
     assert "attachment_delivery_order" in head and "capped at LIMITED" in head and "Obtain the creation and modification times" in head
     assert "not resolved" in head and "Contradiction notice" not in head                    # the structured block replaces the interim notice
 
