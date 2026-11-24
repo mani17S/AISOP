@@ -42,7 +42,7 @@ Sanitise before export (remove customer identifiers, secrets and personal data n
 A false-sufficient verdict an analyst would have acted on; evidence text found leaving the environment; a security finding in AISOP rated high or critical that cannot be fixed within the week; the sponsor withdraws.
 
 ## Prerequisites the project does not yet have
-Step-up MFA and signed approvals (ADR-015, proposed); a restricted database role for the app; metrics and alerting; a documented way to split exports larger than the 1,000-row per-run limit; an independent penetration test of the pilot build; a review of the language model's licence terms.
+Step-up MFA and signed approvals (ADR-015, proposed); a restricted database role for the app; metrics (alert notification exists, see `docs/07_Security/Security_Alert_Notifications.md`, but has not run against a real receiver); a documented way to split exports larger than the 1,000-row per-run limit; an independent penetration test of the pilot build; a review of the language model's licence terms.
 
 ## Decision memo template (week 6)
 Measures achieved against the targets; incidents where AISOP and the analysts disagreed and why; defects found; cost against budget; recommendation (continue, change, stop); conditions for any wider use.

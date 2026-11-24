@@ -169,6 +169,17 @@ class Settings(BaseSettings):
         description="'ollama' (local, default) or 'cloudflare_workers_ai' (external, needs LLM_ALLOW_EXTERNAL_PROVIDER). Vectors from different models are not comparable: re-embed the knowledge base when this changes.",
     )
 
+    # ── Security alert notifications (optional; the log is always used, the webhook only if configured) ─────────────
+    SECURITY_ALERT_WEBHOOK_URL: str = Field(
+        default="",
+        description="Where to POST signed security alerts. Empty (default) = nothing leaves the process; alerts go to the log only. https required (http only to loopback).",
+    )
+    SECURITY_ALERT_WEBHOOK_SECRET: SecretStr | None = Field(
+        default=None,
+        description="HMAC-SHA256 signing secret for webhook messages, at least 16 characters. Without it the webhook is ignored (alerts are never sent unsigned). Set only in the host's environment.",
+    )
+    SECURITY_ALERT_MIN_SEVERITY: str = Field(default="medium", description="Lowest severity to notify: medium | high | critical.")
+
     # ── ATT&CK reference (optional, local, offline) ─────────────
     ATTACK_REFERENCE_PATH: str | None = Field(
         default=None,

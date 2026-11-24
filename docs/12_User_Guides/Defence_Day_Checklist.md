@@ -4,7 +4,7 @@ One page to run from. Everything here was checked on 2026-11-24 against the repo
 
 ## 1. The day before
 1. `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\demo_check.ps1 -Start` until it prints "All checks OK", then `-WarmUp` (loads the model). Verified today after a backend restart on the latest code: all checks OK.
-2. Run the suites once and quote only what they print: `.venv\Scripts\python.exe -m pytest backend/tests/unit -q` (about 4 minutes; last full run 3,883 passed, 1 skipped, 1 expected failure) and, in `frontend/`, `npm test` (307 of 307).
+2. Run the suites once and quote only what they print: `.venv\Scripts\python.exe -m pytest backend/tests/unit -q` (about 4 minutes; last full run 3,907 passed, 1 skipped, 1 expected failure) and, in `frontend/`, `npm test` (307 of 307).
 3. Keep the demo keys, `.env` and the credential files off screen. Rotate the Render database password, the Render API key and the Cloudflare deployment token after the defence (they were pasted into a chat).
 4. Read in full the papers you will be asked about (arXiv 2411.06037; the data-fusion and dependent-alert papers listed in `Literature_Review.md`). Do not cite a paper you have not read.
 
@@ -28,7 +28,7 @@ Then: the AI action (shows seconds and a Cancel button; if the model is slow say
 ## 3. Numbers you may quote (and what each does not show)
 | Say | Source | It does not show |
 |---|---|---|
-| 3,883 backend and 307 frontend tests pass | the runs above | correctness, only behaviour |
+| 3,907 backend and 307 frontend tests pass | the runs above | correctness, only behaviour |
 | On the 67 locked cases AISOP says sufficient for 11, naive baselines for 29 and 24 | `Evaluation.md` | which is right (no human labels yet) |
 | On 2,250 randomised synthetic cases with truth by construction, the false-sufficient rate falls 0.835, 0.711, 0.470, 0.345, 0.219 as each rule is added, then 0.000 (95% CI 0.000 to 0.002) for the gate | `Evaluation.md`, `synthetic_benchmark.py` | that the definition of independence is right: truth shares the gate's definition |
 | 0 of 1,737 false assertions were called supported by the claim verifier; 2,478 of 2,478 true ones were | `claim_verifier_mutation.py` | how often a model's claims are right |

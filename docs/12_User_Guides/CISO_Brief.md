@@ -10,7 +10,7 @@ Analysts lose time reading piles of alerts and logs that repeat each other, and 
 |---|---|---|---|
 | **Does it reduce analyst reading?** | A management summary: records to evidence units to incidents | Public Windows data: 377 records became 20 incidents. Public SSH log: 2,000 lines became 852 evidence units and 23 incidents | No measured time saved per analyst; no user study |
 | **Where are my blind spots?** | Which telemetry types (endpoint, network, identity, cloud, email) are absent from the supplied evidence, and what to collect next | Deterministic; tested (`test_management_view.py`) | It describes the evidence given, not the company's whole logging, and not detection coverage |
-| **Can I defend a conclusion to an auditor?** | Raw records kept with SHA-256; a hash-chained ledger; claim-by-claim verification; case audit trail; a lead's approval before any export | 0 of 1,737 false assertions accepted by the claim verifier; 3,883 backend and 307 frontend tests | Tamper-evident since submission, not immutable; no independent audit |
+| **Can I defend a conclusion to an auditor?** | Raw records kept with SHA-256; a hash-chained ledger; claim-by-claim verification; case audit trail; a lead's approval before any export | 0 of 1,737 false assertions accepted by the claim verifier; 3,907 backend and 307 frontend tests | Tamper-evident since submission, not immutable; no independent audit |
 | **Does it stay inside my data rules?** | Local-first by default; the hosted AI option is opt-in, synthetic data only, and states what leaves the machine | ADR-016; privacy page; token never in a response or log | The hosted demo is not live; evidence text goes to a third party when it is on |
 | **What must I not tell the board?** | A written list of claims not to make | `Defence_Walkthrough.md` section 6 | It is not detection, not response, not a SIEM, not proven on real incidents |
 
@@ -26,13 +26,13 @@ It does not detect attacks, take response actions, replace the SIEM or EDR, or d
 ## If I were running a pilot (what I would ask for)
 1. **Scope:** one analyst team, sanitised exports from one SIEM and one EDR, no response actions, no production credentials, read-only.
 2. **Success measures, set before the pilot:** analyst minutes per incident with and without the summary; the share of AISOP "sufficient" verdicts that analysts agree with (false-sufficient rate against their labels); the share of "limited" verdicts where the suggested evidence request was useful.
-3. **Gates before any wider use:** step-up MFA for approvals (ADR-015 is proposed, not built), a restricted database role, metrics and alerting, an independent penetration test, a data-protection review of any hosted model.
+3. **Gates before any wider use:** step-up MFA for approvals (ADR-015 is proposed, not built), a restricted database role, metrics (security alerts can be sent to a signed webhook; tested only against a simulated receiver), an independent penetration test, a data-protection review of any hosted model.
 4. **Stop conditions:** any false-sufficient verdict an analyst would have acted on; any evidence text leaving the environment unexpectedly.
 
 ## What I would build next, in order of value to the company
 1. Agreement study with analysts (labels, second reviewer, held-out run) so the verdicts have a measured error rate.
 2. A real Suricata or EDR export through the adapters, and a documented way to split exports larger than the 1,000-row per-run API limit (the correlation step was made 3 to 35 times faster on 2026-11-24 with identical output: 1,500 hard-shaped synthetic records went from 515 s to about 15 s).
-3. MFA and signed approvals (ADR-015), then a security-event notification channel.
+3. MFA and signed approvals (ADR-015). The security-event notification channel exists (off by default) and needs a pilot receiver to prove it.
 4. A detection-engineering feedback loop (ADR-012): findings that are repeatedly LIMITED because a source is missing become a request to the logging owners.
 
 ## Where the supporting material is

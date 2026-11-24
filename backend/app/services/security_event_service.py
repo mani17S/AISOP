@@ -104,6 +104,16 @@ async def purge_older_than(session: Any, days: int, now: datetime | None = None)
     return int(result.rowcount or 0)
 
 
+async def current_alerts(session: Any, hours: int = 1, now: datetime | None = None) -> list[dict[str, Any]]:
+    """The platform security alerts for the last ``hours`` hours: the same derivation, over the same rows, as the Security page (one definition of an alert)."""
+    end = now or datetime.now(timezone.utc)
+    start = end - timedelta(hours=hours)
+    rows = (
+        (await session.execute(select(SecurityEventModel).where(SecurityEventModel.bucket_minute >= start).limit(MAX_ROWS_READ))).scalars().all()
+    )
+    return derive_alerts(rows, await _sightings_for_active_keys(session, start), await _case_creations(session, end), end, start)
+
+
 async def overview(session: Any, hours: int, not_recorded_since_start: int, now: datetime | None = None) -> dict[str, Any]:
     end = now or datetime.now(timezone.utc)
     start = end - timedelta(hours=hours)

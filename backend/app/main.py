@@ -30,6 +30,7 @@ from loguru import logger
 
 SECURITY_EVENTS_FLUSH_SECONDS = 10
 SECURITY_EVENTS_RETENTION_DAYS = 30
+SECURITY_ALERT_NOTIFY_SECONDS = 60
 
 
 async def _flush_security_events_once(app: FastAPI) -> None:
@@ -47,16 +48,35 @@ async def _flush_security_events_once(app: FastAPI) -> None:
         logger.warning("Security event flush failed", error_type=type(exc).__name__)
 
 
+async def _notify_security_alerts_once(app: FastAPI) -> None:
+    """Derive the current platform alerts and hand them to the notifier (log always; webhook only if configured). Never raises into the server."""
+    from app.db.session import get_session_factory
+    from app.services.security_event_service import current_alerts
+
+    dispatcher = getattr(app.state, "security_alerts", None)
+    if dispatcher is None:
+        return
+    try:
+        async with get_session_factory()() as session:
+            alerts = await current_alerts(session)
+        await dispatcher.handle(alerts)
+    except Exception as exc:
+        logger.warning("Security alert notification failed", error_type=type(exc).__name__)
+
+
 async def _security_events_loop(app: FastAPI) -> None:
     from app.db.session import get_session_factory
     from app.services.security_event_service import purge_older_than
 
     ticks_per_purge = max(1, 3600 // SECURITY_EVENTS_FLUSH_SECONDS)
+    ticks_per_notify = max(1, SECURITY_ALERT_NOTIFY_SECONDS // SECURITY_EVENTS_FLUSH_SECONDS)
     tick = 0
     while True:
         await asyncio.sleep(SECURITY_EVENTS_FLUSH_SECONDS)
         await _flush_security_events_once(app)
         tick += 1
+        if tick % ticks_per_notify == 0:
+            await _notify_security_alerts_once(app)
         if tick % ticks_per_purge == 0:
             try:
                 async with get_session_factory()() as session:
@@ -154,6 +174,9 @@ def create_app() -> FastAPI:
 
     # Attack visibility: counts suspicious responses (Security page). Outside the limiter and size caps so their answers are seen.
     app.state.security_events = SecurityEventBuffer()
+    from app.core.security_alerts import dispatcher_from_settings
+
+    app.state.security_alerts = dispatcher_from_settings(get_settings())
     app.add_middleware(SecurityEventsMiddleware, trusted_proxies=settings.RATE_LIMIT_TRUSTED_PROXIES)
 
     # Request correlation and observability middleware
