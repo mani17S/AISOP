@@ -57,6 +57,19 @@ def _cell(text: object) -> str:
     return s.replace("](", "] (").replace("![", "! [")  # link / image syntax cannot form; plain [brackets] stay readable
 
 
+def _evidence_line(event, observation) -> str:
+    """A POINTER to a record a technique rule matched: time, source, host, process name, record number and a hash prefix. Never the command line or any raw
+    payload: the stored result must not copy evidence text (the raw record lives in the evidence rows under its SHA-256; test_multisource_api pins this)."""
+    if event is not None:
+        proc = f" process={event.process_name}" if event.process_name else ""
+        return _cell(f"{event.timestamp:%Y-%m-%d %H:%M:%S}Z {event.source_type}/{event.source_event_id or '-'} host={event.host or '-'}{proc} "
+                     f"record #{event.record_index} sha256 {event.raw_sha256[:12]}")
+    if observation is not None:
+        when = f"{observation.event_time:%Y-%m-%d %H:%M:%S}Z " if observation.event_time else "undated "
+        return _cell(f"{when}{observation.evidence_type} record #{observation.record_index} sha256 {observation.raw_sha256[:12]}")
+    return ""
+
+
 def non_weak_links(result: "WorkflowResult") -> list:
     """Strong and specific links of the result in their original order, computed once per result: a result can hold hundreds of thousands of weak
     links and every incident used to rescan all of them."""
@@ -163,6 +176,14 @@ def render_incident_report(result: "WorkflowResult", a: "IncidentAnalysis") -> s
         for m in a.mitre:
             add(f"| {m.technique_id} {m.technique_name} | {', '.join(m.tactics)} | `{m.rule_id}` | {m.independent_evidence_count} | "
                 f"{'yes' if m.vendor_asserted else 'no'} | {_cell(m.limitation)} |")
+        add("")
+        add("Records behind each technique (the first three matching; open them in the evidence list by record number or hash, the report does not copy evidence text; "
+            "the rule matched them, it did not judge intent):")
+        by_key = {e.event_key: e for e in a.events}
+        by_obs = {o.key: o for o in a.observations}
+        for m in a.mitre:
+            shown = [line for line in (_evidence_line(by_key.get(k), by_obs.get(k)) for k in m.evidence_keys) if line][:3]
+            add(f"- {m.technique_id} `{m.rule_id}`: " + ("; ".join(shown) if shown else "the matching records are outside this incident's evidence set"))
     else:
         add("No technique could be derived by the rule table from this evidence.")
     if a.asserted_only:
