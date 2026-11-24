@@ -6,6 +6,7 @@ Adapts Linux auth.log, auditd, and journald authentication security events into 
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 from datetime import datetime, timezone
@@ -23,6 +24,29 @@ from app.schemas.alert import (
     MitreAttackReference,
 )
 from app.schemas.entities import HostEntity, NetworkEntity, ProcessEntity, UserEntity
+
+
+def _first_ip(message: str) -> str:
+    """First valid IP address in an sshd or PAM line: ``from IP``, ``rhost=IP``, ``by IP`` or ``[IP]``. Every candidate is validated, so a word or an
+    address with a trailing colon ("Received disconnect from 1.2.3.4: 11: ...") is never taken as an address."""
+    for pattern in (r"\bfrom\s+(\S+)", r"\brhost=(\S+)", r"\bby\s+(\S+)", r"\[(\d{1,3}(?:\.\d{1,3}){3})\]"):
+        for match in re.finditer(pattern, message):
+            candidate = match.group(1).rstrip(":,;.")
+            try:
+                ipaddress.ip_address(candidate)
+            except ValueError:
+                continue
+            return candidate
+    return ""
+
+
+def _user_from(message: str) -> str:
+    """User name from an sshd or PAM line: ``Invalid user NAME``, ``invalid user NAME``, ``user=NAME``; empty if none."""
+    for pattern in (r"[Ii]nvalid user\s+([^\s\[]+)", r"\buser=([^\s,;]+)"):
+        match = re.search(pattern, message)
+        if match and match.group(1).lower() not in ("unknown", "from"):
+            return match.group(1)
+    return ""
 
 
 class LinuxAuthAdapter:
@@ -88,9 +112,7 @@ class LinuxAuthAdapter:
         user = str(data.get("user") or data.get("username") or "")
 
         if not src_ip:
-            ip_match = re.search(r"from\s+([0-9a-fA-F.:]+)", message)
-            if ip_match:
-                src_ip = ip_match.group(1)
+            src_ip = _first_ip(message)
 
         if not src_port:
             port_match = re.search(r"port\s+(\d+)", message)
@@ -101,11 +123,14 @@ class LinuxAuthAdapter:
                     pass
 
         if not user:
-            user_match = re.search(r"(?:for invalid user|for user|for)\s+([a-zA-Z0-9_.-]+)", message)
+            user = _user_from(message)
+        if not user:
+            # "for NAME" names a user only in a Failed or Accepted authentication line; "getaddrinfo for host.example" names a host.
+            user_match = re.search(r"(?:for invalid user|for user|for)\s+([a-zA-Z0-9_.-]+)", message) if re.search(r"\b(?:Failed|Accepted)\b", message) else None
             if user_match:
                 user = user_match.group(1)
 
-        is_failed_ssh = "Failed password" in message or "invalid user" in message
+        is_failed_ssh = "Failed password" in message or "invalid user" in message.lower() or "authentication failure" in message
         is_sudo_abuse = "sudo:" in message
         is_accepted = "Accepted" in message
 

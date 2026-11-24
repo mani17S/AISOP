@@ -103,6 +103,11 @@ Honest ceiling: with the owner's 67 labels, a second reviewer and one held-out r
 | Novelty | Per-rule attribution at scale: each rule fixes a named family of failures, and the vantage rule is shown to be necessary (same-vantage and out-of-window families are fixed only by the full gate) | 62 (was 60) |
 Why not higher: the benchmark's truth shares the gate's definition of independence, there is no human-labelled result, no second reviewer, and no real incidents. Past about 65 these two criticisms need the owner's labels; 75 is not supportable by simulation alone, and claiming it would be the kind of overstatement a panel finds.
 
+## Fifth addition (2026-11-24): a second real source
+| Criticism | What was added | Closure estimate (was) |
+|---|---|---|
+| Ingestion | A second real format: a public SSH server log (2,000 lines) through a year-explicit syslog converter and a stricter, broader Linux auth adapter; three real-data defects found and fixed; 13 tests | 77 (was 72). Two real sources now (Windows forwarder, SSH syslog); still no real vendor EDR or Suricata export, one dataset each, year assumed for the SSH log |
+
 ## What still needs the owner (nothing here can be done by an assistant honestly)
 1. Label the 67 development cases, then run the scorer and report the result either way.
 2. Read in full: Joren et al. (arXiv 2411.06037), Zomlot et al. (AISec 2011), Dong et al. (PVLDB 2009), DeepFaith (arXiv 2607.24348), and the two arXiv papers cited in the review, before citing any of them.
