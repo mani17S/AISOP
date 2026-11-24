@@ -13,7 +13,7 @@ Three ways to produce the labels file the scorer reads (``datasets/sufficiency_e
   3. Second reviewer on every 4th case (agreement is reported by hand from the two files; the scorer uses the first reviewer's):
          ... label_cases.py --labeller "Second Name" --every 4 --out datasets\\sufficiency_eval\\labels_second.json
 
-Labelling rules are in ``datasets/sufficiency_eval/labelling_guide.md``. Label before you run the scorer; do not look at its output first.
+Labelling rules are in ``datasets/sufficiency_eval/labelling_guide.md`` plus the four rules of ``docs/10_Research/Evaluation/Labelling_Guide_Addendum.md`` (shown at the start of each interactive session; the labels file records which guide was used). Label before you run the scorer; do not look at its output first.
 Only the development split is offered. The held-out split is labelled separately and evaluated once, after the rules are frozen.
 """
 
@@ -33,6 +33,15 @@ sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 from app.modules.evaluation.sufficiency_evaluator import DEFAULT_BASE_DIR, LABELS, load_cases  # noqa: E402
 
 KEYS = {"s": "SUFFICIENT", "l": "LIMITED", "i": "INSUFFICIENT"}
+GUIDE_VERSION = "labelling_guide.md + Labelling_Guide_Addendum.md (2026-11-24)"
+ADDENDUM = """Rules added by the addendum (docs/10_Research/Evaluation/Labelling_Guide_Addendum.md), on top of datasets/sufficiency_eval/labelling_guide.md:
+  1. Repeated observation: a later record of the SAME observation (same host or sensor, event id, event type, action) is a repetition, not corroboration,
+     even if its digest differs. Corroboration needs a different observation.
+  2. Vantage: records seen by the same source type at the same host are ONE witness. Corroboration needs two vantage points somewhere in the chain of
+     specific links around the key event. If a record's source is not stated, do not assume it is the same.
+  3. Placeholder artefacts: an empty, all-zero or repeated-character hash, localhost, a loopback, private or link-local address, or a single-label name is
+     NOT a specific artefact.
+  4. Near-duplicate: same identity and same entities within 2 seconds of each other is one record."""
 SHOWN_ATTRIBUTES = ("Image", "CommandLine", "ParentImage", "TargetFilename", "TargetImage", "SourceImage", "DestinationIp",
                     "DestinationPort", "QueryName", "QueryResults", "Hashes", "User", "TargetObject")
 
@@ -63,7 +72,7 @@ def render_case(case: dict[str, Any]) -> str:
 
 
 def empty_document(labeller: str, second_reviewer: Optional[str]) -> dict[str, Any]:
-    return {"labeller": labeller, "second_reviewer": second_reviewer, "date": date.today().isoformat(), "labels": {}}
+    return {"labeller": labeller, "second_reviewer": second_reviewer, "date": date.today().isoformat(), "guide": GUIDE_VERSION, "labels": {}}
 
 
 def load_document(path: Path, labeller: str, second_reviewer: Optional[str]) -> dict[str, Any]:
@@ -128,6 +137,8 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     offered = [c for i, c in enumerate(cases) if i % max(args.every, 1) == 0]
     todo = [c for c in offered if c["case_id"] not in doc["labels"]]
+    print(ADDENDUM + chr(10))
+    doc.setdefault("guide", GUIDE_VERSION)
     print(f"{len(offered)} cases offered, {len(offered) - len(todo)} already labelled, {len(todo)} to go. Saving to {args.out}.")
     for n, case in enumerate(todo, 1):
         print("\n" + "=" * 100 + f"\n[{n}/{len(todo)}]\n" + render_case(case))

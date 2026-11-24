@@ -62,3 +62,15 @@ def test_only_the_three_allowed_labels_parse():
     assert lc.parse_label(" limited ") == "LIMITED"
     with pytest.raises(ValueError):
         lc.parse_label("probably")
+
+
+def test_the_labels_file_records_which_guide_was_used_and_the_addendum_has_its_four_rules():
+    doc = lc.empty_document("Tester", None)
+    assert doc["guide"] == lc.GUIDE_VERSION and "Addendum" in doc["guide"]
+    for word in ("Repeated observation", "Vantage", "Placeholder artefacts", "Near-duplicate"):
+        assert word in lc.ADDENDUM
+
+
+def test_the_per_case_display_stays_free_of_the_addendum_and_any_verdict():
+    text = lc.render_case(_CASES[0])
+    assert "Repeated observation" not in text and "Vantage" not in text

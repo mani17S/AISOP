@@ -1,6 +1,6 @@
-# Labelling guide addendum (PROPOSED, not applied)
+# Labelling guide addendum (ADOPTED for the owner's labelling, 2026-11-24)
 
-Written 2026-11-24. The owner decides whether to adopt it. `datasets/sufficiency_eval/labelling_guide.md` is covered by the dataset hash manifest and was NOT changed.
+Written 2026-11-24 and adopted the same day on the project owner's "ok go ahead" to the proposal. It applies together with `datasets/sufficiency_eval/labelling_guide.md`, which is covered by the dataset hash manifest and was NOT changed. `backend/evaluation_tools/label_cases.py` prints these four rules at the start of every interactive session and records the guide version in the labels file, so the labels say which rubric they were written under. The owner may reverse this decision before labelling; labels written under the literal guide are a legitimate alternative and should then be reported as such.
 
 ## Why this exists
 A reference implementation of the guide, written only from the guide's text (`backend/evaluation_tools/rubric_oracle.py`), agrees with the gate on all 65 judged development cases (Cohen's kappa 1.000; the 2 built as contradictory are excluded because the oracle cannot read meaning). It disagrees with the gate on the situations the guide does not mention. Run over the 2,250-case synthetic benchmark (final seed), the literal guide calls the following SUFFICIENT although they were built not to be corroborated:

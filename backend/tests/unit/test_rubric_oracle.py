@@ -3,7 +3,7 @@ The rubric oracle (backend/evaluation_tools/rubric_oracle.py) is a reference imp
 
 Pinned: it agrees with the gate on every judged development case; and it disagrees on the situations the guide is silent about (a delayed copy of the
 same observation, records from one vantage, placeholder artefacts), which is exactly the finding recorded in
-docs/10_Research/Evaluation/Labelling_Guide_Addendum_PROPOSED.md. If the guide or the gate changes, these tests say so.
+docs/10_Research/Evaluation/Labelling_Guide_Addendum.md. If the guide or the gate changes, these tests say so.
 """
 
 from __future__ import annotations
