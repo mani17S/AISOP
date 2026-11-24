@@ -1,0 +1,276 @@
+{
+  "labeller": "Manikanta srinivas sariki",
+  "second_reviewer": null,
+  "date": "2026-11-25",
+  "guide": "labelling_guide.md + Labelling_Guide_Addendum.md (2026-11-24)",
+  "labels": {
+    "SUFC-006960ecf5": {
+      "label": "LIMITED",
+      "justification": "Remote-thread creation from a Temp-directory dropper into notepad.exe followed by deletion supports investigation of possible process injection and cleanup, but both observations originate from the same source vantage and lack independent corroboration."
+    },
+    "SUFC-0241b1d0fd": {
+      "label": "LIMITED",
+      "justification": "PowerShell performs file hashing, but the second-sensor network observation is not linked through a specific verifiable shared artefact; the shared documentation-domain indicator does not establish independent corroboration of the root event."
+    },
+    "SUFC-0576545beb": {
+      "label": "LIMITED",
+      "justification": "The Python pytest process is a usable observation, but the second record is a near-duplicate within two seconds and cannot provide independent corroboration; the evidence supports only a bounded investigation."
+    },
+    "SUFC-0712739cbd": {
+      "label": "INSUFFICIENT",
+      "justification": "Single process-creation observation with placeholder digest; no independent corroboration."
+    },
+    "SUFC-09824c2a89": {
+      "label": "INSUFFICIENT",
+      "justification": "Root event is missing; only one DNS query observation exists, with no independent corroboration or validated attack chain."
+    },
+    "SUFC-13f2ae0235": {
+      "label": "LIMITED",
+      "justification": "Root process-creation event is present, but the command line is truncated and lacks corroborating telemetry to establish the purpose or outcome of certutil execution."
+    },
+    "SUFC-1437506b0b": {
+      "label": "LIMITED",
+      "justification": "Only one process-creation observation is available; the command line is incomplete and no corroborating telemetry establishes execution outcome or malicious activity."
+    },
+    "SUFC-157d0fec00": {
+      "label": "SUFFICIENT",
+      "justification": "Correlated PowerShell execution, DNS resolution, outbound connection and creation of a Mimikatz-named executable establish a coherent suspicious activity chain across multiple event types, although all observations originate from the same host/source."
+    },
+    "SUFC-1c89c886fa": {
+      "label": "LIMITED",
+      "justification": "A suspicious DNS query is associated with PowerShell and a simulated C2 domain, but the root event has no independent corroboration and the surrounding three events are omitted."
+    },
+    "SUFC-206ba61c47": {
+      "label": "LIMITED",
+      "justification": "Suspicious executable masquerading as svchost.exe runs from a user-writable AppData directory and listens on port 4444, but the root event is missing and no independent telemetry corroborates its behavior."
+    },
+    "SUFC-2c3ca7c3c7": {
+      "label": "LIMITED",
+      "justification": "PowerShell successfully accessed LSASS, indicating potentially suspicious credential-access activity, but the root event is missing and there is no corroborating evidence of memory dumping or credential extraction."
+    },
+    "SUFC-2c7ef7675d": {
+      "label": "LIMITED",
+      "justification": "Sequential execution of whoami /priv and net group \"Domain Admins\" /domain indicates privilege and domain-group discovery, but three events are omitted and no independent evidence establishes successful privilege escalation or compromise."
+    },
+    "SUFC-2d2fe37af2": {
+      "label": "LIMITED",
+      "justification": "A legitimate-looking pytest process is followed by a network connection associated through a shared domain, but the connection's relationship to the process is not established strongly enough to demonstrate malicious activity."
+    },
+    "SUFC-2f028995a8": {
+      "label": "LIMITED",
+      "justification": "A coherent PowerShell-to-DNS-to-network-to-file-creation sequence is present, but all observations originate from the same host and source, with no independent vantage corroboration."
+    },
+    "SUFC-2fb3867b5d": {
+      "label": "LIMITED",
+      "justification": "Remote-thread creation from a Temp-directory dropper into notepad.exe followed by deletion of the dropper suggests possible process injection and cleanup, but both event digests are placeholders and no independent corroboration is available."
+    },
+    "SUFC-3048c5b46e": {
+      "label": "LIMITED",
+      "justification": "A process-creation event shows command chaining and potential certutil abuse, but the command is incomplete and no independent telemetry confirms download, execution or malicious activity."
+    },
+    "SUFC-30d5a3e322": {
+      "label": "INSUFFICIENT",
+      "justification": "Only one DNS query observation is available, and the resolved IP is a reserved documentation address; no root attack event or independent corroborating telemetry establishes malicious activity."
+    },
+    "SUFC-36d35bf57a": {
+      "label": "INSUFFICIENT",
+      "justification": "A single PowerShell process-creation event shows a potentially legitimate file-integrity check, with no independent corroboration or evidence of malicious activity."
+    },
+    "SUFC-3834784bc6": {
+      "label": "LIMITED",
+      "justification": "Successful PowerShell access to LSASS is a suspicious credential-access indicator, but access rights, memory-read activity and evidence of credential extraction are absent."
+    },
+    "SUFC-38bf376efe": {
+      "label": "LIMITED",
+      "justification": "Sequential execution of whoami /priv and net group Domain Admins /domain by the same user indicates privilege and domain-group discovery, but does not establish privilege escalation or malicious intent."
+    },
+    "SUFC-398f3010e2": {
+      "label": "LIMITED",
+      "justification": "Privilege and domain-group discovery are followed by a network connection observed by a second sensor, but the shared documentation-domain indicator does not establish a specific causal relationship between the discovery commands and the connection.Privilege and domain-group discovery are followed by a network connection observed by a second sensor, but the shared documentation-domain indicator does not establish a specific causal relationship between the discovery commands and the connection."
+    },
+    "SUFC-45160cf9c4": {
+      "label": "LIMITED",
+      "justification": "Hidden encoded PowerShell execution is suspicious, but a same-host, same-event-type failure observation at the same timestamp contradicts the successful execution record and provides no independent corroboration."
+    },
+    "SUFC-45c25ec835": {
+      "label": "LIMITED",
+      "justification": "Two successful process-creation events show privilege and domain-group discovery by the same user, but there is no independent corroboration or evidence of privilege escalation or malicious impact."
+    },
+    "SUFC-4970f3c8aa": {
+      "label": "LIMITED",
+      "justification": "Remote-thread creation from a Temp-directory dropper into notepad.exe is suspicious, but the file deletion occurs 7203.4 seconds later, outside the specified investigation window, so it cannot corroborate the root event."
+    },
+    "SUFC-49fcb6c8bd": {
+      "label": "INSUFFICIENT",
+      "justification": "Only one process-creation observation is present, showing a Python unit-test execution with no suspicious behavior, independent corroboration or evidence of malicious activity."
+    },
+    "SUFC-506d8fc6ca": {
+      "label": "INSUFFICIENT",
+      "justification": "Only one process-creation observation is present, showing a Python unit-test execution with no suspicious behavior, independent corroboration or evidence of malicious activity."
+    },
+    "SUFC-5870b9cbf8": {
+      "label": "INSUFFICIENT",
+      "justification": "The only DNS observation has an all-zero placeholder event digest, and the resolved IP is a reserved documentation address; no independent corroboration establishes malicious communication."
+    },
+    "SUFC-5b69c786d3": {
+      "label": "INSUFFICIENT",
+      "justification": "The only process-creation observation has an all-zero placeholder event digest; although hidden encoded PowerShell is suspicious, no independent telemetry corroborates successful script retrieval, execution or malicious impact."
+    },
+    "SUFC-5e862d4628": {
+      "label": "INSUFFICIENT",
+      "justification": "Only one process-creation event shows execution of whoami /priv, a legitimate Windows privilege-enumeration command, without independent corroboration or evidence of malicious activity."
+    },
+    "SUFC-6759a6a9b6": {
+      "label": "LIMITED",
+      "justification": "A suspicious certutil-related command is followed by a network connection observed by a second sensor, but the command is incomplete and the documentation-reserved domain and IP do not establish a specific malicious download relationship."
+    },
+    "SUFC-67f01593e6": {
+      "label": "INSUFFICIENT",
+      "justification": "The WMIC command performs legitimate installed-update enumeration and is launched by a Microsoft Endpoint Manager agent under SYSTEM; unrelated events from another host do not corroborate malicious activity."
+    },
+    "SUFC-6bd63742ef": {
+      "label": "INSUFFICIENT",
+      "justification": "The only observation has an all-zero placeholder digest and shows WMIC performing legitimate Windows patch enumeration under the Microsoft Endpoint Manager agent, with no independent corroboration."
+    },
+    "SUFC-765130a1c5": {
+      "label": "LIMITED",
+      "justification": "A PowerShell DNS query is followed by an outbound connection observed by a second sensor, providing independent network visibility, but the connection is associated through documentation-reserved correlation artefacts rather than a validated destination match."
+    },
+    "SUFC-7f992045d2": {
+      "label": "INSUFFICIENT",
+      "justification": "Single process-creation observation with an all-zero placeholder digest; Python pytest execution shows no suspicious behavior or independent corroboration."
+    },
+    "SUFC-7feb929d4d": {
+      "label": "LIMITED",
+      "justification": "The root event is missing and the only supplied observation is hidden encoded PowerShell; although suspicious, missing anchor provenance and absent independent corroboration limit the investigation."
+    },
+    "SUFC-935af28672": {
+      "label": "LIMITED",
+      "justification": "Suspicious svchost.exe masquerading from a user-writable AppData directory with a listener argument, but no independent telemetry confirms socket creation or malicious activity."
+    },
+    "SUFC-9495b34f31": {
+      "label": "LIMITED",
+      "justification": "A suspicious svchost.exe masquerading process runs from a user-writable AppData directory with a listener argument, but the observation occurs 7201 seconds outside the requested investigation window and cannot establish evidence for the root event."
+    },
+    "SUFC-a00f225d01": {
+      "label": "SUFFICIENT",
+      "justification": "A coherent sequence links encoded PowerShell execution, DNS resolution, a connection to the resolved IP, and creation of a Mimikatz-named executable, with an additional network observation from a second sensor supporting the investigation chain."
+    },
+    "SUFC-a20bc722aa": {
+      "label": "LIMITED",
+      "justification": "A svchost.exe masquerading process executes from a user-writable AppData directory with a listener argument, indicating possible backdoor activity, but only one process-creation observation is available without independent corroboration."
+    },
+    "SUFC-a269adb6d8": {
+      "label": "INSUFFICIENT",
+      "justification": "Both records are exact duplicates with the same host, event type, action, timestamp and digest; they represent one observation, not independent corroboration, and no successful certutil download is established."
+    },
+    "SUFC-a3f399f110": {
+      "label": "INSUFFICIENT",
+      "justification": "The root event shows legitimate WMIC patch enumeration launched by Microsoft Endpoint Manager, while the second-sensor network observation is linked only through documentation-reserved artefacts and does not corroborate malicious activity."
+    },
+    "SUFC-a6793d6112": {
+      "label": "LIMITED",
+      "justification": "PowerShell successfully accesses LSASS, indicating potential credential-access activity, and a second sensor observes network activity; however, the documentation-reserved correlation artefacts do not establish that the connection is related to LSASS access or credential extraction."
+    },
+    "SUFC-a877a8710e": {
+      "label": "INSUFFICIENT",
+      "justification": "The two PowerShell records have the same command, host, parent process, user and event type within 0.5 seconds, so they represent one near-duplicate observation rather than independent corroboration; no suspicious follow-on activity is shown."
+    },
+    "SUFC-ac403c3007": {
+      "label": "INSUFFICIENT",
+      "justification": "The only evidence is a PowerShell-to-LSASS process-access event with an all-zero placeholder digest; without access rights, memory-read details, dump-file evidence or independent corroboration, credential theft cannot be established."
+    },
+    "SUFC-ad1b4ff7bc": {
+      "label": "LIMITED",
+      "justification": "The sequence of whoami /priv followed by Domain Admins group enumeration indicates possible privilege and domain reconnaissance, but both events have placeholder digests, originate from the same host and vantage, and provide no evidence of privilege escalation or subsequent malicious activity."
+    },
+    "SUFC-af8f4db446": {
+      "label": "LIMITED",
+      "justification": "Hidden, non-interactive encoded PowerShell is suspicious, but the command is truncated and no independent corroboration or follow-on telemetry establishes its payload or behavior."
+    },
+    "SUFC-b31ada1d28": {
+      "label": "LIMITED",
+      "justification": "A successful remote-thread creation from a Temp-directory dropper.exe into notepad.exe is suspicious process-injection behavior, but the case contains only one observation with no independent corroboration, payload evidence or follow-on activity."
+    },
+    "SUFC-bdf1248619": {
+      "label": "INSUFFICIENT",
+      "justification": "The only observation is a Python process running pytest unit tests, which is consistent with legitimate software development activity; the root event is missing and there is no suspicious behavior or independent corroboration."
+    },
+    "SUFC-c2961fe492": {
+      "label": "INSUFFICIENT",
+      "justification": "WMIC is executing a Windows hotfix inventory query under SYSTEM through the Microsoft Endpoint Manager agent, which is consistent with legitimate patch-management activity; no suspicious behavior or corroborating evidence is present."
+    },
+    "SUFC-cba9e6bf5f": {
+      "label": "LIMITED",
+      "justification": "The command invokes certutil -url, which can be abused to retrieve remote content, but the process-creation event alone does not establish a successful download, execution or malicious payload, and the root event is missing."
+    },
+    "SUFC-cc23535d9c": {
+      "label": "INSUFFICIENT",
+      "justification": "The single process-creation event contains a potentially suspicious certutil -url invocation, but its all-zero digest is a placeholder and there is no URL, network connection, downloaded-file evidence or independent corroboration."
+    },
+    "SUFC-cd3c853867": {
+      "label": "LIMITED",
+      "justification": "A process named svchost.exe executing from a user-writable AppData directory with a -listen 4444 argument is suspicious and consistent with possible masquerading and backdoor behavior, but no listening-socket telemetry, network activity or independent corroboration establishes its function."
+    },
+    "SUFC-d0fb7123ad": {
+      "label": "INSUFFICIENT",
+      "justification": "No events or entity evidence are available in the requested time window, so there is no observable activity to support the root event or establish an attack chain."
+    },
+    "SUFC-d6f621ca0d": {
+      "label": "INSUFFICIENT",
+      "justification": "The only supplied event occurs at 7201 seconds, outside the requested -1 to +1 second window, so there is no valid in-window evidence to assess the root event."
+    },
+    "SUFC-d96a050599": {
+      "label": "LIMITED",
+      "justification": "The certutil -url invocation is potentially suspicious because certutil can retrieve remote content, but the success and failure records describe the same command on the same host at the same timestamp and do not provide independent corroboration or prove a successful download."
+    },
+    "SUFC-d9dbfe7f95": {
+      "label": "INSUFFICIENT",
+      "justification": "The only observed event is WMIC hotfix enumeration launched by the Microsoft Endpoint Manager agent under SYSTEM, consistent with legitimate patch-management activity; the investigation root is missing and no suspicious behavior or corroborating evidence is present."
+    },
+    "SUFC-da01e0c585": {
+      "label": "INSUFFICIENT",
+      "justification": "The single event shows Python executing pytest unit tests from a user-installed Python environment, consistent with legitimate software development; no suspicious activity or independent corroboration is present."
+    },
+    "SUFC-dee617f80d": {
+      "label": "LIMITED",
+      "justification": "The svchost.exe process running from a user-writable AppData directory with a -listen 4444 argument is suspicious, and a second sensor provides independent network telemetry; however, the generic outbound connection lacks process-level attribution and does not establish that the suspicious process communicated over the network."
+    },
+    "SUFC-e2b19f7a9d": {
+      "label": "LIMITED",
+      "justification": "Hidden, non-interactive, encoded PowerShell launched from explorer.exe is suspicious and the encoded command appears to begin with an IEX and Net.WebClient download pattern, but no decoded payload, network connection, file creation or independent corroboration is provided."
+    },
+    "SUFC-e33da38910": {
+      "label": "INSUFFICIENT",
+      "justification": "The only event shows PowerShell calculating a SHA-256 hash of a driver file, which is consistent with legitimate file-integrity verification; no malicious behavior or independent corroboration is present."
+    },
+    "SUFC-e85191c495": {
+      "label": "LIMITED",
+      "justification": "Hidden encoded PowerShell is followed by DNS resolution, a connection to the resolved IP and creation of mimikatz.exe, forming a suspicious attack sequence; however, all event digests are zero placeholders, all observations come from one source vantage, and the destination is a TEST-NET-2 address."
+    },
+    "SUFC-e8de72ca3a": {
+      "label": "LIMITED",
+      "justification": "Hidden, non-interactive, encoded PowerShell with an apparent IEX and Net.WebClient pattern is suspicious, but the two records have identical digests and represent one observation rather than independent corroboration; no network, payload or file-execution evidence is supplied."
+    },
+    "SUFC-ebc6e27f8e": {
+      "label": "LIMITED",
+      "justification": "A Temp-directory dropper successfully creates a remote thread in notepad.exe and is deleted 2.4 seconds later, forming a suspicious process-injection and cleanup sequence; however, both observations originate from the same source vantage, with no independent corroboration or evidence of the injected payload's execution."
+    },
+    "SUFC-ee72347d7b": {
+      "label": "LIMITED",
+      "justification": "A svchost.exe process executing from the user-writable AppData directory with a -listen 4444 argument is suspicious for process masquerading and possible backdoor activity; however, the event digest is an all-zero placeholder and no listening socket, network activity or independent corroboration is provided."
+    },
+    "SUFC-f3ec4eee5f": {
+      "label": "INSUFFICIENT",
+      "justification": "The only event shows an administrator running PowerShell Get-FileHash against a network driver, consistent with file-integrity verification; the investigation root is missing and no suspicious follow-on activity or independent corroboration is present."
+    },
+    "SUFC-fc4d9b179d": {
+      "label": "LIMITED",
+      "justification": "Hidden, non-interactive, encoded PowerShell with an apparent IEX and Net.WebClient pattern is suspicious, and a second sensor provides independent network evidence; however, the shared .example domain is a documentation placeholder and the generic connection lacks sufficient process-level attribution to establish that PowerShell initiated it."
+    },
+    "SUFC-fed0d31c7b": {
+      "label": "LIMITED",
+      "justification": "Hidden, non-interactive, encoded PowerShell launched from explorer.exe is suspicious and warrants investigation, but the truncated command provides insufficient detail to establish its payload or behavior, and no network, file-creation or independent corroborating evidence is present."
+    }
+  }
+}

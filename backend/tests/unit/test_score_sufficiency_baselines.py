@@ -70,9 +70,15 @@ def test_agreement_counts_are_label_independent():
     assert c["B0_sufficient_AISOP_not"] == 1 and c["B1_sufficient_AISOP_not"] == 0
 
 
-def test_labels_template_is_empty_and_labels_json_absent():
+def test_labels_template_is_empty_and_any_labels_file_is_human_attributed():
     base = sc.DEFAULT_BASE_DIR
-    assert not (base / "labels.json").exists()          # the script never invents labels
+    labels_path = base / "labels.json"
+    if labels_path.exists():                            # owner labels may exist; the scripts still never create them
+        import json
+        doc = json.loads(labels_path.read_text(encoding="utf-8"))
+        dev_ids = {p.stem for p in (base / "dev" / "cases").glob("*.json")}
+        assert str(doc.get("labeller", "")).strip(), "labels must name the human who wrote them"
+        assert set(doc["labels"]) <= dev_ids and all(v["label"] in ("SUFFICIENT", "LIMITED", "INSUFFICIENT") for v in doc["labels"].values())
     import csv
     with (base / "labels_template.csv").open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
