@@ -101,6 +101,8 @@ Under each claim a separate **Verification** line says whether its listed assert
 
 ## 6. ATT&CK mapping
 
+**Triage an export without the web application.** `backend/scripts/triage_file.py <file> --out <folder>` reads a JSON-lines file or a JSON array and writes `summary.md` (counts, verdict mix, techniques the rules derived, what telemetry is missing, what would raise confidence, rule versions, input hash) plus one report per incident, using the same deterministic workflow as the product and no database, model or network. It refuses more than 5,000 records unless told otherwise (correlation time grows faster than linearly), so split large exports by host or time window. Which logging each rule needs is in `docs/10_Research/Detection_Coverage_and_Telemetry.md`.
+
 The Multi-source ATT&CK table lists techniques derived by explicit, versioned rules in three tables (`attack-map-v1`, six rules per ADR-009; `domain-attack-v1`, seven rules; `endpoint-attack-v1`, 39 rules over process command lines and typed Sysmon or Windows Security fields, added 2026-11-24). A command-line rule proves the command was run, not who ran it or why; read the rule's limitation on each row. Each row shows the technique, tactics, the rule id, the independent evidence count, whether a source also asserted it, and the rule's limitation. Techniques a source asserted that no rule derived appear separately as "asserted but NOT derived (unverified)". They are not mappings.
 
 **To challenge a mapping**

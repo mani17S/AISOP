@@ -24,7 +24,7 @@ Sanitise before export (remove customer identifiers, secrets and personal data n
 | Week | Work | Output |
 |---|---|---|
 | 0 | Approvals: scope, data rules, access, measures, stop conditions | Signed one-page charter |
-| 1 | Set up on a company machine; ingest a first small export; confirm the adapters accept the real formats | Acceptance rate per source; any parsing defects listed |
+| 1 | Set up on a company machine; ingest a first small export (the offline tool `backend/scripts/triage_file.py` does this from one file with no database: it prints records accepted and rejected and writes the reports); confirm the adapters accept the real formats; check the company's logging against `docs/10_Research/Detection_Coverage_and_Telemetry.md` (which events each rule needs) | Acceptance rate per source; any parsing defects listed; a list of rules that cannot fire because the telemetry is not collected |
 | 2 | Ingest the pilot data set (about 100 to 300 incidents' worth); fix only parsing defects, not rules | Frozen configuration and rule version |
 | 3 to 5 | Shadow mode: for each incident record analyst minutes with and without the AISOP summary, the analyst's own conclusion, and AISOP's verdict | Pilot log |
 | 5 | Independent reviewer labels a sample (at least 25%) without seeing AISOP output | Labels and agreement |
