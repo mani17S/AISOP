@@ -15,7 +15,7 @@ A language model is then an optional layer on top: its output is checked claim b
 |---|---|
 | Building the pipeline (ingest, correlate, timeline, rules, report, UI) | Engineering. Implemented and tested on synthetic data. |
 | Several ideas are adapted from public projects (see `docs/10_Research/AiSOC_Adaptation_Register.md`) | Acknowledged. The combination is an applied integration, not a new algorithm. |
-| "Independence and abstention rules reduce unsupported conclusions" | A testable hypothesis. **Not yet tested**: no labels, no baseline comparison, no held-out run (see `docs/10_Research/Evaluation.md`). |
+| "Independence and abstention rules reduce unsupported conclusions" | A testable hypothesis. **Partly tested, weakly** (development split only, 2026-11-25): false-sufficient 15.4 % for the gate against 41.5 % and 33.8 % for the naive baselines, but the owner's labels contain only 2 SUFFICIENT cases and an AI second reviewer agreed with them on just 35 %; no held-out run, no human second reviewer (see `docs/10_Research/Evaluation.md`). |
 | Novelty compared with the literature or other products | **Unknown.** Requires the literature and product review that has not been done. |
 
 ## Update 2026-11-23

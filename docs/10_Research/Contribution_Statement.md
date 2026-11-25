@@ -28,7 +28,7 @@ This is an applied combination. Each ingredient has precedent (see `Literature_R
 
 ## What the ablation says about the contribution (stated without spin)
 - The **duplicate clustering** is the rule that removes the rule-breaking (B3 and B4 break none; B2 still breaks 23). That is the part of the design that earns its place.
-- On these 67 cases the SUFFICIENT boundary is reproduced exactly by four simple rules. So the full gate's extra machinery (LIMITED tier, provenance, contradictions, truncation, root event) does **not** change which cases are SUFFICIENT here. Its extra effect is on the other side: it splits the non-sufficient cases into LIMITED (52) and INSUFFICIENT (4). Whether that split is correct is the open question that the owner labels are needed to answer.
+- On these 67 cases the SUFFICIENT boundary is reproduced exactly by four simple rules. So the full gate's extra machinery (LIMITED tier, provenance, contradictions, truncation, root event) does **not** change which cases are SUFFICIENT here. Its extra effect is on the other side: it splits the non-sufficient cases into LIMITED (52) and INSUFFICIENT (4). Whether that split is correct is the open question; the owner labels written on 2026-11-25 did not settle it: the owner labelled 25 of the 67 cases INSUFFICIENT where the gate says LIMITED (21) or SUFFICIENT (2), and an AI second reviewer agreed with the owner on only 6 of 17 cases (kappa 0.07), so the labels are not yet reliable ground truth (`Evaluation/Stage5_Evaluation_Report.md` section 8).
 - B4 is an approximation of one gate rule, not the gate; the arms measure behaviour, not correctness.
 
 ## What is NOT shown
@@ -44,7 +44,7 @@ H1: on the fixed scenarios the gate gives a lower false-sufficient rate than the
 | Labelling rubric restates the gate's own rule | Agreement with labels may be high by construction | Say so; compare against B0 to B4 on the same labels |
 | Synthetic, small, uneven scenario families | No prevalence, wide intervals | Wilson intervals; no generalisation claim |
 | Metamorphic relations restate the project's invariants | Zero violations shows fidelity, not correctness | Present as property testing only |
-| The benchmark's truth is built from the same definition of independence the gate implements | 1.000 shows conformance under noise, not that the definition is right | Say so; the owner labels are the independent check |
+| The benchmark's truth is built from the same definition of independence the gate implements | 1.000 shows conformance under noise, not that the definition is right | Say so; the owner labels are the independent check, and they disagree with the gate on half the cases (49.3 % agreement) while a second reviewer disagrees with them, so neither side is settled |
 | Vantage is coarse (source type at a host) | Two sensor instances of one type at one host count as one witness | Disclosed in ADR-017 |
 | The vantage rule was designed from a real-data finding and then checked on the same data | Demonstrates the mechanism; not independent validation | Say so; needs labels and a second dataset |
 | Rule table renamed `suff-v5` on 2026-11-24 | Results from before are labelled `suff-v4` | The version is in the evidence fingerprint, so older stored results recompute |

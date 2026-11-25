@@ -22,16 +22,16 @@ B0 naive correlation (any two records sharing an entity corroborate); B1 B0 plus
 | Datasets: 115 derived sufficiency cases (67 development, 48 held-out) from hand-authored scenarios, hash-locked; 20 ground-truth scenarios | Exist. **Synthetic and author-built**; nothing is real telemetry. | `docs/10_Research/Evaluation/Stage5_Evaluation_Report.md` |
 | Label-independent behaviour on the development split (rule `suff-v3`) | **Run (2026-11-12).** Verdicts: 11 sufficient, 52 limited, 4 insufficient; evidence references valid 67 of 67; the 4 insufficient cases made no model call. These are behaviour figures, **not accuracy**. | same report |
 | Adversarial corroboration tests (duplicates, replays, weak links, hostile text) | **Run**, in the unit suite (3,166 passed, 1 skipped on the last recorded run). They show rule behaviour on constructed inputs, not how often the rules are right on real incidents. | `D:\AISOP-Backups\AISOP_Verify_Logs\20261121_115313\unit.log` |
-| Owner labels for the cases (`labels.json`) | **Not written.** Accuracy, error rates and agreement are therefore not computed. | Stage 5 report |
-| Baselines B0 and B1 | **Implemented (2026-11-21)** as pure functions with tests (`backend/app/modules/evaluation/baselines.py`); the rule is fixed and was not tuned. **Behaviour on the development split only** (67 cases): B0 says SUFFICIENT for 29, B1 for 24, AISOP for 11. This shows the baselines are more permissive; it does **not** show who is right, because no labels exist. Held-out not run. | `D:AISOP-BackupsAISOP_Dev_Logs_20261120day6b_baseline_dev_behaviour.json` |
+| Owner labels for the cases | **Development split written by the owner 2026-11-25** (67 of 67: LIMITED 40, INSUFFICIENT 25, SUFFICIENT 2; frozen). Held-out: not written. Result: the gate agrees with the labels on 49.3 % of cases; see the 2026-11-25 section below and Stage 5 report section 8. | Stage 5 report |
+| Baselines B0 and B1 | **Implemented (2026-11-21)** as pure functions with tests (`backend/app/modules/evaluation/baselines.py`); the rule is fixed and was not tuned. **Behaviour on the development split only** (67 cases): B0 says SUFFICIENT for 29, B1 for 24, AISOP for 11. This shows the baselines are more permissive. Against the owner's development labels (2026-11-25): false-SUFFICIENT rate B0 41.5 %, B1 33.8 %, AISOP 15.4 % (section below, with its limits). Held-out not run. | `D:AISOP-BackupsAISOP_Dev_Logs_20261120day6b_baseline_dev_behaviour.json` |
 | Held-out split | **Never run.** | Stage 5 report |
-| Second reviewer / agreement | **None.** | Stage 5 report |
+| Second reviewer / agreement | **No human second reviewer.** An AI reviewer labelled 17 cases (2026-11-25) and agreed with the owner on 6 (35 %, weighted kappa 0.07). It is disclosed as an AI reviewer and is not an independent human check. | Stage 5 report section 8 |
 | Captured language-model benchmark (19 approved scenarios) | **10 of 19 have captured outputs** from `llama3.1:8b` (captured 2026-11-09, before the gate and claim-checking layers); the report was regenerated 2026-11-23 (it previously read "0 of 19" because it predated the captures). Raw model result: MITRE macro F1 0.00 on 10 scenarios; 2 of 2 measured benign scenarios received a false technique; IOC extraction F1 0.31; JSON and schema validity 100%. This scores the model's raw output, not the product's validated output, and not the 1.5B model used in the demo. | `docs/04_Testing/AI_Model_Benchmark_Report.md` |
 | Reliability checks (not part of H1) | Run: 38 passed on PostgreSQL, 3 not executable live. | `day4_r01_r12_pg_matrix.json` |
 
 ## Next steps, in order
-1. Label the development cases (and a second reviewer for a subset).
-2. ~~Implement B0 and B1~~ done (see the table). Compute their false-sufficient rate once labels exist.
+1. ~~Label the development cases~~ done by the owner 2026-11-25. Still open: a **human** second reviewer for a subset (the AI pass is not a substitute).
+2. ~~Implement B0 and B1~~ done; ~~compute their false-sufficient rate~~ done on development (below).
 3. Run development, then the held-out split once, and report every result with its confidence interval and the failure cases.
 4. Only then call the hypothesis supported, unsupported or inconclusive.
 
@@ -39,7 +39,7 @@ B0 naive correlation (any two records sharing an entity corroborate); B1 B0 plus
 Synthetic, author-built data; the author also wrote the rules and the labels; small sample; scenario families are uneven (the held-out split lacks some independence cases); no real-world prevalence.
 
 ## 2026-11-22: scoring script and development-split run (label-independent)
-Added `backend/evaluation_tools/score_sufficiency_baselines.py (kept outside backend/scripts so that production-reachable code never imports the evaluator)` (runs B0, B1 and the AISOP gate, rule `suff-v4`, on one split; held-out only with an explicit `--held-out` flag and a run-once warning; computes false-sufficient rate with a 95% Wilson interval and abstention rate only if `datasets/sufficiency_eval/labels.json` exists, schema in the script docstring) and `datasets/sufficiency_eval/labels_template.csv` (67 development rows, label and notes columns empty). Tests: `backend/tests/unit/test_score_sufficiency_baselines.py` (7 tests; with `test_evaluation_baselines.py`, 12 passed). `labels.json` does not exist; no label was written by anyone.
+Added `backend/evaluation_tools/score_sufficiency_baselines.py (kept outside backend/scripts so that production-reachable code never imports the evaluator)` (runs B0, B1 and the AISOP gate, rule `suff-v4`, on one split; held-out only with an explicit `--held-out` flag and a run-once warning; computes false-sufficient rate with a 95% Wilson interval and abstention rate only if `datasets/sufficiency_eval/labels.json` exists, schema in the script docstring) and `datasets/sufficiency_eval/labels_template.csv` (67 development rows, label and notes columns empty). Tests: `backend/tests/unit/test_score_sufficiency_baselines.py` (7 tests; with `test_evaluation_baselines.py`, 12 passed). (As of 2026-11-22 `labels.json` did not exist; the owner wrote the development labels on 2026-11-25, see below.)
 
 Run on the development split (67 cases, manifest verified), per-case verdicts in `D:\AISOP-Backups\AISOP_Dev_Logs\20261122_sufficiency_baselines\verdicts_dev.csv`:
 
@@ -50,6 +50,20 @@ Run on the development split (67 cases, manifest verified), per-case verdicts in
 | AISOP (suff-v4) | 11 | 52 | 4 |
 
 Agreement counts: B0 SUFFICIENT where AISOP is not, 18; B1 SUFFICIENT where AISOP is not, 13; AISOP SUFFICIENT where B0 or B1 is not, 0 and 0; verdict identical to AISOP, 15 for B0 and 15 for B1; B0 equals B1 on 62 cases. These are behaviour counts, not accuracy: with no labels they do not show which arm is right, and false-sufficient rate against labels is not computed. Held-out split not run.
+
+## 2026-11-25: first scoring against the owner's development labels
+Development split only (67 cases); held-out not run, not labelled. Labels, gate and thresholds were not changed after the scores were seen. Per-case verdicts: `D:\AISOP-Backups\AISOP_Dev_Logs\20261125_sufficiency_baselines_owner_labels\verdicts_dev.csv`.
+
+| Arm | False-SUFFICIENT (of 65 cases not labelled SUFFICIENT) | Rate (Wilson 95 %) | Predicted INSUFFICIENT |
+|---|---|---|---|
+| B0 naive | 27 | 41.5 % (30.4 to 53.7) | 38 |
+| B1 B0 + exact-duplicate removal | 22 | 33.8 % (23.5 to 46.0) | 43 |
+| AISOP gate | 10 | 15.4 % (8.6 to 26.1) | 4 |
+
+* Direction: AISOP's false-SUFFICIENT rate is below both baselines on this split, so H1 is **not falsified here**. The intervals for B1 and AISOP overlap slightly (23.5 to 26.1), the sample is 67 synthetic author-built cases, and the split is the one the rules were developed against.
+* A limit that matters: the owner labelled only 2 cases SUFFICIENT. For nearly every case "false-SUFFICIENT" therefore reduces to "said SUFFICIENT at all", so this metric rewards saying SUFFICIENT rarely and says almost nothing about saying it correctly. Do not quote it as accuracy.
+* Gate accuracy against the same labels is 49.3 % (33 of 67), mostly because the owner labelled 25 cases INSUFFICIENT where the gate says LIMITED (21 cases) or SUFFICIENT (2). An AI second reviewer agreed with the owner on only 6 of 17 cases (weighted kappa 0.07), so the labels are not yet shown to be reliable ground truth. Details and the confusion matrix: `docs/10_Research/Evaluation/Stage5_Evaluation_Report.md` section 8.
+* Not established: held-out performance, human inter-reviewer agreement, which of the owner and the guide-based reading is right on INSUFFICIENT versus LIMITED, any real-world accuracy.
 
 ## 2026-11-23: label-free evidence added (metamorphic tests, ATT&CK scoring, real-format ingestion)
 These are measurements that need no owner labels. None of them is an accuracy figure for the gate; the labelled experiment above is still required for that.

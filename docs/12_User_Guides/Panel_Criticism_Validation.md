@@ -11,7 +11,7 @@ Purpose: for each criticism the panel raised, what was re-checked today, the com
 | Frontend | `npm run typecheck`, `npm test`, `npm run build` in `frontend/` | typecheck clean, 290 of 290 tests, build succeeded |
 | npm advisories | `npm audit --omit=dev`, `npm audit` | 0 in what ships; 2 (1 moderate, 1 high) in the dev-server toolchain (vite, esbuild), not part of the build |
 | Alert adapters | `get_default_registry().list_adapters()` | 8 registered |
-| Baselines on the development split | `backend/evaluation_tools/score_sufficiency_baselines.py` | B0 sufficient 29, B1 24, AISOP 11, of 67. No labels exist, so no accuracy |
+| Baselines on the development split | `backend/evaluation_tools/score_sufficiency_baselines.py` | B0 sufficient 29, B1 24, AISOP 11, of 67. Against the owner's development labels (2026-11-25) false-sufficient: B0 41.5 %, B1 33.8 %, AISOP 15.4 %; gate accuracy 49.3 % |
 | Licence scan | package metadata of the 72 installed Python distributions and the frontend dependencies | see the last section |
 
 ## The five criticisms
@@ -19,7 +19,7 @@ Purpose: for each criticism the panel raised, what was re-checked today, the com
 ### 1. Lack of research novelty: PARTLY ADDRESSED, NOT CLEARED
 - Done: a 15-source literature and product review (`docs/10_Research/Literature_Review.md`), a stated and falsifiable hypothesis (`docs/10_Research/Evaluation.md`), baselines implemented and scored, and novelty wording limited to what the sources support.
 - Finding: each ingredient has precedent (abstention on insufficient context, discounting dependent sources, claim verification). The deterministic, fail-closed combination for SOC evidence was not found in the pages read. That is a limited search, not proof of absence.
-- Not proven: whether the gate gives fewer false-sufficient conclusions than the baselines. The 67 development cases have no labels, so only stricter-than-baseline behaviour (29 and 24 against 11 sufficient) is shown. Three key papers were read only in part.
+- Not proven: whether the gate gives fewer false-sufficient conclusions than the baselines. On the 67 development cases the owner's labels give a false-sufficient rate of 15.4 % for the gate against 41.5 % (B0) and 33.8 % (B1), but only 2 cases are labelled SUFFICIENT and an AI second reviewer agreed with the owner on just 6 of 17, so this is weak, development-only evidence; held-out is not run. Three key papers were read only in part.
 - Needs the owner: label the cases (`datasets/sufficiency_eval/labels_template.csv`), then run the scorer. A model must not write these labels, because the result would then measure the model against itself.
 
 ### 2. Weak SOC architecture understanding: ADDRESSED IN DOCUMENTS, NEEDS THE OWNER'S EXPLANATION
