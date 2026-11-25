@@ -1,0 +1,4 @@
+# Evaluation datasets are evidence: store and check out byte-for-byte (no line-ending conversion).
+# datasets/sufficiency_eval/MANIFEST.sha256 and dev/labels.freeze.txt record SHA-256 hashes of these exact bytes;
+# with core.autocrlf=true a fresh Windows clone otherwise rewrites every file to CRLF and the hash lock fails.
+datasets/** -text
