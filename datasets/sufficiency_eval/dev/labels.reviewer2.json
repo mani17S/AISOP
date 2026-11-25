@@ -1,0 +1,76 @@
+{
+  "labeller": "Claude AI reviewer",
+  "second_reviewer": null,
+  "date": "2026-11-25",
+  "guide": "labelling_guide.md + Labelling_Guide_Addendum.md (2026-11-24)",
+  "labels": {
+    "SUFC-006960ecf5": {
+      "label": "LIMITED",
+      "justification": "Root create_remote_thread (e0) and later file_delete (e1) share only host, user and process name dropper.exe; the hash and file path are on e1 only, so no specific artefact links e0 to e1; the unrelated-host events are irrelevant."
+    },
+    "SUFC-09824c2a89": {
+      "label": "LIMITED",
+      "justification": "Root event key does not exist in the evidence (anchor missing); one dns_query on the target host inside the window, uncorroborated, so only a bounded investigation is possible."
+    },
+    "SUFC-1c89c886fa": {
+      "label": "LIMITED",
+      "justification": "Single uncorroborated dns_query (c2.apt-simulated.org) and 3 events omitted by budget truncation, so the picture is incomplete."
+    },
+    "SUFC-2d2fe37af2": {
+      "label": "SUFFICIENT",
+      "justification": "Root process_creation has a distinct-digest network_connection 30s later linked by a specific multi-label domain; the stated second sensor and different event type make it a separate observation. Corroboration rests on the summary's second-sensor statement."
+    },
+    "SUFC-30d5a3e322": {
+      "label": "LIMITED",
+      "justification": "One dns_query with a verifiable digest and no second observation; the domain and IP appear only on the root event, so the key event is uncorroborated."
+    },
+    "SUFC-398f3010e2": {
+      "label": "SUFFICIENT",
+      "justification": "Distinct-digest network_connection from a second sensor at 34.2s shares a specific domain with root e0; the recon commands (e0, e1) are intact with provenance. Second-sensor status comes from the summary text."
+    },
+    "SUFC-49fcb6c8bd": {
+      "label": "LIMITED",
+      "justification": "Single process_creation with provenance and no other observation; nothing corroborates the key event."
+    },
+    "SUFC-5e862d4628": {
+      "label": "LIMITED",
+      "justification": "Single process_creation (whoami /priv) with a verifiable digest and no other record, so it is uncorroborated."
+    },
+    "SUFC-765130a1c5": {
+      "label": "SUFFICIENT",
+      "justification": "dns_query root is joined to a different-digest network_connection from a second sensor 30s later by a specific shared domain, with intact provenance on both records."
+    },
+    "SUFC-9495b34f31": {
+      "label": "LIMITED",
+      "justification": "Single uncorroborated process_creation whose timestamp (7201s) falls far outside the stated window; the file hash entity has no corresponding record, so only a bounded view is possible."
+    },
+    "SUFC-a3f399f110": {
+      "label": "SUFFICIENT",
+      "justification": "Root wmic process_creation and a distinct-digest network_connection from a second sensor share a specific multi-label domain; provenance is present on both records."
+    },
+    "SUFC-ad1b4ff7bc": {
+      "label": "LIMITED",
+      "justification": "Both events carry an all-zero digest, so the raw evidence is not verifiable, and e0 and e1 are linked only by host, user and parent process; there is no corroboration."
+    },
+    "SUFC-c2961fe492": {
+      "label": "LIMITED",
+      "justification": "Single wmic process_creation with a verifiable digest and no corroborating record."
+    },
+    "SUFC-d0fb7123ad": {
+      "label": "INSUFFICIENT",
+      "justification": "The case contains no events or entities at all, so nothing can support the question and the analyst must supply evidence."
+    },
+    "SUFC-da01e0c585": {
+      "label": "LIMITED",
+      "justification": "Single uncorroborated process_creation; the injected instruction text in the summary is untrusted data and was ignored."
+    },
+    "SUFC-e85191c495": {
+      "label": "LIMITED",
+      "justification": "A coherent chain with a shared public IP (e1 and e2) and a file hash on e3, but every digest is all-zero so none of it is tied to verifiable raw evidence; all records come from the same host source and e0 links only generically."
+    },
+    "SUFC-f3ec4eee5f": {
+      "label": "LIMITED",
+      "justification": "Root event key does not exist (anchor missing); a single uncorroborated process_creation on the target host is the only evidence, and its embedded empty-file hash is not a usable artefact."
+    }
+  }
+}
