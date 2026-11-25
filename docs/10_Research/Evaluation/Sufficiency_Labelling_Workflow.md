@@ -25,5 +25,9 @@ Status: dataset IMPLEMENTED (115 hash-locked cases in `datasets/sufficiency_eval
 * Note the two filenames: the second reviewer's file is `dev/labels.reviewer2.json`, and `label_cases.py --every 4 --out datasets\sufficiency_eval\dev\labels.reviewer2.json` produces it.
 * The evaluation was run after the labels were frozen and was not repeated with any change. A re-label after seeing the scores would not be blind.
 
+## 2c. After a fresh clone
+* The dataset is stored byte-for-byte (`.gitattributes`: `datasets/** -text`), so `MANIFEST.sha256` and `dev/labels.freeze.txt` verify on any clone.
+* Git cannot store the read-only attribute that the dataset builder sets on the case files, and `test_case_files_are_read_only_on_disk` checks it. After cloning, run `attrib +R datasets\sufficiency_eval\dev\cases\*.json datasets\sufficiency_eval\heldout\cases\*.json` (PowerShell: `Get-ChildItem datasets\sufficiency_eval\dev\cases,datasets\sufficiency_eval\heldout\cases -Filter *.json | ForEach-Object { $_.IsReadOnly = $true }`).
+
 ## 3. What the evaluator reports once labels exist
 Confusion matrix; accuracy (not reported before labels); per-class precision, recall and F1; macro F1 (classes without labelled cases listed as undefined); false-sufficient rate (predicted SUFFICIENT among labels LIMITED/INSUFFICIENT) and false-insufficient rate (predicted INSUFFICIENT among labels SUFFICIENT/LIMITED) with 95% Wilson intervals; abstention rate; coverage versus risk at two operating points; model-invocation prevention (mechanism check and label-INSUFFICIENT miss rate); evidence-reference validity; inter-reviewer agreement. Definitions and denominators: `sufficiency_evaluator.py` (`per_class_metrics`, `coverage_risk`, `compute_metrics`, `weighted_kappa`). Results describe engineering behaviour on synthetic derived cases, not real-world accuracy or novelty.
