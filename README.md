@@ -133,8 +133,8 @@ flowchart TD
 - **Backend Runtime:** Python 3.12, FastAPI, Pydantic v2, Uvicorn.
 - **Database & Object Relational Mapping:** PostgreSQL 17 with `pgvector` 0.8.x extension, SQLAlchemy 2.0 (async), `psycopg` 3.x async driver, Alembic migrations.
 - **Local Language Models:** Ollama daemon (Windows native / localhost:11434), `llama3.1:8b`, `qwen3:4b`, `nomic-embed-text` (768 dimensions).
-- **Frontend Workbench:** React 18, TypeScript, Vite, self-hosted Geist and JetBrains Mono fonts (`@fontsource`; the Newsreader package is installed but no longer loaded), Node's built-in test runner with esbuild and jsdom. No Tailwind and no icon library.
-- **Package & Environment Management:** `uv` (fast Python package installer & resolver), npm / Node.js 20.
+- **Frontend Workbench:** React 18, TypeScript, Vite, self-hosted IBM Plex Sans and JetBrains Mono fonts (`@fontsource`; the Geist and Newsreader packages are installed but no longer loaded), Node's built-in test runner with esbuild and jsdom. No Tailwind and no icon library.
+- **Package & Environment Management:** `uv` (fast Python package installer & resolver), npm / Node.js 24.
 - **Defensive Tooling:** Custom token bucket rate limiter, Loguru structured logging, Pytest, `pip-audit`.
 - **Infrastructure & Deployment:** Docker Compose (`aisop-postgres`), PowerShell 7 automation (`aisop.ps1`, `scripts/backup_postgres.ps1`), Nginx TLS reverse proxy template (`deploy/nginx/nginx.conf`), GitHub Actions CI.
 
@@ -198,7 +198,7 @@ D:\AISOP
 
 - **Operating System:** Windows 10/11 x64 (PowerShell 7 / `pwsh` recommended).
 - **Python Environment:** Python 3.12 (managed via `uv` or `venv` at `.venv`).
-- **Node.js Environment:** Node.js 20 LTS and npm (for frontend development and building).
+- **Node.js Environment:** Node.js 24 LTS and npm (for frontend development and building; the frontend tests do not run on Node.js 20).
 - **Docker Desktop:** Running Docker engine for containerized PostgreSQL (`aisop-postgres`).
 - **Ollama AI Daemon:** Windows native Ollama running on `http://localhost:11434`.
 - **System Memory:** Minimum 16 GB RAM (32 GB recommended for running local 8B parameter models alongside IDE and database).

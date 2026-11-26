@@ -33,9 +33,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Git cannot store the read-only attribute that test_case_files_are_read_only_on_disk checks
+      # (docs/10_Research/Evaluation/Sufficiency_Labelling_Workflow.md).
+      - name: Mark evaluation case files read-only
+        run: |
+          chmod a-w datasets/sufficiency_eval/dev/cases/*.json datasets/sufficiency_eval/heldout/cases/*.json
+
+      # Failed test names are also written as annotations, so they are readable without opening the log.
       - name: Run offline backend tests
         run: |
-          pytest -m "not postgres and not ollama" --verbose
+          set -o pipefail
+          pytest -m "not postgres and not ollama" --verbose -rfE | tee pytest-output.log || {
+            grep -E '^(FAILED|ERROR) ' pytest-output.log | head -n 10 | sed 's/^/::error::/'
+            exit 1
+          }
 
   frontend:
     name: Frontend Tests, Typecheck & Build
@@ -47,10 +58,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      # The test library jsdom 31 does not run on Node 20 (it needs 22.22.2+, 24.15+ or 26+).
+      - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
