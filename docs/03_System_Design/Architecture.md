@@ -5,7 +5,7 @@
 | **Document ID** | ARCH-001 |
 | **Status** | ACTIVE / BASELINE CERTIFIED |
 | **Phase Scope** | Phase 1 (Milestones P1-H1 through P1-H10) |
-| **Last Updated** | 2026-09-17 |
+| **Last Updated** | 2026-11-25 (sections 8.1, 8.2 and 9 status and rule counts, IOC wording) |
 | **Primary Authors** | Implementation Engineer & Project Owner |
 | **Related Documents** | [ADR-001](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-001_LLM_Layer_Abstraction.md), [ADR-002](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-002_Vector_Database.md), [ADR-003](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-003_Python_Version.md), [ADR-004](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-004_Initial_Ingestion_Scope.md), [ADR-005](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-005_Frontend_Stack.md), [Database Design](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/04_Database/Database_Design.md), [Migration Strategy](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/04_Database/Migration_Strategy.md), [Database Testing](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/04_Database/Database_Testing.md) |
 
@@ -108,7 +108,7 @@ In accordance with [ADR-004](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_
 | **23** | File Delete | `file_delete` | Target filename, hashes, is_executable boolean, archived boolean, process image, PID, user. |
 
 ### 2.5 Atomic Entity Extraction
-[entity_extractor.py](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/backend/app/modules/evidence/entity_extractor.py) extracts discrete indicators of compromise (IOCs) and security entities from normalized events, mapping them into canonical entity representations across **8 entity types**:
+[entity_extractor.py](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/backend/app/modules/evidence/entity_extractor.py) extracts observables (items seen in events, such as hosts, users, IPs, domains, files and hashes) from normalized events, mapping them into canonical entity representations across **8 entity types**. An observable is an indicator of compromise (IOC) only if it has been assessed as indicative of compromise; the extractor makes no such judgement, so a host or user seen in a log is an observable, not an IOC:
 1. `host`: Hostname, domain, FQDN.
 2. `user`: Username, domain user, security identifier (SID).
 3. `process`: Process name, PID, image path, process GUID (with contextual roles: `source`, `target`, `parent`).
@@ -225,7 +225,7 @@ The database schema is defined using SQLAlchemy 2.0 mapped declarative models in
 ### 3.3 Indexing Strategy & Performance Trade-offs
 * **Timeline Query Index (`ix_normalized_events_time_id`):** Composite index on `(event_timestamp DESC, id DESC)`. This index enables PostgreSQL to fulfill investigation timeline scans and deterministic tie-breaker sorting directly from the index tree without requiring an expensive in-memory or on-disk `SORT` node.
 * **Type-Time Index (`ix_normalized_events_type_time`):** Composite index on `(event_type, event_timestamp)` for rapid retrieval of specific event categories over time windows.
-* **Entity Lookup Index (`ix_extracted_entities_type_value`):** Composite index on `(entity_type, entity_value)` for high-speed IOC exploration and cross-event correlation.
+* **Entity Lookup Index (`ix_extracted_entities_type_value`):** Composite index on `(entity_type, entity_value)` for high-speed observable exploration and cross-event correlation.
 
 ---
 
@@ -240,7 +240,7 @@ The database schema is defined using SQLAlchemy 2.0 mapped declarative models in
 |:---|:---|:---|:---|
 | `GET /api/v1/evidence/events` | Paginated timeline query of normalized events with multi-field filtering. | `start_time`, `end_time`, `event_type`, `source_type`, `source_identifier`, `severity`, `outcome`, `entity_type`, `entity_value`, `page`, `limit` | `ORDER BY event_timestamp DESC, id DESC` |
 | `GET /api/v1/evidence/events/{event_id}` | Detailed single-event retrieval. | `event_id` (UUID) | Eagerly loads parent `raw_evidence` and child `extracted_entities`. |
-| `GET /api/v1/evidence/entities` | Paginated IOC/entity exploration. | `entity_type`, `entity_value`, `role`, `page`, `limit` | `ORDER BY entity_type ASC, entity_value ASC, id DESC` |
+| `GET /api/v1/evidence/entities` | Paginated observable/entity exploration. | `entity_type`, `entity_value`, `role`, `page`, `limit` | `ORDER BY entity_type ASC, entity_value ASC, id DESC` |
 | `GET /api/v1/evidence/by-hash/{sha256_hash}` | Direct point lookup by cryptographic digest. | `sha256_hash` (64-char hex) | Direct B-tree index point lookup. |
 | `GET /api/v1/evidence/{evidence_id}` | Direct point lookup of raw evidence record. | `evidence_id` (UUID) | Single eager round-trip with child events. |
 | `GET /api/v1/health` | Process liveness endpoint. | None | Verifies service availability (zero-dependency). |
@@ -332,20 +332,22 @@ To guarantee both high developer velocity and absolute database fidelity, AISOP 
 
 ### 8.1 Supported vs Deferred Telemetry
 * **Supported in Phase 1:** Sysmon JSON event logs conforming to Event IDs 1, 3, 7, 8, 10, 11, 12, 13, 14, 15, 22, and 23.
-* **Deferred to Subsequent Phases:**
-  * Binary EVTX log ingestion (requires external binary parsers).
-  * Windows Security Event Logs (Event IDs 4624, 4625, 4688, etc.).
-  * Network telemetry (Zeek connection logs, Suricata EVE JSON).
-  * Cloud audit logs (AWS CloudTrail, Azure Activity Logs, GCP Audit).
+* **Listed as deferred in Phase 1; status checked against the code on 2026-11-25:**
+  * Binary EVTX log ingestion (requires external binary parsers): **PLANNED**. Not implemented; `sysmon_parser.py` states binary EVTX is out of scope and telemetry must be JSON.
+  * Windows Security Event Logs (Event IDs 4624, 4625, 4688, etc.): **IMPLEMENTED for JSON only**. `alerts/adapters/windows_security_adapter.py` normalises the JSON form, and ATT&CK rules read Windows Security fields (for example failed and successful logons by outcome, and event ids 4688 process creation, 4719 audit policy changed, 1102 log cleared). Validated on synthetic samples and the public datasets in `docs/10_Research/Real_Format_Ingestion_Result.md`, not on vendor-certified exports.
+  * Zeek connection logs: **PLANNED**. No Zeek parser was found; `firewall_ids_adapter.py` accepts the label `zeek` as a source type, and `evidence_domains/adapters.py` lists native Zeek as PROPOSED.
+  * Suricata EVE JSON: **PARTIAL**. `evidence_domains/suricata_eve.py` translates EVE `alert`, `dns` and `flow` records into evidence envelopes (other types are counted as skipped), driven by `backend/scripts/eve_to_envelopes.py`; the alert adapter also accepts the label `suricata` in a vendor-neutral alert shape. No route that uploads a raw EVE file was found.
+  * Cloud audit logs (AWS CloudTrail, Azure Activity Logs, GCP Audit): **PARTIAL**. `alerts/adapters/cloud_audit_adapter.py` handles records labelled CloudTrail, GuardDuty, Entra ID and GCP audit, and cloud evidence enters through `POST /api/v1/cases/{id}/evidence/domain`; `evidence_domains/adapters.py` lists native CloudTrail and Entra formats as PROPOSED. Fidelity to real vendor exports is unverified.
 
 ### 8.2 Deferred AI & Advanced Analytics Capabilities
-In accordance with [ADR-001](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-001_LLM_Layer_Abstraction.md) and [ADR-002](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-002_Vector_Database.md), the following capabilities are strictly deferred to Phase 2:
-* AI/LLM integration (Ollama, OpenAI, Claude, LangChain, prompt templates).
-* Retrieval-Augmented Generation (RAG) and semantic vector search.
-* pgvector vector embeddings and similarity indexing (`vector(N)` columns).
-* Automated MITRE ATT&CK technique mapping.
-* Sigma rule and YARA rule generation.
-* Web-based frontend investigation dashboard ([ADR-005](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-005_Frontend_Stack.md), deferred to Phase 4).
+In accordance with [ADR-001](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-001_LLM_Layer_Abstraction.md) and [ADR-002](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-002_Vector_Database.md), the following capabilities were deferred to Phase 2. Status checked against the code on 2026-11-25 (code and routes were read; nothing was run):
+* AI/LLM integration (Ollama, OpenAI, Claude, LangChain, prompt templates): **PARTIAL**. Ollama is the default local provider (`modules/ai/providers/ollama/provider.py`, selected in `modules/ai/llm/manager.py`) and Cloudflare Workers AI is an opt-in external provider (ADR-016); prompts are built in `modules/ai/prompt_builder/builder.py`. The `openai`, `anthropic` and `gemini` provider files are empty (0 bytes) and no LangChain use was found. The model is optional (`LLM_ENABLED=false`) and sits behind the sufficiency gate (section 9). Live-model behaviour is unverified.
+* Retrieval-Augmented Generation (RAG) and semantic vector search: **PARTIAL**. `modules/ai/knowledge/retriever.py` and `modules/ai/embeddings/` exist. Retrieval runs only inside the AI synthesis paths (`services/investigation_service.py` and `services/case_service.py`), and only when the request carries a query filter of at least 3 characters and a retriever was initialised; otherwise it is skipped and an uncertainty flag is recorded. The multi-source investigation workflow does not use it. What the knowledge base contains on a given installation was not checked.
+* pgvector vector embeddings and similarity indexing (`vector(N)` columns): **IMPLEMENTED in code**. `models/knowledge.py` defines a 768-dimension `Vector` column, with migrations `20261005_0002` and `20261021_0003`; the retriever uses pgvector cosine distance. PostgreSQL behaviour was not verified in this review.
+* Automated MITRE ATT&CK technique mapping: **IMPLEMENTED, narrow**. 52 evidence-backed rules in three tables (see section 9); recall is low (`docs/10_Research/Evaluation.md`).
+* Sigma rule and YARA rule generation: **PLANNED**. ADR-012 is PROPOSED and nothing is implemented; the knowledge loader only reads Sigma YAML as reference text.
+* Web-based frontend investigation dashboard ([ADR-005](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_Projects/MINOR/SEM7/AISOP/docs/03_System_Design/ADR/ADR-005_Frontend_Stack.md), deferred to Phase 4): **IMPLEMENTED**. `frontend/src/pages/` holds Dashboard, Alerts, Evidence, Cases, Reports and Security pages, and `InvestigationWorkspace` carries the multi-source panel.
+* Threat intelligence (not on the original list): **PARTIAL**. Two small local feed files in `data/feeds/` (`feodo_tracker.csv`, `tor_exit_nodes.txt`) are loaded at start-up through `LocalThreatIntelEngine`. The AbuseIPDB provider code exists, but nothing in the application instantiates it or `ThreatIntelOrchestrator`, so it is not connected. Threat intelligence is context and never corroborates.
 
 ### 8.3 Operational Boundaries & Resource Limits
 * **Ingestion Throughput:** Ingestion operates synchronously within worker tasks. High-throughput distributed ingestion pipelines (Kafka, Celery, Redis queues) are not implemented in Phase 1.
@@ -357,7 +359,7 @@ In accordance with [ADR-001](file:///c:/Users/sarik/Documents/GO/02_COLLEGE/SEM_
 
 ## 9. Evidence-Sufficiency Gate and Multi-Source Investigation Workflow (Stage 3C / 3C-R)
 
-> This section describes code that exists (2026-11-12). Sections 1-8 describe the Phase 1 pipeline; where section 8.2 lists "Automated MITRE ATT&CK technique mapping" and similar items as out of scope, a limited, deterministic implementation now exists (IMPLEMENTED, six rules; see below). Authoritative detail: [Multi_Source_Investigation_Workflow.md](../05_Backend/Multi_Source_Investigation_Workflow.md), ADR-008 and ADR-009.
+> This section describes code that exists (2026-11-12). Sections 1-8 describe the Phase 1 pipeline; where section 8.2 lists "Automated MITRE ATT&CK technique mapping" and similar items as out of scope, a limited, deterministic implementation now exists (IMPLEMENTED, 52 rules in three tables: 6 `attack-map-v1` in `correlation/mitre.py`, 7 `domain-attack-v1` in `evidence_domains/domain_attack.py`, 39 `endpoint-attack-v1` in `correlation/mitre_endpoint.py`, all run by `correlation/workflow.py`; see below). Authoritative detail: [Multi_Source_Investigation_Workflow.md](../05_Backend/Multi_Source_Investigation_Workflow.md), ADR-008 and ADR-009.
 
 * **Pre-model evidence-sufficiency gate (IMPLEMENTED, ADR-008 `suff-v2`)** - `backend/app/modules/ai/guardrails/sufficiency_gate.py: evaluate_sufficiency` runs before every production model invocation in `investigation_service.py` and `case_service.py`; INSUFFICIENT means no model call; exceptions fail closed; `GatedGenerator.generate` is the only production caller of `provider.generate`. The verdict is audited in `case_audit_events.details` (no migration) and disclosed in the final output.
 * **Independence (IMPLEMENTED)** - `backend/app/modules/evidence/independence.py`: evidence clusters (duplicates, same raw record, near-duplicates) and link strengths shared by the gate, the claim validator and the correlator.

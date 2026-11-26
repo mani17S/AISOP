@@ -4,21 +4,21 @@ Use with `docs/03_System_Design/SOC_Placement_and_Vocabulary.md`. Answers are sh
 
 1. **What is telemetry?** Raw recorded facts from systems (process started, DNS lookup, logon). Not a judgement.
 2. **What is an alert?** A detector's claim that some telemetry matters. It can be wrong; AISOP keeps it as the vendor's claim, not proof.
-3. **What is an incident?** A set of related evidence describing one story. AISOP's `Incident` joins records by strong or specific links (`correlation/correlator.py`).
+3. **What is an incident?** In the NIST SP 800-61 sense, a declared violation or imminent threat of violation of security policy, handled by people. AISOP's `Incident` is only a correlation cluster of related records joined by strong or specific links (`correlation/correlator.py`); it is not a declared or confirmed incident.
 4. **What is evidence?** Observed, hashed, independent records. Analyst notes, threat intelligence and model output are not evidence in AISOP.
 5. **SIEM in one line?** Collects and stores logs at scale, searches them and raises alerts. AISOP is not one.
 6. **EDR?** An agent on the endpoint that sees processes, files and network and can isolate the host. AISOP reads its output.
 7. **XDR?** EDR plus identity, email, cloud and network detection in one product.
-8. **SOAR?** Automates response playbooks and tickets. AISOP has no response actions.
+8. **SOAR?** Automates playbooks: enrichment, triage and ticket steps as well as response actions. AISOP overlaps on triage support only; it has no playbooks and never executes a response action.
 9. **TIP / threat intelligence?** Known-bad indicators and context. In AISOP it is optional context and never corroborates.
 10. **Where does AISOP sit?** Between detection and response: it qualifies the evidence behind alerts.
 11. **Tier 1 versus tier 2?** Tier 1 triages alerts; tier 2 investigates deeper. Roles `analyst_tier_1`, `analyst_tier_2`, plus the case lead who approves export (`core/rbac.py`).
 12. **What is triage?** Deciding quickly which alerts deserve investigation.
-13. **What is the kill chain / ATT&CK?** A vocabulary of attack stages and techniques. AISOP maps techniques only from 13 evidence-backed rules.
+13. **What is the kill chain / ATT&CK?** Two different models. ATT&CK is a knowledge base of tactics and techniques; the Cyber Kill Chain is a separate seven-phase model. AISOP uses ATT&CK only: stages are ATT&CK tactic names, and techniques come only from 52 evidence-backed rules (6 + 7 + 39 in three tables; older pages said 13, which was the first two tables).
 14. **What is corroboration?** Another independent record supporting the same fact. A shared host or user is not corroboration; a shared file hash, domain, public IP or file path is.
 15. **Why do duplicates count once?** A copy is not a second witness. `evidence/independence.py: cluster_evidence`.
 16. **What is chain of custody?** Proof evidence was not altered. SHA-256 per record plus a hash-chained ledger; tamper-evident since submission, not immutable.
-17. **What does SUFFICIENT mean in AISOP?** The evidence is adequate for a model-assisted investigation of the question. It is not a verdict that an attack happened.
+17. **What does SUFFICIENT mean in AISOP?** The independent evidence is adequate for a bounded, model-assisted investigation of the question. The sufficiency grade (SUFFICIENT, LIMITED, INSUFFICIENT) is not a SOC verdict such as true positive or malicious, and does not say an attack happened.
 18. **What is a false positive?** An alert about harmless activity. AISOP's raw-model benchmark showed false techniques on benign scenarios; its rules showed none on 5.
 19. **Event time versus ingestion time?** When it happened versus when AISOP received it. AISOP stores and shows both, never substituting one for the other.
 20. **Why UTC?** One reference so records from different zones order correctly; the UI can also show IST.

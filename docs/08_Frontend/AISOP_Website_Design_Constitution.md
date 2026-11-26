@@ -152,6 +152,18 @@ The owner found that the serif title face made the interface look like a common 
 | Identifiers, hashes, telemetry | JetBrains Mono | unchanged; tabular figures added for table data | |
 | Font loading | Newsreader loaded in `main.tsx` | not loaded; the `@fontsource-variable/newsreader` package remains in `package.json` until the owner approves removing it | removing a dependency is the owner's decision |
 
+#### 3.1.6 Interface typeface (Amendment A7, 2026-11-25, owner instruction)
+The owner asked for the typography to be reworked so the product does not look like a generic AI or developer-tool site. Geist, the interface face in A6, is the same face many AI products use. It is replaced by IBM Plex Sans (SIL Open Font License 1.1, self-hosted through `@fontsource/ibm-plex-sans`, pinned at 5.3.0, weights 400, 500 and 600, Latin subset only, no external font request). A6 stands otherwise: titles use the interface face at weight 600; identifiers, hashes and telemetry stay JetBrains Mono.
+
+| Item | Old (A6) | New (A7) | Reason |
+|---|---|---|---|
+| Interface text, titles, wordmark | Geist | IBM Plex Sans, 400 / 500 / 600 | Designed for technical documentation; distinct from the Geist/Inter family; reads as a record rather than a marketing page |
+| Identifiers, hashes, telemetry | JetBrains Mono | unchanged | Constitution 3.1 |
+| Dependency | `@fontsource-variable/geist` loaded | not loaded; the package stays in `package.json` until the owner approves removing it | Removing a dependency is the owner's decision |
+| Revert | | Restore the Geist import in `main.tsx` and put `"Geist Variable"` first in `--font-sans` | One-line rollback |
+
+Checked 2026-11-25: typecheck and build pass, 307 of 307 frontend tests pass, and the responsive audit at 1440 and 390 px reports the same overflow and target-size counts as before (screenshots in `D:\AISOP-Backups\AISOP_UI_Audit_20261125_plex`). Not checked: contrast was not re-measured (text colours are unchanged); no user testing. The landing page's preview image is a screenshot taken before this change and still shows the old face until it is recaptured.
+
 ### 3.2 Spacing, Density & Layout
 - Use a disciplined 4px / 8px grid (padding: 8px, 12px, 16px, 24px).
 - Maintain high information density suitable for SOC workflows without clutter.

@@ -57,6 +57,6 @@ H1: on the fixed scenarios the gate gives a lower false-sufficient rate than the
 .venv\Scripts\python.exe backend\evaluation_tools\ablation_sufficiency.py --out D:\AISOP-Backups\AISOP_Dev_Logs\ablation_run
 .venv\Scripts\python.exe backend\evaluation_tools\score_attack_mapping.py
 .venv\Scripts\python.exe backend\evaluation_tools\claim_verifier_mutation.py --out D:\AISOP-Backups\AISOP_Dev_Logs\claim_mutation_run
-.venv\Scripts\python.exe backend\evaluation_toolsantage_effect.py
+.venv\Scripts\python.exe backend\evaluation_tools\vantage_effect.py
 ```
 Guards: `backend/tests/unit/test_metamorphic_sufficiency.py`, `test_ablation_sufficiency.py`, `test_attack_mapping_ground_truth.py`, `test_claim_verifier_mutation.py`, `test_vantage_independence.py`.
