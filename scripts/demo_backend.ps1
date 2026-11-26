@@ -34,7 +34,7 @@ $env:LLM_ENABLED = "true"; $env:OLLAMA_MODEL = $Model
 # Demo AI settings (measured 2026-11-20, day4d_ai_latency_measurement.json): keep the model resident between runs, give one hard
 # deadline per model call, and do not retry a slow call (a retry would multiply the wait). The deterministic result never depends on this.
 $env:OLLAMA_KEEP_ALIVE = "30m"; $env:OLLAMA_TIMEOUT_SECONDS = "60"; $env:OLLAMA_MAX_RETRIES = "1"
-# One worker process runs the deterministic investigation analysis so the server stays responsive during a large investigation (ADR-018, PROPOSED;
+# One worker process runs the deterministic investigation analysis so the server stays responsive during a large investigation (ADR-018, approved 2026-11-26;
 # benchmark: docs/05_Backend/Investigation_Responsiveness_Profiling_2026-11-25.md section 13). Costs about 75 MB more memory and 2 to 3 s at start-up.
 # Set to "0" to return to the thread behaviour. The AI explanation path never uses the worker.
 $env:ANALYSIS_WORKER_PROCESSES = "1"
