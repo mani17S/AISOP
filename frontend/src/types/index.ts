@@ -84,6 +84,15 @@ export interface CaseResponse {
   created_at: string;
   updated_at: string;
   closed_at: string | null;
+  /**
+   * Stored result of the last multi-source investigation (the one evidence-sufficiency gate), never computed for the list.
+   * Absent or null means no investigation has been run: show "Not assessed", not a verdict.
+   */
+  sufficiency_verdict?: 'sufficient' | 'limited' | 'insufficient' | null;
+  sufficiency_rule_version?: string | null;
+  sufficiency_assessed_at?: string | null;
+  /** True when the stored run listed fewer incidents than were found, so the verdict covers only the listed ones. */
+  sufficiency_incidents_truncated?: boolean | null;
 }
 
 export interface CaseCreateRequest {

@@ -13,6 +13,7 @@ import { SetupNotice, isAuthMessage } from '../components/SetupNotice';
 import { InvestigationWorkspace } from '../components/InvestigationWorkspace';
 import { Dialog } from '../components/Dialog';
 import { CloseIcon } from '../components/Icons';
+import { VerdictBadge } from '../components/VerdictBadge';
 
 interface CasesProps {
   onNavigateToReport?: (caseId: string) => void;
@@ -220,7 +221,16 @@ export const Cases: React.FC<CasesProps> = ({
           </div>
         ) : error ? null : cases.length === 0 ? (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No cases found.
+            {statusFilter || severityFilter ? (
+              'No cases match these filters.'
+            ) : (
+              <>
+                <p>No cases are assigned to you.</p>
+                <p style={{ marginTop: '8px', fontSize: '13px' }}>
+                  Case access follows assignment. A lead assigns analysts to a case, and only assigned people see it here.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <table className="data-table table-stack">
@@ -230,6 +240,7 @@ export const Cases: React.FC<CasesProps> = ({
                 <th>Title</th>
                 <th>Severity</th>
                 <th>Status</th>
+                <th>Evidence</th>
                 <th>Created (UTC)</th>
                 <th>Actions</th>
               </tr>
@@ -244,6 +255,9 @@ export const Cases: React.FC<CasesProps> = ({
                   </td>
                   <td data-label="Status">
                     <span className={`badge badge-${c.status}`}>{c.status}</span>
+                  </td>
+                  <td data-label="Evidence">
+                    <VerdictBadge item={c} />
                   </td>
                   <td data-label="Created (UTC)" style={{ color: 'var(--text-muted)' }}>
                     {new Date(c.created_at).toISOString().replace('T', ' ').slice(0, 19)}

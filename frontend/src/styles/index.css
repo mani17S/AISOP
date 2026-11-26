@@ -42,7 +42,8 @@
 
   --font-serif: "Newsreader Variable", Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --font-sans: "Geist Variable", "Segoe UI", system-ui, sans-serif;
+  /* Amendment A7 (2026-11-25): IBM Plex Sans replaces Geist. To revert: restore the Geist import in main.tsx and put "Geist Variable" first here. */
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
 }
 
 * {
@@ -3493,4 +3494,30 @@ body {
     -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
     mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
   }
+}
+
+/* Case evidence-sufficiency badge (constitution A4/A7: square marker plus the word, no new colours; verdicts differ by SHAPE). */
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.verdict-glyph {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-primary);
+  background: transparent;
+}
+.verdict-badge--sufficient .verdict-glyph { background: var(--text-primary); }
+.verdict-badge--limited .verdict-glyph { box-shadow: inset 5px 0 0 0 var(--text-primary); }
+.verdict-badge--none { color: var(--text-secondary); }
+.verdict-badge--none .verdict-glyph { border-color: var(--text-secondary); border-style: dashed; }
+@media (prefers-contrast: more) {
+  .verdict-glyph { border-width: 2px; }
 }

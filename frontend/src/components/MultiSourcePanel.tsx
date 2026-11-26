@@ -582,9 +582,11 @@ interface MultiSourcePanelProps {
   caseClosed?: boolean;
   initialResult?: MultiSourceInvestigation | null;
   initialStale?: boolean;
+  /** Called after an investigation was started or reused and stored, so the host can refresh the stored case verdict. */
+  onInvestigationChanged?: () => void;
 }
 
-export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, caseClosed, initialResult, initialStale }) => {
+export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, caseClosed, initialResult, initialStale, onInvestigationChanged }) => {
   const { canSynthesizeReports, canCloseCase } = useAuth();
   const [result, setResult] = useState<MultiSourceInvestigation | null>(initialResult ?? null);
   const [stale, setStale] = useState<boolean>(initialStale ?? false);
@@ -659,6 +661,7 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
       const data = await api.startMultiSourceInvestigation(caseId, { use_llm: false, force });
       setResult(data);
       setStale(false);
+      onInvestigationChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'The investigation could not be completed.');
     } finally {
@@ -696,6 +699,7 @@ export const MultiSourcePanel: React.FC<MultiSourcePanelProps> = ({ caseId, case
           onResult={(data) => {
             setAiResult(data);
             setStale(false);
+            onInvestigationChanged?.();
           }}
         />
       )}

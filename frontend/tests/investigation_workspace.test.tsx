@@ -283,7 +283,9 @@ describe('AISOP Phase 4B: Investigation Workspace Component Verification', () =>
     assert.ok(html.includes('Human-in-the-Loop Investigation Synthesis'), 'Synthesis section must be present');
     assert.ok(html.includes('Start AI investigation'), 'Explicit human action button must be present');
     assert.ok(html.includes('AISOP does not run autonomous background investigations'), 'Anti-autonomous notice must be present');
-    assert.ok(html.includes('Zero External Egress: Synthesis runs via local Ollama daemon or a deterministic offline provider'), 'Offline disclaimer must be present');
+    assert.ok(html.includes('by default on the local Ollama model, so case text stays on this machine'), 'Local-by-default disclosure must be present');
+    assert.ok(html.includes('If the operator turns on an external provider, the case text is sent to that provider'), 'External-provider disclosure must be present');
+    assert.ok(!html.includes('Zero External Egress'), 'The absolute no-egress claim must not return');
   });
 
   it('shows backend-supplied claim verification, marks legacy claims, and never labels a claim analyst-confirmed', () => {

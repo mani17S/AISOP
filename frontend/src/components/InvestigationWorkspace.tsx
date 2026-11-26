@@ -36,6 +36,7 @@ import { CloseIcon } from './Icons';
 import { ExhibitTag } from './ExhibitTag';
 import { useTimeZone } from '../contexts/TimeZoneContext';
 import { formatInstant } from '../utils/time';
+import { VerdictBadge, mergeCaseVerdict } from './VerdictBadge';
 
 interface InvestigationWorkspaceProps {
   caseId: string;
@@ -127,16 +128,19 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
   const [closeError, setCloseError] = useState<string | null>(null);
 
   // 1. Fetch Case Detail
-  const fetchCaseDetail = useCallback(async () => {
-    setCaseLoading(true);
-    setCaseError(null);
+  // `silent` refreshes in place (no loading screen, which would unmount the running panels; a failure keeps what is shown).
+  const fetchCaseDetail = useCallback(async (silent: boolean = false) => {
+    if (!silent) {
+      setCaseLoading(true);
+      setCaseError(null);
+    }
     try {
       const data = await api.getCaseDetail(caseId);
-      setCaseDetail(data);
+      setCaseDetail((prev) => mergeCaseVerdict(prev, data));
     } catch (err: any) {
-      setCaseError(err.message || 'Failed to retrieve case details. Access denied or case not found.');
+      if (!silent) setCaseError(err.message || 'Failed to retrieve case details. Access denied or case not found.');
     } finally {
-      setCaseLoading(false);
+      if (!silent) setCaseLoading(false);
     }
   }, [caseId]);
 
@@ -255,7 +259,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
     setCloseError(null);
     try {
       const updated = await api.closeCase(caseId, closureReason.trim());
-      setCaseDetail(updated);
+      setCaseDetail((prev) => mergeCaseVerdict(prev, updated));
       setIsCloseOpen(false);
       setClosureReason('');
       fetchActivity();
@@ -355,6 +359,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               <span className={`badge badge-${caseDetail.status}`}>
                 {caseDetail.status.toUpperCase()}
               </span>
+              <VerdictBadge item={caseDetail} />
             </div>
             <h1 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)' }}>
               {caseDetail.title}
@@ -501,7 +506,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
       <div role="tabpanel" id={tabPanelId(TAB_PREFIX)} aria-labelledby={tabButtonId(TAB_PREFIX, activeTab)}>
       {/* ── Tab 1: Evidence Panel ────────────────────────────────────────── */}
       {activeTab === 'multisource' && (
-        <MultiSourcePanel caseId={caseId} caseClosed={caseDetail?.status === 'closed' || caseDetail?.status === 'archived'} />
+        <MultiSourcePanel caseId={caseId} caseClosed={caseDetail?.status === 'closed' || caseDetail?.status === 'archived'} onInvestigationChanged={() => void fetchCaseDetail(true)} />
       )}
 
       {activeTab === 'evidence' && (
@@ -678,7 +683,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               </button>
 
               <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                Zero External Egress: Synthesis runs via local Ollama daemon or a deterministic offline provider.
+                Where the model runs: by default on the local Ollama model, so case text stays on this machine. If the operator turns on an external provider, the case text is sent to that provider.
               </div>
             </div>
           )}
