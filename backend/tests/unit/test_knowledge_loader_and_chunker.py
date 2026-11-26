@@ -13,6 +13,7 @@ Validates:
 from __future__ import annotations
 
 import hashlib
+import os
 import tempfile
 from pathlib import Path
 
@@ -407,6 +408,7 @@ def test_deterministic_indices_and_output_order():
             assert b.chunk_metadata == r.chunk_metadata
 
 
+@pytest.mark.skipif(os.name != "nt", reason="backslash is a path separator only on Windows")
 def test_stable_posix_relative_source_paths_on_windows(temp_kb_dir: Path):
     """
     Test 7: Stable POSIX relative source paths on Windows.
@@ -466,6 +468,10 @@ def test_traversal_attempts_with_separator_variants(temp_kb_dir: Path):
         Path(f"../{temp_kb_dir.name}_extra/leak.txt"),  # sibling relative POSIX
         Path(f"..\\{temp_kb_dir.name}_extra\\leak.txt"),  # sibling relative Windows
     ]
+
+    if os.name != "nt":
+        # Elsewhere a backslash is an ordinary filename character, so these cannot leave the root.
+        traversal_paths = [p for p in traversal_paths if "\\" not in str(p)]
 
     for bad_path in traversal_paths:
         with pytest.raises(ValueError) as exc_info:
@@ -582,14 +588,15 @@ def test_loader_sibling_prefix_directory_escape(temp_kb_dir: Path):
     assert "Path traversal detected" in str(exc_info.value)
 
     # 3. Relative traversal into sibling directory (Windows backslash)
-    rel_win = Path(f"..\\{temp_kb_dir.name}_extra\\confidential.md")
-    with pytest.raises(ValueError) as exc_info:
-        loader._safe_resolve(rel_win)
-    assert "Path traversal detected" in str(exc_info.value)
+    if os.name == "nt":
+        rel_win = Path(f"..\\{temp_kb_dir.name}_extra\\confidential.md")
+        with pytest.raises(ValueError) as exc_info:
+            loader._safe_resolve(rel_win)
+        assert "Path traversal detected" in str(exc_info.value)
 
-    with pytest.raises(ValueError) as exc_info:
-        loader.load_file(rel_win)
-    assert "Path traversal detected" in str(exc_info.value)
+        with pytest.raises(ValueError) as exc_info:
+            loader.load_file(rel_win)
+        assert "Path traversal detected" in str(exc_info.value)
 
     # 4. Symlink within KB root pointing to sibling file
     link_to_sibling = temp_kb_dir / "symlink_to_sibling.md"

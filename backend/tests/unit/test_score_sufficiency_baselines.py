@@ -22,6 +22,7 @@ def test_wilson_interval_known_values():
     assert sc.wilson_interval(0, 0) is None
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="the scoring tool only writes to drive D:")
 def test_held_out_is_not_run_without_flag(monkeypatch, capsys):
     loaded = []
     monkeypatch.setattr(sc, "load_cases", lambda split, base=None: loaded.append(split) or [])

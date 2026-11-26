@@ -7,8 +7,12 @@ and generated Markdown diagnostic reports using synthetic fake secrets only.
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 import pytest
+
+# aisop.ps1 is a Windows tool: loading it needs %LOCALAPPDATA%. The parse check above runs everywhere.
+windows_only = pytest.mark.skipif(sys.platform != "win32", reason="aisop.ps1 needs %LOCALAPPDATA% (Windows)")
 
 
 def get_pwsh_executable() -> str | None:
@@ -52,6 +56,7 @@ def test_aisop_script_exists_and_parses(pwsh_exe: str, repo_root: Path):
     assert "SYNTAX_OK" in result.stdout
 
 
+@windows_only
 def test_aisop_sanitizer_powershell_suite(pwsh_exe: str, repo_root: Path):
     """Run tests/test_aisop_sanitizer.ps1 and verify 100% pass rate."""
     suite_script = repo_root / "tests" / "test_aisop_sanitizer.ps1"
@@ -70,6 +75,7 @@ def test_aisop_sanitizer_powershell_suite(pwsh_exe: str, repo_root: Path):
     assert "0 failed" in result.stdout
 
 
+@windows_only
 def test_protect_diagnostic_text_synthetic_secrets(pwsh_exe: str, repo_root: Path):
     """Test Protect-DiagnosticText via dot-sourcing with multiple synthetic secret patterns."""
     aisop_script = repo_root / "aisop.ps1"

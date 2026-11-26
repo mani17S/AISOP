@@ -541,7 +541,12 @@ def test_http_pathologically_nested_json_is_a_client_error_not_a_500(hostile_app
     deep = '{"a":' * 5000 + "1" + "}" * 5000
     body = ('{"source_type":"edr_malware","alerts":[' + deep + "]}").encode()
     r = _post(hostile_app, body)
-    assert 400 <= r.status_code < 500, r.status_code
+    if r.status_code == 200:
+        # Linux's JSON parser accepts this depth (Windows' does not); the record must then be rejected on its own.
+        assert r.json()["total_normalized"] == 0 and len(r.json()["errors"]) == 1, r.text[:300]
+        assert not any(m in json.dumps(r.json()["errors"]) for m in LEAK_MARKERS), r.text[:300]
+    else:
+        assert 400 <= r.status_code < 500, r.status_code
 
 
 # ═══ 7. prompt-injection isolation in the LLM request ════════════════════════════════════════════════════════
