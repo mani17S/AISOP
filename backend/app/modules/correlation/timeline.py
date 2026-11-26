@@ -16,16 +16,30 @@ from __future__ import annotations
 import uuid
 
 from app.modules.correlation.correlator import stage_of
-from app.modules.correlation.models import CorrelationResult, Incident, TimelineEntry
+from app.modules.correlation.models import CorrelationEvent, CorrelationResult, Incident, TimelineEntry
 
 
-def build_timeline(result: CorrelationResult, incident: Incident) -> list[TimelineEntry]:
-    by_key = {e.event_key: e for e in result.events}
-    core = set(incident.core_clusters)
+def conflicts_of(result: CorrelationResult) -> dict[uuid.UUID, list[uuid.UUID]]:
+    """Map each event key to the keys it contradicts (whole-run; callers may build it once per final result)."""
     conflicts: dict[uuid.UUID, list[uuid.UUID]] = {}
     for con in result.contradictions:
         for k in con.event_keys:
             conflicts.setdefault(k, []).extend(x for x in con.event_keys if x != k)
+    return conflicts
+
+
+def build_timeline(
+    result: CorrelationResult,
+    incident: Incident,
+    by_key: dict[uuid.UUID, CorrelationEvent] | None = None,
+    conflicts: dict[uuid.UUID, list[uuid.UUID]] | None = None,
+) -> list[TimelineEntry]:
+    """``by_key`` and ``conflicts`` are optional precomputed whole-run tables; when omitted they are built here from ``result``."""
+    if by_key is None:
+        by_key = {e.event_key: e for e in result.events}
+    core = set(incident.core_clusters)
+    if conflicts is None:
+        conflicts = conflicts_of(result)
 
     entries: list[TimelineEntry] = []
     for cluster in sorted(

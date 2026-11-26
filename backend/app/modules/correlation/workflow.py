@@ -21,6 +21,7 @@ deliberately: the gate is deterministic and fails closed (AiSOC's verdict gate f
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -52,7 +53,7 @@ from app.modules.correlation.models import (
     TimelineEntry,
 )
 from app.modules.correlation.normalize import normalize_records
-from app.modules.correlation.timeline import build_timeline
+from app.modules.correlation.timeline import build_timeline, conflicts_of
 from app.modules.evidence_domains.bridge import is_dated, is_machine, is_projectable
 from app.modules.evidence_domains.contradictions import detect_contradictions
 from app.modules.correlation.mitre_endpoint import ENDPOINT_MAPPING_VERSION, map_endpoint_techniques
@@ -164,12 +165,15 @@ def build_incident_context(
     incident: Incident,
     rejected_count: int = 0,
     extra_flags: Optional[list[str]] = None,
+    by_key: Optional[dict[uuid.UUID, CorrelationEvent]] = None,
 ) -> tuple[InvestigationContext, list[CorrelationEvent]]:
     """
     Build the canonical InvestigationContext (existing schema, real context SHA-256) for one incident.
     Anchor (root event) = earliest event of the highest severity inside the strongly linked core.
+    ``by_key`` is an optional precomputed ``{e.event_key: e for e in result.events}`` (built once per run by ``analyze``); when omitted it is built here.
     """
-    by_key = {e.event_key: e for e in result.events}
+    if by_key is None:
+        by_key = {e.event_key: e for e in result.events}
     events = sorted((by_key[k] for k in incident.event_keys), key=lambda e: (e.timestamp, e.record_index))
     core_keys = {k for i in incident.core_clusters for k in result.clusters[i].members}
     anchor = first_event_of_max_severity(events, core_keys)
@@ -367,15 +371,18 @@ def analyze(
         result.batch_trace = batch_trace
         ledger.append("SUFFICIENCY", {"incident": None, "verdict": assessment.verdict.value,
                                       "reason_codes": assessment.reason_codes, "assessment_sha256": assessment.assessment_sha256})
+    # Whole-run lookup tables, built once from the FINAL ``corr`` (after the contradiction merge) instead of once per incident.
+    events_by_key = {e.event_key: e for e in corr.events}
+    timeline_conflicts = conflicts_of(corr)
     for incident in corr.incidents:
-        context, included = build_incident_context(corr, incident, len(norm.rejected), domain_flags)
+        context, included = build_incident_context(corr, incident, len(norm.rejected), domain_flags, by_key=events_by_key)
         keys_in = {e.event_key for e in included}
         obs_in = [o for o in machine_obs if o.key in keys_in]
         # ADR-013 (suff-v4): contradiction FACTS from the pure detector go to the single gate, which alone decides the verdict.
         incident_candidates = tuple(c for c in all_candidates if c.evidence_ids[0] in keys_in and c.evidence_ids[1] in keys_in)
         trace = SufficiencyTrace()
         assessment = evaluate_sufficiency(context, incident_candidates, trace=trace)
-        timeline = build_timeline(corr, incident)
+        timeline = build_timeline(corr, incident, by_key=events_by_key, conflicts=timeline_conflicts)
         mappings = map_techniques(included) + map_endpoint_techniques(included) + map_domain_techniques(obs_in)
         ents_in = {e for o in obs_in for e in o.entities}
         notes = [a for a in analyst_obs if ents_in & set(a.entities)]
@@ -474,7 +481,9 @@ async def run_workflow(
     """``analyze`` plus the optional gated LLM investigation and claim verification per incident."""
     from app.modules.correlation.report import render_incident_report
 
-    result = analyze(records, assets, digests, event_keys, indicators)
+    # The analysis is CPU-bound and synchronous (a load probe measured the event loop blocked for about 3.5 s at 1,000 records). Run it in a
+    # worker thread so health checks and other requests keep being served; the result is identical.
+    result = await asyncio.to_thread(analyze, records, assets, digests, event_keys, indicators)
     if provider is None:
         return result
     ledger = Ledger()

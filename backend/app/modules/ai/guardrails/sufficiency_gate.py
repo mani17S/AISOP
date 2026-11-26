@@ -366,7 +366,10 @@ def assess_evidence_sufficiency(
     members: dict[int, list[ContextEventItem]] = {}
     for e in events:
         members.setdefault(clusters[e.event_uuid], []).append(e)
-    unit_ids = sorted(members, key=lambda c: min(events.index(m) for m in members[c]))
+    # ``members`` is filled in event order, so its keys are already ordered by each unit's first event position. Equal items share an
+    # event_uuid and therefore a unit, so ``events.index`` never leaves the unit and distinct units have distinct first positions:
+    # this equals the former ``sorted(members, key=lambda c: min(events.index(m) for m in members[c]))`` without the quadratic scan.
+    unit_ids = list(members)
     rep: dict[int, ContextEventItem] = {c: members[c][0] for c in unit_ids}
     unit_of: dict[uuid.UUID, int] = {e.event_uuid: clusters[e.event_uuid] for e in events}
     unit_ents: dict[int, set[tuple[str, str]]] = {
