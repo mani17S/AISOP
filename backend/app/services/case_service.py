@@ -120,7 +120,7 @@ from app.modules.ai.response_parser import (
     ResponseParsingError,
 )
 from app.modules.threatintel.local_engine import LocalThreatIntelEngine
-from app.services.multisource_investigation_service import MULTISOURCE_ACTION, activity_summary
+from app.services.multisource_investigation_service import MULTISOURCE_ACTION, activity_summary, case_sufficiency_summaries
 from app.services.query_service import InvestigationQueryService
 
 svc_logger = logger.bind(component="case_service")
@@ -503,6 +503,7 @@ class CaseService:
         )
         res = await session.execute(data_stmt)
         cases = res.scalars().unique().all()
+        sufficiency = await case_sufficiency_summaries(session, [c.id for c in cases])
 
         items = []
         for c in cases:
@@ -531,6 +532,7 @@ class CaseService:
                     created_at=created,
                     updated_at=updated,
                     closed_at=closed,
+                    **sufficiency.get(c.id, {}),
                 )
             )
 
@@ -587,6 +589,7 @@ class CaseService:
             created_at=created,
             updated_at=updated,
             closed_at=closed,
+            **(await case_sufficiency_summaries(session, [case.id])).get(case.id, {}),
         )
 
     async def update_case_metadata(
@@ -664,6 +667,7 @@ class CaseService:
             created_at=created,
             updated_at=now,
             closed_at=closed,
+            **(await case_sufficiency_summaries(session, [case.id])).get(case.id, {}),
         )
 
     async def assign_analyst(
@@ -926,6 +930,7 @@ class CaseService:
             created_at=created,
             updated_at=now,
             closed_at=closed,
+            **(await case_sufficiency_summaries(session, [case.id])).get(case.id, {}),
         )
 
     async def close_case(
@@ -994,6 +999,7 @@ class CaseService:
             created_at=created,
             updated_at=now,
             closed_at=now,
+            **(await case_sufficiency_summaries(session, [case.id])).get(case.id, {}),
         )
 
     async def link_evidence_to_case(

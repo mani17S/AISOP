@@ -34,7 +34,7 @@ import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from loguru import logger
 from sqlalchemy import func, select
@@ -43,11 +43,12 @@ from sqlalchemy.orm import joinedload
 
 from app.core.rbac import AuthenticatedAnalyst
 from app.models.case import CaseAuditEventModel, CaseEvidenceModel, CaseModel, CaseStatus
-from app.models.evidence import NormalizedEventModel
+from app.models.evidence import NormalizedEventModel, RawEvidence
 from app.modules.ai.guardrails.sufficiency_trace import RATIONALE_SCHEMA, build_rationale
 from app.modules.correlation.mitre import MAPPING_VERSION
 from app.modules.correlation.report import REASON_EXPLANATIONS
 from app.modules.correlation.workflow import WORKFLOW_VERSION, IncidentAnalysis, WorkflowResult, run_workflow
+from app.services import analysis_executor
 from app.services.attack_reference_service import resolve_attack_reference
 from app.modules.correlation.mitre import MAPPING_VERSION as _LEGACY_MAPPING_VERSION  # noqa: F401
 from app.modules.evidence_domains.bridge import is_dated, is_machine
@@ -56,7 +57,7 @@ from app.modules.evidence_domains.domain_attack import DOMAIN_MAPPING_VERSION
 from app.schemas.multisource import MultiSourceSection
 from app.modules.correlation.management_view import management_view
 from app.modules.correlation.report import non_weak_links
-from app.schemas.sufficiency import SUFFICIENCY_RULE_VERSION
+from app.schemas.sufficiency import SUFFICIENCY_RULE_VERSION, SufficiencyVerdict
 
 svc_logger = logger.bind(component="multisource_investigation_service")
 
@@ -160,9 +161,68 @@ class MultiSourceInvestigationService:
             keys.append(ev.id)
         return records, digests, keys
 
+    async def _load_inputs(
+        self, session: AsyncSession, case_id: uuid.UUID
+    ) -> tuple[list[Any], list[Optional[str]], list[uuid.UUID], list[tuple[str, str]]]:
+        """
+        Proposal A2: ``_load_rows`` + ``_inputs`` + the fingerprint pairs from ONE column-only SELECT (no ORM entities).
+        Returns (records, digests, keys, fingerprint pairs) with the exact semantics of the old two-step path: the same ORDER BY
+        (event_timestamp, id; the analysis depends on record order), the same visibility (join on ``case_evidence.case_id`` only), the
+        outer join keeps a row whose raw record is missing (record None, digest None, fingerprint digest ""), and a payload that is not
+        a dict gives record None with the real digest. The Python de-duplication by event id mirrors ``.unique()`` in ``_load_rows``.
+        """
+        stmt = (
+            select(NormalizedEventModel.id, RawEvidence.raw_payload, RawEvidence.sha256_hash)
+            .select_from(NormalizedEventModel)
+            .join(CaseEvidenceModel, NormalizedEventModel.id == CaseEvidenceModel.evidence_id)
+            .outerjoin(RawEvidence, NormalizedEventModel.raw_evidence_id == RawEvidence.id)
+            .where(CaseEvidenceModel.case_id == case_id)
+            .order_by(NormalizedEventModel.event_timestamp.asc(), NormalizedEventModel.id.asc())
+        )
+        records: list[Any] = []
+        digests: list[Optional[str]] = []
+        keys: list[uuid.UUID] = []
+        pairs: list[tuple[str, str]] = []
+        seen: set[uuid.UUID] = set()
+        for event_id, payload, digest in (await session.execute(stmt)).all():
+            if event_id in seen:
+                continue
+            seen.add(event_id)
+            records.append(payload if isinstance(payload, dict) else None)
+            digests.append(digest)
+            keys.append(event_id)
+            pairs.append((str(event_id), digest or ""))
+        return records, digests, keys, pairs
+
+    async def _load_fingerprint_pairs(self, session: AsyncSession, case_id: uuid.UUID) -> list[tuple[str, str]]:
+        """
+        Column-only read of what ``fingerprint`` needs: (event id, stored raw SHA-256) per linked evidence row, no ORM entities.
+        Same visibility as ``_load_rows`` (the join on ``case_evidence.case_id`` only); the outer join keeps a row whose raw record is
+        missing (digest ""); the Python de-duplication by event id mirrors ``.unique()`` there (``case_evidence`` is also unique per
+        (case, evidence)). The fingerprint sorts, so no ORDER BY.
+        """
+        stmt = (
+            select(NormalizedEventModel.id, RawEvidence.sha256_hash)
+            .select_from(NormalizedEventModel)
+            .join(CaseEvidenceModel, NormalizedEventModel.id == CaseEvidenceModel.evidence_id)
+            .outerjoin(RawEvidence, NormalizedEventModel.raw_evidence_id == RawEvidence.id)
+            .where(CaseEvidenceModel.case_id == case_id)
+        )
+        pairs: dict[uuid.UUID, tuple[str, str]] = {}
+        for event_id, digest in (await session.execute(stmt)).all():
+            pairs.setdefault(event_id, (str(event_id), digest or ""))
+        return list(pairs.values())
+
     @staticmethod
     def fingerprint(rows: list[NormalizedEventModel], use_llm: bool) -> str:
-        items = sorted((str(ev.id), (ev.raw_evidence.sha256_hash if ev.raw_evidence else "") or "") for ev in rows)
+        return MultiSourceInvestigationService.fingerprint_from_pairs(
+            ((str(ev.id), (ev.raw_evidence.sha256_hash if ev.raw_evidence else "") or "") for ev in rows), use_llm
+        )
+
+    @staticmethod
+    def fingerprint_from_pairs(pairs: Iterable[tuple[str, str]], use_llm: bool) -> str:
+        """The one fingerprint computation; ``pairs`` are (str(event id), raw SHA-256 or "") exactly as ``fingerprint`` builds them."""
+        items = sorted(pairs)
         blob = json.dumps(
             {"evidence": items, "use_llm": use_llm, "workflow": WORKFLOW_VERSION, "mapping": MAPPING_VERSION,
              "rules": SUFFICIENCY_RULE_VERSION},
@@ -223,9 +283,8 @@ class MultiSourceInvestigationService:
         if linked > MAX_EVIDENCE_PER_RUN:
             raise EvidenceTooLarge(f"The case has {linked} evidence items; the limit per investigation is {MAX_EVIDENCE_PER_RUN}.")
 
-        rows = await self._load_rows(session, case_id)
-        records, digests, keys = self._inputs(rows)
-        fp = self.fingerprint(rows, use_llm)
+        records, digests, keys, pairs = await self._load_inputs(session, case_id)
+        fp = self.fingerprint_from_pairs(pairs, use_llm)
 
         latest = await self._latest(session, case_id)
         if latest is not None and not force and (latest.details or {}).get("evidence_fingerprint") == fp:
@@ -237,14 +296,20 @@ class MultiSourceInvestigationService:
         await session.rollback()  # end the read transaction: no connection is held during inference
 
         # The optional local ATT&CK catalogue is only needed when a model is invoked; resolved lazily, loaded at most once.
-        result = await run_workflow(records, None, llm_provider if use_llm else None, digests, keys,
-                                    attack_reference=resolve_attack_reference() if use_llm else None)
+        payload = None
+        if not use_llm and analysis_executor.enabled():
+            # ANALYSIS_WORKER_PROCESSES > 0: the same analyze + build_payload run in a worker process (falls back to a thread if the pool breaks).
+            payload = await analysis_executor.run_deterministic(records, digests, keys, fp)
+        else:
+            result = await run_workflow(records, None, llm_provider if use_llm else None, digests, keys,
+                                        attack_reference=resolve_attack_reference() if use_llm else None)
 
-        if self.fingerprint(await self._load_rows(session, case_id), use_llm) != fp:
+        if self.fingerprint_from_pairs(await self._load_fingerprint_pairs(session, case_id), use_llm) != fp:
             await session.rollback()
             raise EvidenceChanged("Case evidence changed while the investigation was running; the result was discarded.")
 
-        payload = self.build_payload(result, fp, use_llm)
+        if payload is None:
+            payload = self.build_payload(result, fp, use_llm)
         now = datetime.now(timezone.utc)
         payload["created_at"] = _iso(now)
         payload["started_by"] = actor.username
@@ -278,7 +343,7 @@ class MultiSourceInvestigationService:
             raise NoInvestigation("No multi-source investigation has been started for this case.")
         payload = dict(latest.details or {})
         payload["created_at"] = _iso(latest.created_at)
-        current = self.fingerprint(await self._load_rows(session, case_id), bool(payload.get("use_llm")))
+        current = self.fingerprint_from_pairs(await self._load_fingerprint_pairs(session, case_id), bool(payload.get("use_llm")))
         stale = current != payload.get("evidence_fingerprint")
         view = self.section_view(payload, section, stale)
         if section in (MultiSourceSection.STATUS, MultiSourceSection.REPORT):
@@ -321,7 +386,7 @@ class MultiSourceInvestigationService:
         if latest is None:
             raise NoInvestigation("No multi-source investigation has been started for this case.")
         stored_fp = (latest.details or {}).get("evidence_fingerprint")
-        current_fp = self.fingerprint(await self._load_rows(session, case_id), bool((latest.details or {}).get("use_llm")))
+        current_fp = self.fingerprint_from_pairs(await self._load_fingerprint_pairs(session, case_id), bool((latest.details or {}).get("use_llm")))
         if evidence_fingerprint != stored_fp or current_fp != stored_fp:
             raise InvestigationMismatch("The investigation or its evidence changed; reload it and review the current result.")
         clean_note = None
@@ -353,7 +418,7 @@ class MultiSourceInvestigationService:
             raise NoInvestigation("No multi-source investigation has been started for this case.")
         payload = dict(latest.details or {})
         stored_fp = payload.get("evidence_fingerprint")
-        stale = self.fingerprint(await self._load_rows(session, case_id), bool(payload.get("use_llm"))) != stored_fp
+        stale = self.fingerprint_from_pairs(await self._load_fingerprint_pairs(session, case_id), bool(payload.get("use_llm"))) != stored_fp
         review = await self._review_view(session, case_id, latest, stale)
         if review["state"] != "approved":
             raise ExportNotApproved(f"Export refused: review state is {review['state']}.")
@@ -603,7 +668,9 @@ class MultiSourceInvestigationService:
             "ledger": {"head": result.ledger_head, "verified": result.ledger_ok,
                        "steps": [{"seq": e["seq"], "step": e["step"], "entry_hash": e["entry_hash"]} for e in result.ledger]},
         }
-        return json.loads(json.dumps(payload, default=str))
+        out = json.loads(json.dumps(payload, default=str))
+        out["verdict_summary"] = _compact_verdict(out)   # the case list reads only this (about 100 bytes) instead of the whole result
+        return out
 
 
 def activity_summary(details: dict[str, Any]) -> dict[str, Any]:
@@ -630,8 +697,168 @@ def activity_summary(details: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+#: Worst-first order used to reduce several stored incident verdicts to one case-level verdict.
+_VERDICT_SEVERITY = {SufficiencyVerdict.INSUFFICIENT: 0, SufficiencyVerdict.LIMITED: 1, SufficiencyVerdict.SUFFICIENT: 2}
+
+
+def _verdict_core(details: Any) -> dict[str, Any] | None:
+    """
+    Reduce one stored run to its case-level verdict, or None: ``{"verdict": SufficiencyVerdict, "rule_version": str | None,
+    "truncated": bool | None}``. Pure read of what the gate already stored: nothing is recomputed and nothing is guessed. A
+    malformed row, a missing or unrecognised verdict yields None for the whole run. The ONE reducer behind both the write
+    path (``_compact_verdict``) and the read path (``_case_sufficiency_from_row``), so their outputs agree by construction.
+    """
+    if not isinstance(details, dict):
+        return None
+    incidents = details.get("incidents")
+    if incidents is None or incidents == []:
+        views: list[Any] = [details.get("batch_sufficiency")]          # no incident formed: the batch assessment is the verdict
+    elif isinstance(incidents, list):
+        views = [i.get("sufficiency") if isinstance(i, dict) else None for i in incidents]
+    else:
+        return None
+    worst: tuple[SufficiencyVerdict, Any] | None = None
+    for view in views:
+        if not isinstance(view, dict):
+            return None
+        try:
+            verdict = SufficiencyVerdict(view.get("verdict"))
+        except ValueError:
+            return None
+        if worst is None or _VERDICT_SEVERITY[verdict] < _VERDICT_SEVERITY[worst[0]]:
+            worst = (verdict, view.get("rule_version"))
+    if worst is None:
+        return None
+    truncation = details.get("truncation")
+    total = truncation.get("incidents_total") if isinstance(truncation, dict) else None
+    truncated = (total > len(incidents or [])) if isinstance(total, int) and not isinstance(total, bool) else None
+    return {"verdict": worst[0], "rule_version": worst[1] if isinstance(worst[1], str) else None, "truncated": truncated}
+
+
+def _api_fields(core: dict[str, Any], created_at: datetime) -> dict[str, Any]:
+    assessed_at = created_at if created_at.tzinfo else created_at.replace(tzinfo=timezone.utc)
+    return {
+        "sufficiency_verdict": core["verdict"],
+        "sufficiency_rule_version": core["rule_version"],
+        "sufficiency_assessed_at": assessed_at.astimezone(timezone.utc),
+        "sufficiency_incidents_truncated": core["truncated"],
+    }
+
+
+def _case_sufficiency_from_row(details: Any, created_at: datetime) -> dict[str, Any] | None:
+    """The case-level API summary of one stored run (``_verdict_core`` plus the row's ``created_at``), or None."""
+    core = _verdict_core(details)
+    return None if core is None else _api_fields(core, created_at)
+
+
+#: Stored on every new investigation row as ``details["verdict_summary"]`` (see ``_compact_verdict``).
+VERDICT_SUMMARY_SCHEMA = 1
+
+
+def _compact_verdict(stored: dict[str, Any]) -> dict[str, Any]:
+    """
+    The small summary stored beside the full result so the case list need not load it. Computed ONLY from the
+    assessments already inside ``stored`` (never the gate). When the run cannot be summarised the same shape is stored
+    with ``verdict`` None: a recorded marker, distinguishable from an old row that has no key at all.
+    """
+    core = _verdict_core(stored)
+    if core is None:
+        return {"schema": VERDICT_SUMMARY_SCHEMA, "verdict": None, "rule_version": None, "truncated": None}
+    return {"schema": VERDICT_SUMMARY_SCHEMA, "verdict": core["verdict"].value, "rule_version": core["rule_version"],
+            "truncated": core["truncated"]}
+
+
+def _core_from_summary(summary: Any) -> tuple[bool, dict[str, Any] | None]:
+    """(valid, core). Valid only for the exact current shape; anything else makes the caller fall back to the full row."""
+    if not isinstance(summary, dict) or not all(k in summary for k in ("schema", "verdict", "rule_version", "truncated")):
+        return False, None
+    schema, verdict, rule_version, truncated = (summary[k] for k in ("schema", "verdict", "rule_version", "truncated"))
+    if type(schema) is not int or schema != VERDICT_SUMMARY_SCHEMA:
+        return False, None
+    if not (rule_version is None or isinstance(rule_version, str)) or not (truncated is None or isinstance(truncated, bool)):
+        return False, None
+    if verdict is None:
+        return True, None                                              # recorded "could not be summarised": not assessed
+    if not isinstance(verdict, str):
+        return False, None
+    try:
+        return True, {"verdict": SufficiencyVerdict(verdict), "rule_version": rule_version, "truncated": truncated}
+    except ValueError:
+        return False, None
+
+
+#: Audit rows are immutable (append-only, enforced by database triggers), so the reduction of a legacy row (one without a
+#: valid ``verdict_summary``) never changes: remembered per audit-row id, bounded, oldest evicted first.
+_LEGACY_MEMO: dict[uuid.UUID, dict[str, Any] | None] = {}
+_LEGACY_MEMO_MAX = 1024
+
+
+def _remember_legacy(audit_id: uuid.UUID, core: dict[str, Any] | None) -> None:
+    if audit_id not in _LEGACY_MEMO and len(_LEGACY_MEMO) >= _LEGACY_MEMO_MAX:
+        del _LEGACY_MEMO[next(iter(_LEGACY_MEMO))]
+    _LEGACY_MEMO[audit_id] = core
+
+
+def _latest_verdict_query(case_ids: list[uuid.UUID]):
+    """Query A: the latest investigation row per case (ids only, as before) with ONLY the small ``verdict_summary`` path value."""
+    ranked = (
+        select(
+            CaseAuditEventModel.id.label("audit_id"),
+            func.row_number().over(
+                partition_by=CaseAuditEventModel.case_id,
+                order_by=(CaseAuditEventModel.created_at.desc(), CaseAuditEventModel.id.desc()),
+            ).label("rn"),
+        )
+        .where(CaseAuditEventModel.case_id.in_(case_ids), CaseAuditEventModel.action == MULTISOURCE_ACTION)
+        .subquery()
+    )
+    return (
+        select(CaseAuditEventModel.case_id, CaseAuditEventModel.id, CaseAuditEventModel.created_at,
+               CaseAuditEventModel.details["verdict_summary"])
+        .join(ranked, ranked.c.audit_id == CaseAuditEventModel.id)
+        .where(ranked.c.rn == 1)
+    )
+
+
+async def case_sufficiency_summaries(session: AsyncSession, case_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, Any]]:
+    """
+    Stored evidence-sufficiency verdict per case for the cases API. Query A: latest run per case (``created_at`` then
+    ``id`` descending) with only the small ``details["verdict_summary"]`` path value. Rows without a valid summary (written
+    before it existed, or unreadable) fall back to Query B, which loads the full ``details`` of just those rows and uses the
+    same reducer; that result is memoised per immutable audit-row id. Cases with no run, or whose latest run cannot be read
+    safely, are absent from the result (the caller reports None, meaning not assessed). The verdict is the worst across the
+    stored incidents (insufficient, then limited, then sufficient); ``rule_version`` comes from that assessment. This never
+    calls the gate. Access scoping is the caller's responsibility (pass only visible cases).
+    """
+    if not case_ids:
+        return {}
+    rows = await session.execute(_latest_verdict_query(case_ids))
+    out: dict[uuid.UUID, dict[str, Any]] = {}
+    legacy: dict[uuid.UUID, tuple[uuid.UUID, datetime]] = {}           # audit id -> (case id, created_at)
+    for case_id, audit_id, created_at, summary in rows.all():
+        valid, core = _core_from_summary(summary)
+        if not valid:
+            if audit_id not in _LEGACY_MEMO:
+                legacy[audit_id] = (case_id, created_at)
+                continue
+            core = _LEGACY_MEMO[audit_id]
+        if core is not None:
+            out[case_id] = _api_fields(core, created_at)
+    if legacy:
+        full = await session.execute(
+            select(CaseAuditEventModel.id, CaseAuditEventModel.details).where(CaseAuditEventModel.id.in_(list(legacy)))
+        )
+        for audit_id, details in full.all():
+            core = _verdict_core(details)
+            _remember_legacy(audit_id, core)
+            if core is not None:
+                case_id, created_at = legacy[audit_id]
+                out[case_id] = _api_fields(core, created_at)
+    return out
+
+
 __all__ = [
-    "EvidenceTooLarge", "activity_summary",
+    "EvidenceTooLarge", "activity_summary", "case_sufficiency_summaries",
     "CaseClosed", "CaseNotFound", "EvidenceChanged", "MULTISOURCE_ACTION", "MultiSourceError",
     "MultiSourceInvestigationService", "NoInvestigation", "PersistenceFailed",
 ]

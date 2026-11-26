@@ -7,6 +7,7 @@ AI Security Investigation & Operations Platform (AISOP) Backend API.
 from __future__ import annotations
 
 import asyncio
+import gc
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -20,6 +21,7 @@ from app.core.security_events import SecurityEventBuffer
 from app.modules.ai.knowledge.retriever import KnowledgeRetriever
 from app.modules.threatintel.feeds.manager import LocalFeedManager
 from app.modules.threatintel.local_engine import LocalThreatIntelEngine
+from app.services import analysis_executor
 from app.middleware import RequestCorrelationMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 from app.middleware.body_limit import SMALL_BODY_LIMITS, BodySizeLimitMiddleware
 from app.middleware.security_events import SecurityEventsMiddleware
@@ -85,6 +87,16 @@ async def _security_events_loop(app: FastAPI) -> None:
                 logger.warning("Security event purge failed", error_type=type(exc).__name__)
 
 
+def _freeze_gc_after_startup() -> None:
+    """Opt-in (GC_FREEZE_AT_STARTUP): collect once, then move the start-up objects to the permanent generation so later full collections are shorter."""
+    try:
+        gc.collect()
+        gc.freeze()
+        logger.info("Garbage collector frozen after start-up", frozen_objects=gc.get_freeze_count())
+    except Exception as exc:
+        logger.warning("Garbage collector freeze failed", error_type=type(exc).__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown hooks."""
@@ -124,7 +136,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
 
     flush_task = asyncio.create_task(_security_events_loop(app))
+    # Optional worker processes for the deterministic investigation (ANALYSIS_WORKER_PROCESSES, default 0 = off). Started in the background so
+    # the 2 to 3 s warm-up never delays startup; start_pool logs and returns on failure, so the app starts either way.
+    pool_task = asyncio.create_task(analysis_executor.start_pool())
+    if settings.GC_FREEZE_AT_STARTUP:
+        _freeze_gc_after_startup()
     yield
+    pool_task.cancel()
+    try:
+        await pool_task
+    except asyncio.CancelledError:
+        pass
+    await analysis_executor.shutdown_pool()
     flush_task.cancel()
     try:
         await flush_task

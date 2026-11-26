@@ -384,6 +384,48 @@ class Settings(BaseSettings):
         ),
     )
 
+    ANALYSIS_WORKER_PROCESSES: int = Field(
+        default=0,
+        ge=0,
+        le=4,
+        description=(
+            "Worker processes for the deterministic multi-source investigation. 0 (default) runs it in a thread of the server process, as "
+            "before. N above 0 runs it in a bounded pool of N separate processes so a large investigation no longer slows health checks "
+            "and other requests (the GIL is not shared); extra investigations wait for a free worker. Each worker uses extra memory "
+            "(about 76 to 133 MB) and the pool needs a one-time start-up of about 2 to 3 seconds (started in the background at server start). "
+            "The result is identical. The model-assisted investigation (use_llm) always stays in the server process."
+        ),
+    )
+
+    ANALYSIS_WORKER_TIMEOUT_SECONDS: int = Field(
+        default=300,
+        ge=1,
+        le=3600,
+        description=(
+            "The longest one deterministic analysis may run in a worker before the worker is stopped. On expiry the worker processes are "
+            "killed, that request fails with a generic server error (it is not retried in a thread) and the cool-down starts."
+        ),
+    )
+    ANALYSIS_WORKER_COOLDOWN_SECONDS: int = Field(
+        default=30,
+        ge=0,
+        le=3600,
+        description=(
+            "After the worker pool fails (a timeout, a crash, a start-up error) deterministic investigations run in the server process for "
+            "this many seconds without touching the pool; then one fresh pool is built. 0 rebuilds the pool on every request after a failure."
+        ),
+    )
+
+    GC_FREEZE_AT_STARTUP: bool = Field(
+        default=False,
+        description=(
+            "When true, once application start-up completes the process runs one full garbage collection and freezes the objects that exist "
+            "at that moment (gc.freeze), so later full collections no longer traverse them and pause the event loop for less time. Frozen "
+            "objects are never collected (start-up objects live for the whole process anyway) and memory use may be slightly higher. "
+            "It only affects pause times, never results. Default false (off)."
+        ),
+    )
+
     # ── Ollama context window (docs/06_AI/AI_Latency.md) ───────
     OLLAMA_NUM_CTX: int | None = Field(
         default=8192,

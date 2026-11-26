@@ -468,7 +468,7 @@ async def test_r08_read_failure_during_investigation_is_a_controlled_error_with_
         raise RuntimeError("injected read failure SECRET-DETAIL")
 
     async with Keep(client), contract_client(app_instance) as strict:
-        monkeypatch.setattr(MultiSourceInvestigationService, "_load_rows", broken)
+        monkeypatch.setattr(MultiSourceInvestigationService, "_load_inputs", broken)
         r = await strict.post(START.format(cid=case.id), json={}, headers=bearer(token))
         status, text = r.status_code, r.text
         note("R08-read", status=status, body=text[:80])

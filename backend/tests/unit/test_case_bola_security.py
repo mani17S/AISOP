@@ -1093,3 +1093,31 @@ class TestBolaIdentifierManipulation:
                 headers=auth_header(bola_context.lead_token),
             )
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+
+class TestBolaSufficiencyVerdict:
+    """The stored sufficiency verdict rides on the existing case routes only; it never widens who can see a case."""
+
+    @staticmethod
+    async def _store_run(db_session, ctx: BolaTestContext, verdict: str) -> None:
+        db_session.add(CaseAuditEventModel(
+            id=uuid.uuid4(), case_id=ctx.case_101.id, actor_analyst_id=ctx.lead_analyst.id, actor_username="lead_soc",
+            action="case_multisource_investigation", created_at=datetime.now(timezone.utc),
+            details={"incidents": [{"sufficiency": {"verdict": verdict, "rule_version": "suff-v5"}}], "truncation": {"incidents_total": 1}},
+        ))
+        await db_session.commit()
+
+    @pytest.mark.anyio
+    async def test_unassigned_analyst_gets_neither_case_nor_verdict(self, app_instance, db_session, bola_context: BolaTestContext):
+        await self._store_run(db_session, bola_context, "insufficient")
+        transport = httpx.ASGITransport(app=app_instance)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            detail = await client.get(f"/api/v1/cases/{bola_context.case_101.id}", headers=auth_header(bola_context.analyst_b_token))
+            listing = await client.get("/api/v1/cases", headers=auth_header(bola_context.analyst_b_token))
+            assigned = await client.get(f"/api/v1/cases/{bola_context.case_101.id}", headers=auth_header(bola_context.analyst_a_token))
+        assert detail.status_code == status.HTTP_404_NOT_FOUND and "sufficiency" not in detail.text
+        assert listing.status_code == status.HTTP_200_OK
+        assert [i["id"] for i in listing.json()["items"]] == [str(bola_context.case_202.id)]
+        assert all(i["sufficiency_verdict"] is None for i in listing.json()["items"])
+        assert assigned.status_code == status.HTTP_200_OK and assigned.json()["sufficiency_verdict"] == "insufficient"

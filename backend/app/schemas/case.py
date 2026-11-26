@@ -15,6 +15,7 @@ from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.rbac import CaseRole
+from app.schemas.sufficiency import SufficiencyVerdict
 
 
 class CaseStatus(str, Enum):
@@ -197,6 +198,23 @@ class CaseResponse(BaseModel):
     created_at: datetime = Field(description="Case creation timestamp (UTC)")
     updated_at: datetime = Field(description="Last metadata update timestamp (UTC)")
     closed_at: datetime | None = Field(default=None, description="Closure timestamp if terminal")
+    sufficiency_verdict: SufficiencyVerdict | None = Field(
+        default=None,
+        description=(
+            "Worst stored evidence-sufficiency verdict of the latest multisource investigation run, read from the "
+            "append-only audit row written by the sufficiency gate. None means not assessed yet; nothing is computed here."
+        ),
+    )
+    sufficiency_rule_version: str | None = Field(
+        default=None, description="Rule version of the assessment the verdict was taken from"
+    )
+    sufficiency_assessed_at: datetime | None = Field(
+        default=None, description="Timestamp (UTC) of the stored investigation run the verdict was read from"
+    )
+    sufficiency_incidents_truncated: bool | None = Field(
+        default=None,
+        description="True when the run formed more incidents than were stored, so the verdict covers only the stored ones",
+    )
 
 
 class CaseEvidenceLinkRequest(BaseModel):
