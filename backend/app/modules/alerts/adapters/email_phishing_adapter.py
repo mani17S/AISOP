@@ -72,8 +72,9 @@ class EmailPhishingAdapter:
             or data.get("vendor")
             or "Email-Security-Gateway"
         )
-        sender = str(data.get("sender") or data.get("from") or "unknown@external.com")
-        recipient = str(data.get("recipient") or data.get("to") or "victim@internal.com")
+        # An address the record does not state stays empty: no sender or recipient identity is invented.
+        sender = str(data.get("sender") or data.get("from") or "").strip()
+        recipient = str(data.get("recipient") or data.get("to") or "").strip()
         subject = str(data.get("subject") or "No Subject")
         threat_type = str(data.get("threat_type") or data.get("verdict") or "Phishing")
 
@@ -81,32 +82,42 @@ class EmailPhishingAdapter:
         ts_val = data.get("timestamp") or data.get("delivery_time") or data.get("date")
         ts = require_event_time(ts_val)
 
-        # Severity
-        raw_sev = str(data.get("severity") or "high").lower()
-        severity: AlertSeverity = "high"
+        # Severity: a missing or unrecognised vendor severity stays "unknown", it is never defaulted to "high"
+        vendor_sev = data.get("severity")
+        raw_sev = str(vendor_sev).lower() if vendor_sev else ""
+        severity: AlertSeverity = "unknown"
         if raw_sev in ("critical", "high", "medium", "low", "informational"):
             severity = raw_sev  # type: ignore[assignment]
 
-        entities: list[AlertEntity] = [
-            AlertEntity(
-                entity_type="email",
-                entity_value=sender,
-                role="attacker",
-                attributes={"subject": subject},
-            ),
-            AlertEntity(
-                entity_type="email",
-                entity_value=recipient,
-                role="victim",
-                attributes={"subject": subject},
-            ),
-            AlertEntity(
-                entity_type="user",
-                entity_value=recipient.split("@")[0],
-                role="victim",
-                attributes={"email": recipient},
-            ),
-        ]
+        entities: list[AlertEntity] = []
+        if sender:
+            entities.append(
+                AlertEntity(
+                    entity_type="email",
+                    entity_value=sender,
+                    role="attacker",
+                    attributes={"subject": subject},
+                )
+            )
+        recipient_user = recipient.split("@")[0] if recipient else ""
+        if recipient:
+            entities.append(
+                AlertEntity(
+                    entity_type="email",
+                    entity_value=recipient,
+                    role="victim",
+                    attributes={"subject": subject},
+                )
+            )
+        if recipient_user:
+            entities.append(
+                AlertEntity(
+                    entity_type="user",
+                    entity_value=recipient_user,
+                    role="victim",
+                    attributes={"email": recipient},
+                )
+            )
         observables: list[AlertObservable] = []
 
         # Extract domain from sender
@@ -193,8 +204,10 @@ class EmailPhishingAdapter:
 
         title = f"Phishing Alert: '{subject}' ({threat_type})"
         description = (
-            f"Suspicious email detected from {sender} targeting {recipient}. "
-            f"Subject: '{subject}'"
+            "Suspicious email detected"
+            + (f" from {sender}" if sender else "")
+            + (f" targeting {recipient}" if recipient else "")
+            + f". Subject: '{subject}'"
         )
 
         return CanonicalAlert(
@@ -204,20 +217,20 @@ class EmailPhishingAdapter:
             title=title,
             description=description,
             severity=severity,
-            vendor_severity=str(data.get("severity") or raw_sev),
+            vendor_severity=str(vendor_sev) if vendor_sev else None,
             category="initial_access",
             provider=provider,
             timestamp=ts,
             mitre_attack=mitre_list,
             entities=entities,
             observables=observables,
-            user=UserEntity(username=recipient.split("@")[0]),
+            user=UserEntity(username=recipient_user) if recipient_user else None,
             file=file_entity,
             raw_ref=raw_ref,
-            raw_payload_summary=f"Phishing: {subject[:80]} [{sender}]",
+            raw_payload_summary=f"Phishing: {subject[:80]}" + (f" [{sender}]" if sender else ""),
             custom_fields={
-                "sender": sender,
-                "recipient": recipient,
+                "sender": sender or None,
+                "recipient": recipient or None,
                 "subject": subject,
                 "threat_type": threat_type,
                 "original_event": data,

@@ -105,14 +105,14 @@ class SysmonAlertAdapter:
             or event_data.get("Hostname")
             or data.get("computer")
             or data.get("host")
-            or "UNKNOWN-HOST"
-        )
+            or ""
+        ).strip()  # empty = the record names no host; none is invented (CLAUDE.md evidence-integrity rule)
         user_val = str(
             event_data.get("User")
             or event_data.get("TargetUserName")
             or data.get("user")
-            or "SYSTEM"
-        )
+            or ""
+        ).strip()  # empty = the record names no user; none is invented
 
         # Extract timestamps
         time_created = (
@@ -192,23 +192,28 @@ class SysmonAlertAdapter:
             category = "persistence"
 
         # Build entities
-        entities: list[AlertEntity] = [
-            AlertEntity(
-                entity_type="host",
-                entity_value=computer,
-                role="victim",
-                attributes={"hostname": computer},
-            ),
-            AlertEntity(
-                entity_type="user",
-                entity_value=user_val,
-                role="observed",
-                attributes={"username": user_val},
-            ),
-        ]
+        entities: list[AlertEntity] = []
+        if computer:
+            entities.append(
+                AlertEntity(
+                    entity_type="host",
+                    entity_value=computer,
+                    role="victim",
+                    attributes={"hostname": computer},
+                )
+            )
+        if user_val:
+            entities.append(
+                AlertEntity(
+                    entity_type="user",
+                    entity_value=user_val,
+                    role="observed",
+                    attributes={"username": user_val},
+                )
+            )
 
-        host_entity = HostEntity(hostname=computer)
-        user_entity = UserEntity(username=user_val)
+        host_entity = HostEntity(hostname=computer) if computer else None
+        user_entity = UserEntity(username=user_val) if user_val else None
 
         process_entity: ProcessEntity | None = None
         if image or cmdline:
@@ -289,7 +294,11 @@ class SysmonAlertAdapter:
             source_type="sysmon",
             source_alert_id=str(data.get("RecordId") or event_id),
             title=title,
-            description=f"Sysmon {event_id} alert on host {computer} executed by {user_val}",
+            description=(
+                f"Sysmon {event_id} alert"
+                + (f" on host {computer}" if computer else "")
+                + (f" executed by {user_val}" if user_val else "")
+            ),
             severity=severity,
             vendor_severity=str(event_id),
             category=category,

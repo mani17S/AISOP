@@ -1,8 +1,13 @@
 """
 AISOP Network IDS & Firewall Alert Adapter.
 
-Adapts network intrusion detection systems and next-generation firewall alerts
-(e.g. Suricata EVE-JSON, Snort, Zeek notices, Palo Alto Threat Logs) into CanonicalAlert models.
+Adapts network IDS and firewall alerts that follow the Suricata EVE-JSON alert shape
+(alert.signature / signature_id / category / severity / metadata.mitre_technique_id,
+src_ip / dest_ip / ports / proto, optional http.hostname) into CanonicalAlert models.
+Other products are adapted only when their records use the same field names; no
+Snort, Zeek or Palo Alto specific format is parsed. The provider is taken from the
+record (provider / vendor / product / sensor, or a product named in source_type);
+when the record states none it is the neutral label "firewall_ids".
 """
 
 from __future__ import annotations
@@ -26,7 +31,7 @@ from app.schemas.entities import DnsEntity, NetworkEntity
 
 
 class NetworkIdsAdapter:
-    """Adapter for Suricata, Snort, and Firewall intrusion alerts."""
+    """Adapter for Suricata EVE-JSON-shaped IDS and firewall alerts (see the module docstring for scope)."""
 
     def adapter_name(self) -> str:
         return "firewall_ids"
@@ -93,8 +98,9 @@ class NetworkIdsAdapter:
 
         # Severity resolution:
         # In Suricata: 1 is High/Critical, 2 is Medium, 3 is Low/Info
+        # A missing or unrecognised vendor severity stays "unknown", it is never defaulted to "medium"
         raw_sev = alert_info.get("severity") or data.get("severity")
-        severity: AlertSeverity = "medium"
+        severity: AlertSeverity = "unknown"
         if raw_sev in (1, "1", "critical", "Critical"):
             severity = "critical"
         elif raw_sev in (2, "2", "high", "High"):
@@ -103,6 +109,20 @@ class NetworkIdsAdapter:
             severity = "medium"
         elif raw_sev in (4, "4", "low", "Low"):
             severity = "low"
+        elif raw_sev in ("informational", "Informational", "info", "Info"):
+            severity = "informational"
+
+        # Provider: what the record states, else the neutral label (a product is never assumed)
+        _generic_sources = {"", "firewall_ids", "firewall", "ids"}
+        source_type = str(data.get("source_type") or "").strip()
+        provider = str(
+            data.get("provider")
+            or data.get("vendor")
+            or data.get("product")
+            or data.get("sensor")
+            or (source_type if source_type.lower() not in _generic_sources else "")
+            or "firewall_ids"
+        )
 
         # Timestamp
         ts_val = data.get("timestamp") or data.get("@timestamp")
@@ -206,9 +226,9 @@ class NetworkIdsAdapter:
             title=f"IDS Alert: {signature}",
             description=f"{signature} observed from {src_ip}:{src_port} to {dest_ip}:{dest_port} ({proto})",
             severity=severity,
-            vendor_severity=str(raw_sev),
+            vendor_severity=str(raw_sev) if raw_sev else None,
             category=category,
-            provider="Suricata-IDS",
+            provider=provider,
             timestamp=ts,
             mitre_attack=mitre_list,
             entities=entities,

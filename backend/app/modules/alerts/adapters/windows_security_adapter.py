@@ -99,8 +99,8 @@ class WindowsSecurityAdapter:
             or event_data.get("Hostname")
             or data.get("computer")
             or data.get("host")
-            or "WINDOWS-ENDPOINT"
-        )
+            or ""
+        ).strip()  # empty = the record names no host; none is invented (CLAUDE.md evidence-integrity rule)
 
         # Time extraction
         flat_time = data.get("TimeCreated") if isinstance(data.get("TimeCreated"), str) else None  # flat forwarder export
@@ -111,8 +111,10 @@ class WindowsSecurityAdapter:
             event_data.get("TargetUserName")
             or event_data.get("SubjectUserName")
             or data.get("user")
-            or "unknown"
-        )
+            or ""
+        ).strip()  # empty = the record names no account; none is invented
+        user_label = target_user or "(no account recorded)"  # display text only, never an entity
+        host_label = computer or "an unrecorded host"  # display text only, never an entity
         target_domain = str(
             event_data.get("TargetDomainName")
             or event_data.get("SubjectDomainName")
@@ -122,40 +124,45 @@ class WindowsSecurityAdapter:
         ip_address = str(event_data.get("IpAddress") or data.get("src_ip") or "")
         ip_port = event_data.get("IpPort") or data.get("src_port")
 
-        entities: list[AlertEntity] = [
-            AlertEntity(
-                entity_type="host",
-                entity_value=computer,
-                role="victim",
-                attributes={"hostname": computer},
-            ),
-            AlertEntity(
-                entity_type="user",
-                entity_value=f"{target_domain}\\{target_user}" if target_domain else target_user,
-                role="target",
-                attributes={"username": target_user, "domain": target_domain},
-            ),
-        ]
+        entities: list[AlertEntity] = []
+        if computer:
+            entities.append(
+                AlertEntity(
+                    entity_type="host",
+                    entity_value=computer,
+                    role="victim",
+                    attributes={"hostname": computer},
+                )
+            )
+        if target_user:
+            entities.append(
+                AlertEntity(
+                    entity_type="user",
+                    entity_value=f"{target_domain}\\{target_user}" if target_domain else target_user,
+                    role="target",
+                    attributes={"username": target_user, "domain": target_domain},
+                )
+            )
         observables: list[AlertObservable] = []
         mitre_list: list[MitreAttackReference] = []
 
-        host_entity = HostEntity(hostname=computer, domain=target_domain or None)
-        user_entity = UserEntity(username=target_user, domain=target_domain or None)
+        host_entity = HostEntity(hostname=computer, domain=target_domain or None) if computer else None
+        user_entity = UserEntity(username=target_user, domain=target_domain or None) if target_user else None
         process_entity: ProcessEntity | None = None
         network_entity: NetworkEntity | None = None
 
         category: AlertCategory = "suspicious_activity"
         severity: AlertSeverity = "low"
         title = f"Windows Security Event {event_id}"
-        description = f"Security event {event_id} observed on {computer}"
+        description = f"Security event {event_id} observed on {host_label}"
 
         if event_id == "4625":
             category = "credential_access"
             severity = "high"
-            title = f"Windows Security 4625: Failed Logon for {target_user}"
+            title = f"Windows Security 4625: Failed Logon for {user_label}"
             substatus = event_data.get("SubStatus", "0xC000006A")
             description = (
-                f"Failed authentication attempt for account {target_user} from IP {ip_address or 'local'} "
+                f"Failed authentication attempt for account {user_label} from IP {ip_address or 'local'} "
                 f"(SubStatus: {substatus})"
             )
             mitre_list.append(
@@ -170,8 +177,8 @@ class WindowsSecurityAdapter:
             category = "initial_access"
             severity = "informational"
             logon_type = str(event_data.get("LogonType", ""))
-            title = f"Windows Security 4624: Successful Logon for {target_user}"
-            description = f"Logon session established for {target_user} (LogonType: {logon_type})"
+            title = f"Windows Security 4624: Successful Logon for {user_label}"
+            description = f"Logon session established for {user_label} (LogonType: {logon_type})"
             mitre_list.append(
                 MitreAttackReference(
                     tactic_id="TA0001",
@@ -215,8 +222,8 @@ class WindowsSecurityAdapter:
         elif event_id == "4720":
             category = "persistence"
             severity = "high"
-            title = f"Windows Security 4720: User Account Created ({target_user})"
-            description = f"User account {target_user} was created by {event_data.get('SubjectUserName')}"
+            title = f"Windows Security 4720: User Account Created ({user_label})"
+            description = f"User account {user_label} was created by {event_data.get('SubjectUserName')}"
             mitre_list.append(
                 MitreAttackReference(
                     tactic_id="TA0003",
@@ -229,7 +236,7 @@ class WindowsSecurityAdapter:
             category = "defense_evasion"
             severity = "critical"
             title = "Windows Security 1102: Audit Log Cleared"
-            description = f"The security audit log on {computer} was cleared by {target_user}"
+            description = f"The security audit log on {host_label} was cleared by {user_label}"
             mitre_list.append(
                 MitreAttackReference(
                     tactic_id="TA0005",

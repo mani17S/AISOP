@@ -111,8 +111,9 @@ class GenericSiemAdapter:
         )
 
         # Severity resolution
-        raw_sev = str(data.get("severity") or data.get("urgency") or data.get("priority") or "medium").lower()
-        severity: AlertSeverity = SEVERITY_LOOKUP.get(raw_sev, "medium")
+        # A missing or unrecognised vendor severity stays "unknown", it is never defaulted to "medium"
+        vendor_sev = data.get("severity") or data.get("urgency") or data.get("priority")
+        severity: AlertSeverity = SEVERITY_LOOKUP.get(str(vendor_sev).lower(), "unknown") if vendor_sev else "unknown"
 
         # Timestamp
         ts_val = data.get("timestamp") or data.get("@timestamp") or data.get("created_at") or data.get("time")
@@ -242,7 +243,7 @@ class GenericSiemAdapter:
             title=title,
             description=description,
             severity=severity,
-            vendor_severity=str(data.get("severity") or raw_sev),
+            vendor_severity=str(vendor_sev) if vendor_sev else None,
             category=category,
             provider=provider,
             timestamp=ts,

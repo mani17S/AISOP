@@ -32,7 +32,9 @@ PINNED = {
     "demo:01_intrusion_chain": "5cbea792047300507e315e8cee56057b1a36086e617892f926957fad85c9f1fa",
     "demo:02_duplicates_near_duplicates": "ced9f80d199d47b213999e9e11142f96a0fe665201498474649fbe32733b6079",
     "demo:03_contradictory_evidence": "b5095372c1ce881794e707e31dbf1f5b9e088b952852fa6e868054307f3c7933",
-    "demo:04_unrelated_and_weak_context": "50dacc9c97468e35f35bf9873c634be6926cda057343493440b0f08201bf481e",
+    # Re-pinned 2026-11-25: the demo DNS record states severity "informational"; the IDS adapter used to turn that unmapped value into an invented "medium"
+    # and now keeps "informational". Verified as the only difference: forcing that one alert back to "medium" reproduces the previous fingerprint 50dacc9c...
+    "demo:04_unrelated_and_weak_context": "5963feed468399d4d037d631d800f223680c4be7364f271fab6ecd81a8e693f3",
     "demo:05_insufficient_unparseable": "a78ea9799b6ef5a9ef687cf162b66878a336ed3bfbcdacf11fa637e6f64bf5a6",
     "demo:06_uncorroborated_single_alert": "d0e8f9c435be524ea52e557379564cd6b8f5ef54afc08c9317ece591f7340f98",
     "envelope:scenario_a_identity_cloud": "ad7beb7213c31cdf66c8d62c5d0b967c0f615c3f9cedcf3f662464c3860a6728",

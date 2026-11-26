@@ -126,34 +126,37 @@ class CloudAuditAdapter:
 
         # Fallback to CloudTrail / Azure / GCP
         if not user_val:
+            # No principal in the record means no user: none is invented (and a dict without userName no longer yields the text "None").
+            identity = data["userIdentity"] if isinstance(data.get("userIdentity"), dict) else {}
             user_val = str(
-                data.get("userIdentity", {}).get("userName")
-                if isinstance(data.get("userIdentity"), dict)
-                else data.get("userPrincipalName")
+                identity.get("userName")
+                or data.get("userPrincipalName")
                 or data.get("user")
                 or data.get("principalEmail")
-                or "cloud-service-account"
-            )
+                or ""
+            ).strip()
         if not src_ip:
             src_ip = str(data.get("sourceIPAddress") or data.get("ipAddress") or data.get("caller_ip") or "")
 
         # Severity resolution
-        raw_sev = data.get("severity") or 5.0
-        severity: AlertSeverity = "medium"
-        try:
-            num_sev = float(raw_sev)
-            if num_sev >= 7.0:
-                severity = "high"
-                if num_sev >= 8.5:
-                    severity = "critical"
-            elif num_sev <= 3.9:
-                severity = "low"
-            else:
-                severity = "medium"
-        except (ValueError, TypeError):
-            sev_str = str(raw_sev).lower()
-            if sev_str in ("critical", "high", "medium", "low", "informational"):
-                severity = sev_str  # type: ignore[assignment]
+        # A missing or unrecognised vendor severity stays "unknown"; it is never defaulted to a mid score.
+        raw_sev = data.get("severity")
+        severity: AlertSeverity = "unknown"
+        if raw_sev not in (None, ""):
+            try:
+                num_sev = float(raw_sev)
+                if num_sev >= 7.0:
+                    severity = "high"
+                    if num_sev >= 8.5:
+                        severity = "critical"
+                elif num_sev <= 3.9:
+                    severity = "low"
+                else:
+                    severity = "medium"
+            except (ValueError, TypeError):
+                sev_str = str(raw_sev).lower()
+                if sev_str in ("critical", "high", "medium", "low", "informational"):
+                    severity = sev_str  # type: ignore[assignment]
 
         # MITRE ATT&CK mapping
         mitre_list: list[MitreAttackReference] = [
@@ -174,14 +177,16 @@ class CloudAuditAdapter:
                 )
             )
 
-        entities: list[AlertEntity] = [
-            AlertEntity(
-                entity_type="user",
-                entity_value=user_val,
-                role="target",
-                attributes={"account_id": account_id, "user_agent": user_agent},
+        entities: list[AlertEntity] = []
+        if user_val:
+            entities.append(
+                AlertEntity(
+                    entity_type="user",
+                    entity_value=user_val,
+                    role="target",
+                    attributes={"account_id": account_id, "user_agent": user_agent},
+                )
             )
-        ]
         observables: list[AlertObservable] = []
 
         if src_ip and src_ip not in ("-", "127.0.0.1"):
@@ -195,7 +200,7 @@ class CloudAuditAdapter:
             )
             observables.append(AlertObservable(type="ip", value=src_ip, relevance="suspicious"))
 
-        user_entity = UserEntity(username=user_val, domain=account_id or None)
+        user_entity = UserEntity(username=user_val, domain=account_id or None) if user_val else None
         network_entity = NetworkEntity(source_ip=src_ip) if src_ip else None
 
         return CanonicalAlert(
@@ -205,7 +210,7 @@ class CloudAuditAdapter:
             title=f"Cloud Security Finding: {title}",
             description=description,
             severity=severity,
-            vendor_severity=str(raw_sev),
+            vendor_severity=str(raw_sev) if raw_sev not in (None, "") else None,
             category="credential_access" if "credential" in title.lower() else "suspicious_activity",
             provider=provider,
             timestamp=ts,
@@ -215,7 +220,7 @@ class CloudAuditAdapter:
             user=user_entity,
             network=network_entity,
             raw_ref=raw_ref,
-            raw_payload_summary=f"{title} [{user_val}]",
+            raw_payload_summary=f"{title} [{user_val}]" if user_val else title,
             custom_fields={
                 "account_id": account_id,
                 "action_type": action_data.get("actionType"),

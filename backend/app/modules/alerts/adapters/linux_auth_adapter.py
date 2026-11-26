@@ -92,7 +92,7 @@ class LinuxAuthAdapter:
             raw_ref = compute_sha256(data)
 
         message = str(data.get("message") or data.get("log") or data.get("raw") or "")
-        hostname = str(data.get("host") or data.get("hostname") or "linux-server")
+        hostname = str(data.get("host") or data.get("hostname") or "").strip()  # empty = none recorded; none is invented
         ts_val = data.get("timestamp") or data.get("@timestamp")
 
         ts = require_event_time(ts_val)
@@ -175,14 +175,16 @@ class LinuxAuthAdapter:
                 )
             )
 
-        entities: list[AlertEntity] = [
-            AlertEntity(
-                entity_type="host",
-                entity_value=hostname,
-                role="victim",
-                attributes={"hostname": hostname},
-            ),
-        ]
+        entities: list[AlertEntity] = []
+        if hostname:
+            entities.append(
+                AlertEntity(
+                    entity_type="host",
+                    entity_value=hostname,
+                    role="victim",
+                    attributes={"hostname": hostname},
+                )
+            )
         observables: list[AlertObservable] = []
 
         if user:
@@ -213,16 +215,16 @@ class LinuxAuthAdapter:
             source_type="linux_auth",
             source_alert_id=str(data.get("id") or data.get("event_id") or f"auth-{uuid4().hex[:8]}"),
             title=title,
-            description=message or f"Linux authentication log on {hostname}",
+            description=message or (f"Linux authentication log on {hostname}" if hostname else "Linux authentication log"),
             severity=severity,
-            vendor_severity=str(data.get("severity") or ("high" if is_failed_ssh else "info")),
+            vendor_severity=str(data["severity"]) if data.get("severity") else None,  # only what the vendor stated
             category=category,
             provider="Linux-Syslog-Auth",
             timestamp=ts,
             mitre_attack=mitre_list,
             entities=entities,
             observables=observables,
-            host=HostEntity(hostname=hostname, os="Linux"),
+            host=HostEntity(hostname=hostname, os="Linux") if hostname else None,
             user=UserEntity(username=user) if user else None,
             network=NetworkEntity(source_ip=src_ip, source_port=src_port) if src_ip else None,
             process=ProcessEntity(process_name="sshd" if is_failed_ssh or is_accepted else "sudo"),
